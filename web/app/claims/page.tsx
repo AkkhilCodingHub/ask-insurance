@@ -56,7 +56,7 @@ export default function ClaimsPage() {
         </section>
 
         <section style={{ maxWidth: 1120, margin: "0 auto", padding: "56px 24px 80px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 }}>
+          <div className="claims-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 24 }}>
             {claimSteps.map((step) => {
               const Icon = step.icon;
               return (
@@ -111,6 +111,8 @@ export default function ClaimsPage() {
       <Footer />
       <style>{`
         @media (max-width: 980px) { .claims-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 768px) { .claims-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 640px) { .claims-stats { grid-template-columns: 1fr !important; } }
       `}</style>
     </>
   );

@@ -181,6 +181,7 @@ export function InsurerGrid() {
     <section style={{ padding: "72px 24px", background: "var(--bg)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div
+          className="insurer-header-row"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -220,6 +221,15 @@ export function InsurerGrid() {
           </a>
         </div>
 
+        <style>{`
+          .grid-responsive-insurers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+          @media (max-width: 900px) { .grid-responsive-insurers { grid-template-columns: repeat(2, 1fr) !important; } }
+          @media (max-width: 540px) { .grid-responsive-insurers { grid-template-columns: 1fr !important; } }
+          .insurer-header-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 36px; }
+          @media (max-width: 640px) {
+            .insurer-header-row { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+          }
+        `}</style>
         <div
           style={{
             display: "grid",

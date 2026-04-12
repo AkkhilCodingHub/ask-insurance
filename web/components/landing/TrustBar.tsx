@@ -17,14 +17,17 @@ export function TrustBar() {
         padding: "32px 24px",
       }}
     >
+      <style>{`
+        .trustbar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        @media (max-width: 768px) { .trustbar-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 480px) { .trustbar-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
       <div
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 24,
         }}
+        className="trustbar-grid"
       >
         {features.map(({ Icon, title, desc }) => (
           <div

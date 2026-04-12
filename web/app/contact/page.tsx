@@ -39,7 +39,7 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section style={{ maxWidth: 1120, margin: "0 auto", padding: "56px 24px 80px", display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 38 }}>
+        <section className="contact-main-grid" style={{ maxWidth: 1120, margin: "0 auto", padding: "56px 24px 80px", display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 38 }}>
           <div style={{ display: "grid", gap: 24 }}>
             {details.map((item) => {
               const Icon = item.icon;
@@ -72,6 +72,11 @@ export default function ContactPage() {
         </section>
       </main>
       <Footer />
+      <style>{`
+        @media (max-width: 768px) {
+          .contact-main-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </>
   );
 }

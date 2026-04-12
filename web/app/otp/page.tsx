@@ -102,6 +102,7 @@ export default function OTPPage() {
 
   return (
     <div
+      className="otp-grid"
       style={{
         minHeight: "100vh",
         display: "grid",
@@ -115,6 +116,7 @@ export default function OTPPage() {
           .otp-form-side { flex: 1; }
         }
       `}</style>
+      
 
       {/* Left hero */}
       <div

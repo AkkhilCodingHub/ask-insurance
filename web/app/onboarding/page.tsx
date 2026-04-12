@@ -55,6 +55,7 @@ export default function OnboardingPage() {
 
   return (
     <div
+      className="ob-grid"
       style={{
         minHeight: "100vh",
         display: "grid",

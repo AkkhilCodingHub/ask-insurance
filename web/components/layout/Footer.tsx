@@ -21,8 +21,15 @@ const footerLinks = [
 export function Footer() {
   return (
     <footer style={{ background: "#0A0F1E", color: "#fff" }}>
+      <style>{`
+        .grid-responsive-footer { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+        @media (max-width: 900px) { .grid-responsive-footer { grid-template-columns: 1fr 1fr !important; } }
+        @media (max-width: 540px) { .grid-responsive-footer { grid-template-columns: 1fr !important; } }
+        .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        @media (max-width: 540px) { .footer-bottom { flex-direction: column !important; align-items: flex-start !important; } }
+      `}</style>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 28px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 40, marginBottom: 48 }} className="grid-responsive-footer">
+        <div className="grid-responsive-footer">
           {/* Brand */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -97,14 +104,10 @@ export function Footer() {
         </div>
 
         <div
+          className="footer-bottom"
           style={{
             borderTop: "1px solid #1F2937",
             paddingTop: 20,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 10,
           }}
         >
           <span style={{ fontSize: 12, color: "#4B5563" }}>

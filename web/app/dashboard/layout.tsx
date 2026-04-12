@@ -321,6 +321,148 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
+      {/* ── Mobile slide-in sidebar overlay ── */}
+      {mobileSidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setMobileSidebarOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              zIndex: 70,
+            }}
+          />
+          {/* Drawer */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: 260,
+              height: "100vh",
+              background: "var(--white)",
+              zIndex: 80,
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+              boxShadow: "4px 0 24px rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "18px 20px",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Shield size={15} color="#fff" strokeWidth={2.5} />
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.03em", color: "var(--text)" }}>
+                  ASK <span style={{ color: "var(--primary)", fontWeight: 400, fontSize: 12 }}>Insurance</span>
+                </span>
+              </div>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex" }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Nav items */}
+            <nav style={{ flex: 1, padding: "8px 0" }}>
+              {navItems.map(({ label, icon: Icon, href }) => {
+                const isActive =
+                  href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileSidebarOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px 20px",
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: isActive ? 700 : 500,
+                      color: isActive ? "var(--primary)" : "var(--text-muted)",
+                      background: isActive ? "var(--primary-light)" : "transparent",
+                      borderLeft: isActive ? "3px solid var(--primary)" : "3px solid transparent",
+                    }}
+                  >
+                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} color={isActive ? "var(--primary)" : "var(--text-muted)"} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* User footer */}
+            <div
+              style={{
+                borderTop: "1px solid var(--border)",
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "var(--primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {initials}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {user.name}
+                </p>
+                <p style={{ fontSize: 11, color: "var(--text-light)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  +91 {user.phone}
+                </p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Logout"
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, color: "var(--text-muted)", display: "flex" }}
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── Mobile bottom nav ── */}
       <nav
         className="mobile-nav"

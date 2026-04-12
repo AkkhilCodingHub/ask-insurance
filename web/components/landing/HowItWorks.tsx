@@ -46,8 +46,15 @@ export function HowItWorks() {
           }}
           className="grid-responsive-howitworks"
         >
+          <style>{`
+            @media (max-width: 768px) {
+              .grid-responsive-howitworks { grid-template-columns: 1fr !important; gap: 24px !important; }
+              .howitworks-connector { display: none !important; }
+            }
+          `}</style>
           {/* Connector line */}
           <div
+            className="howitworks-connector"
             style={{
               position: "absolute",
               top: 36,

@@ -22,6 +22,7 @@ export function Hero() {
 
   return (
     <section
+      className="hero-section"
       style={{
         background: "linear-gradient(145deg, #EBF2FF 0%, #F0F8FF 40%, #E0F6FF 70%, #EBF2FF 100%)",
         padding: "72px 24px 80px",
@@ -55,6 +56,16 @@ export function Hero() {
         }}
       />
 
+      <style>{`
+        .grid-responsive-hero { display: grid; grid-template-columns: 1fr 420px; gap: 56px; align-items: center; position: relative; }
+        @media (max-width: 900px) {
+          .grid-responsive-hero { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .grid-responsive-hero > div:last-child { max-width: 480px; width: 100%; margin: 0 auto; }
+        }
+        @media (max-width: 640px) {
+          .hero-section { padding: 48px 16px 56px !important; }
+        }
+      `}</style>
       <div
         style={{
           maxWidth: 1200,

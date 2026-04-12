@@ -693,6 +693,7 @@ export default function ClaimsPage() {
 
       {/* Summary cards */}
       <div
+        className="claims-summary-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
@@ -765,6 +766,12 @@ export default function ClaimsPage() {
       )}
 
       {showModal && <FileClaimModal onClose={() => setShowModal(false)} />}
+
+      <style>{`
+        @media (max-width: 640px) {
+          .claims-summary-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

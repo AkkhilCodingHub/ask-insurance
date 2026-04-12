@@ -54,6 +54,9 @@ export function Stats() {
         }}
         className="grid-responsive-stats"
       >
+        <style>{`
+          @media (max-width: 640px) { .grid-responsive-stats { grid-template-columns: repeat(2, 1fr) !important; } }
+        `}</style>
         {stats.map((s, i) => (
           <div
             key={i}

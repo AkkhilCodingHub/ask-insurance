@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/landing/Hero";
 import { Stats } from "@/components/landing/Stats";
+import { AppDownload } from "@/components/landing/AppDownload";
 import { TrustBar } from "@/components/landing/TrustBar";
 import { Categories } from "@/components/landing/Categories";
 import { InsurerGrid } from "@/components/landing/InsurerGrid";
@@ -15,6 +16,7 @@ export default function Home() {
       <main>
         <Hero />
         <Stats />
+        <AppDownload />
         <TrustBar />
         <Categories />
         <InsurerGrid />

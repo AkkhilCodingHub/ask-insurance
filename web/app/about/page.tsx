@@ -32,7 +32,7 @@ export default function AboutPage() {
       <Navbar />
       <main style={{ background: "var(--bg)", minHeight: "100vh" }}>
         <section style={{ padding: "72px 24px 62px", maxWidth: 1040, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 40, alignItems: "center" }}>
+          <div className="about-hero-grid" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 40, alignItems: "center" }}>
             <div>
               <span style={{ display: "inline-block", marginBottom: 16, fontSize: 12, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--primary)" }}>
                 About ASK Insurance
@@ -52,7 +52,7 @@ export default function AboutPage() {
                 </Link>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 20 }}>
+            <div className="about-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 20 }}>
               {[
                 { value: "38+", label: "Insurers", accent: "#0EA5E9" },
                 { value: "4.9/5", label: "Customer rating", accent: "#22C55E" },
@@ -70,7 +70,7 @@ export default function AboutPage() {
 
         <section style={{ background: "#fff", padding: "58px 24px 72px" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, marginBottom: 40 }}>
+            <div className="about-values-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, marginBottom: 40 }}>
               {values.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -87,7 +87,7 @@ export default function AboutPage() {
               })}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 26, alignItems: "start" }}>
+            <div className="about-promise-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 26, alignItems: "start" }}>
               <div style={{ background: "#F8FAFC", borderRadius: 24, padding: "32px" }}>
                 <p style={{ color: "var(--primary)", fontWeight: 700, marginBottom: 12 }}>Our promise</p>
                 <h2 style={{ marginTop: 0, fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Transparent policies. Zero hidden fees. Human support.</h2>
@@ -112,6 +112,14 @@ export default function AboutPage() {
         </section>
       </main>
       <Footer />
+      <style>{`
+        @media (max-width: 768px) {
+          .about-hero-grid { grid-template-columns: 1fr !important; }
+          .about-values-grid { grid-template-columns: 1fr !important; }
+          .about-promise-grid { grid-template-columns: 1fr !important; }
+          .about-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
     </>
   );
 }

@@ -27,6 +27,17 @@ export function Navbar() {
         boxShadow: "0 1px 12px rgba(26,107,245,0.06)",
       }}
     >
+      <style>{`
+        .nav-desktop-links { display: flex; gap: 32px; }
+        .nav-desktop-auth { display: flex; gap: 10px; align-items: center; }
+        .nav-mobile-btn { display: none; }
+        @media (max-width: 768px) {
+          .nav-desktop-links { display: none !important; }
+          .nav-desktop-auth { display: none !important; }
+          .nav-mobile-btn { display: flex !important; }
+        }
+      `}</style>
+
       <div
         style={{
           maxWidth: 1200,
@@ -71,7 +82,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <div style={{ display: "flex", gap: 32 }} className="hidden md:flex">
+        <div className="nav-desktop-links">
           {navLinks.map((l) => (
             <Link
               key={l.label}
@@ -92,7 +103,7 @@ export function Navbar() {
         </div>
 
         {/* Auth buttons */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="hidden md:flex">
+        <div className="nav-desktop-auth">
           <Link
             href="/login"
             style={{
@@ -139,8 +150,8 @@ export function Navbar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text)" }}
-          className="md:hidden"
+          className="nav-mobile-btn"
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text)", alignItems: "center" }}
         >
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>

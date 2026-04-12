@@ -47,6 +47,10 @@ export function Categories() {
           }}
           className="grid-responsive-categories"
         >
+          <style>{`
+            @media (max-width: 1024px) { .grid-responsive-categories { grid-template-columns: repeat(3, 1fr) !important; } }
+            @media (max-width: 600px) { .grid-responsive-categories { grid-template-columns: repeat(2, 1fr) !important; } }
+          `}</style>
           {categories.map(({ Icon, label, desc, color }) => (
             <div
               key={label}

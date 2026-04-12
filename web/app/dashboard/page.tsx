@@ -118,6 +118,7 @@ export default function DashboardPage() {
 
       {/* Stats row */}
       <div
+        className="dash-stats-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
@@ -159,6 +160,7 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div
+          className="dash-quick-actions"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
@@ -589,6 +591,11 @@ export default function DashboardPage() {
       <style>{`
         @media (max-width: 768px) {
           .plan-row-metrics { display: none !important; }
+          .dash-stats-grid { grid-template-columns: 1fr !important; }
+          .dash-quick-actions { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 480px) {
+          .dash-quick-actions { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
     </div>
