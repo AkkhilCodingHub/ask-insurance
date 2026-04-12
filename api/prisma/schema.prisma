@@ -1,0 +1,124 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  phone       String   @unique
+  email       String?  @unique
+  name        String?
+  dateOfBirth DateTime?
+  gender      String?
+  address     String?
+  city        String?
+  state       String?
+  pincode     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  policies    Policy[]
+  claims      Claim[]
+  quotes      Quote[]
+  otpChallenges OtpChallenge[]
+
+  @@map("users")
+}
+
+model Policy {
+  id              String   @id @default(cuid())
+  policyNumber    String   @unique
+  type            String   // life, health, motor, travel, home, business
+  provider        String   // insurer name
+  sumInsured      Float
+  premium         Float
+  startDate       DateTime
+  endDate         DateTime
+  status          String   @default("active") // active, expired, cancelled
+  paymentStatus   String   @default("pending") // pending, paid, failed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claims          Claim[]
+
+  @@map("policies")
+}
+
+model Claim {
+  id              String   @id @default(cuid())
+  claimNumber     String   @unique
+  type            String   // medical, accident, theft, etc.
+  amount          Float
+  status          String   @default("pending") // pending, approved, rejected, paid
+  description     String?
+  incidentDate    DateTime
+  submittedDate   DateTime @default(now())
+  approvedDate    DateTime?
+  paidDate        DateTime?
+  documents       String?  // JSON array of document URLs
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policyId        String
+  policy          Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@map("claims")
+}
+
+model Quote {
+  id              String   @id @default(cuid())
+  type            String   // life, health, motor, travel, home, business
+  details         String   // JSON with quote parameters
+  providers       String   // JSON array of provider quotes
+  status          String   @default("active") // active, expired, converted
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("quotes")
+}
+
+model Admin {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        String   @default("admin") // admin, superadmin
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model OtpChallenge {
+  id         String   @id @default(cuid())
+  phone      String
+  otpHash    String
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  consumedAt DateTime?
+  userId     String? 
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone])
+  @@map("otp_challenges")
+}
