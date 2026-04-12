@@ -4,13 +4,17 @@
   "version": "0.0.1",
   "workspaces": [
     "web",
+    "admin",
     "shared"
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace=web",
+    "dev:admin": "npm run dev --workspace=admin",
     "dev:mobile": "cd mobile && npx expo start --clear",
     "dev": "npm run dev:web",
+    "dev:all": "concurrently \"npm run dev:web\" \"npm run dev:admin\"",
     "build:web": "npm run build --workspace=web",
+    "build:admin": "npm run build --workspace=admin",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present"
   },

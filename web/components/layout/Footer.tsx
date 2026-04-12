@@ -22,7 +22,7 @@ export function Footer() {
   return (
     <footer style={{ background: "#0A0F1E", color: "#fff" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 28px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 40, marginBottom: 48 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 40, marginBottom: 48 }} className="grid-responsive-footer">
           {/* Brand */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>

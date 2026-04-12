@@ -48,11 +48,11 @@ export default function WelcomeScreen() {
     if (activeIndex < SLIDES.length - 1) {
       scrollRef.current?.scrollTo({ x: (activeIndex + 1) * W, animated: true });
     } else {
-      router.replace('/login');
+      router.push('/login');
     }
   };
 
-  const skip = () => router.replace('/login');
+  const skip = () => router.push('/login');
 
   const slide = SLIDES[activeIndex];
 
@@ -114,9 +114,9 @@ export default function WelcomeScreen() {
         </TouchableOpacity>
 
         {activeIndex === SLIDES.length - 1 && (
-          <TouchableOpacity onPress={() => router.replace('/register')} style={s.registerLink}>
+          <TouchableOpacity onPress={() => router.push('/login')} style={s.registerLink}>
             <Text style={s.registerLinkText}>
-              New here? <Text style={{ color: slide.accent, fontWeight: '700' }}>Create account</Text>
+              New here? <Text style={{ color: slide.accent, fontWeight: '700' }}>Get started free</Text>
             </Text>
           </TouchableOpacity>
         )}

@@ -61,5 +61,6 @@ export const Spacing = {
   half: 2, one: 4, two: 8, three: 16, four: 24, five: 32, six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+// Base height (52) + safe area bottom (34 iPhone, ~24 Android gesture nav)
+export const BottomTabInset = Platform.select({ ios: 86, android: 76 }) ?? 52;
 export const MaxContentWidth = 800;

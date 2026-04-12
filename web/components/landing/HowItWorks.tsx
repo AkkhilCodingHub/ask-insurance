@@ -44,6 +44,7 @@ export function HowItWorks() {
             gap: 32,
             position: "relative",
           }}
+          className="grid-responsive-howitworks"
         >
           {/* Connector line */}
           <div
@@ -77,7 +78,6 @@ export function HowItWorks() {
                   margin: "0 auto 24px",
                   fontSize: 20,
                   fontWeight: 900,
-                  background2: `linear-gradient(135deg, var(--primary), var(--accent-dark))`,
                   color: "var(--primary)",
                   letterSpacing: "-0.02em",
                 }}

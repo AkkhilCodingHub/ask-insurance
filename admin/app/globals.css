@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand */
+  --primary:        #1580FF;
+  --primary-dark:   #0D60CC;
+  --primary-deep:   #083A8C;
+  --primary-light:  #E8F2FF;
+
+  /* Sidebar */
+  --sidebar-bg:     #0F172A;
+  --sidebar-border: #1E293B;
+  --sidebar-text:   #94A3B8;
+  --sidebar-active: #F1F5F9;
+
+  /* Neutrals */
+  --text:           #0F172A;
+  --text-muted:     #64748B;
+  --text-light:     #94A3B8;
+  --border:         #E2E8F0;
+  --bg:             #F8FAFC;
+  --white:          #FFFFFF;
+
+  /* Semantic */
+  --success:        #059669;
+  --success-light:  #ECFDF5;
+  --error:          #DC2626;
+  --error-light:    #FEF2F2;
+  --warning:        #D97706;
+  --warning-light:  #FFFBEB;
+  --info:           #0891B2;
+  --info-light:     #E0F7FF;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-inter, system-ui, -apple-system, sans-serif);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }

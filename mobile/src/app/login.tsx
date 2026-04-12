@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ScrollView, ActivityIndicator, Alert,
+  ActivityIndicator, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,191 +11,207 @@ import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { login } = useAuth();
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const router       = useRouter();
+  const { sendOTP }  = useAuth();
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
+  const isValid = phone.length === 10;
+
+  const handleContinue = async () => {
+    if (!isValid) return;
+    Keyboard.dismiss();
     setLoading(true);
     try {
-      await login(email.trim(), password);
-      router.replace('/(tabs)');
+      await sendOTP(phone);
+      router.push('/otp');
     } catch {
-      Alert.alert('Login failed', 'Invalid credentials. Please try again.');
+      // handle error silently for now
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header */}
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backText}>← Back</Text>
+        {/* ── Blue hero ─────────────────────────────── */}
+        <View style={s.hero}>
+          <View style={s.heroBg1} /><View style={s.heroBg2} />
+
+          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+            <Icon name="arrow-back-outline" size={22} color="rgba(255,255,255,0.9)" />
           </TouchableOpacity>
 
-          {/* Logo */}
           <View style={s.logoRow}>
             <View style={s.logoCircle}>
-              <Icon name="shield" size={34} color={Colors.white} />
+              <Text style={s.logoText}>ASK</Text>
             </View>
           </View>
 
-          <Text style={s.title}>Welcome back</Text>
-          <Text style={s.sub}>Sign in to your ASK account</Text>
+          <Text style={s.heroTitle}>Welcome to ASK</Text>
+          <Text style={s.heroSub}>India's trusted insurance broker</Text>
+        </View>
 
-          {/* Form */}
-          <View style={s.form}>
-            <Text style={s.label}>EMAIL ADDRESS</Text>
+        {/* ── Card ──────────────────────────────────── */}
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Enter your mobile number</Text>
+          <Text style={s.cardSub}>We'll send a one-time code to verify you</Text>
+
+          {/* Phone input */}
+          <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={s.inputRow}>
+            <View style={s.prefix}>
+              <Text style={s.flag}>🇮🇳</Text>
+              <Text style={s.prefixText}>+91</Text>
+            </View>
             <TextInput
-              style={s.input}
-              placeholder="you@example.com"
+              ref={inputRef}
+              style={s.phoneInput}
+              value={phone}
+              onChangeText={t => setPhone(t.replace(/\D/g, '').slice(0, 10))}
+              placeholder="0000 00000 0"
               placeholderTextColor={Colors.textLight}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
+              keyboardType="phone-pad"
+              maxLength={10}
+              returnKeyType="done"
+              onSubmitEditing={handleContinue}
+              autoFocus
             />
-
-            <Text style={s.label}>PASSWORD</Text>
-            <View style={s.passwordRow}>
-              <TextInput
-                style={[s.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Enter your password"
-                placeholderTextColor={Colors.textLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                autoComplete="password"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPass(!showPass)}
-                style={s.eyeBtn}
-              >
-                <Icon name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={s.forgotBtn}>
-              <Text style={s.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              style={[s.loginBtn, loading && { opacity: 0.7 }]}
-              activeOpacity={0.85}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color={Colors.white} />
-                : <Text style={s.loginBtnText}>Sign In</Text>
-              }
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={s.divider}>
-              <View style={s.dividerLine} />
-              <Text style={s.dividerText}>or</Text>
-              <View style={s.dividerLine} />
-            </View>
-
-            {/* Google placeholder */}
-            <TouchableOpacity style={s.socialBtn}>
-              <Text style={s.socialEmoji}>🔵</Text>
-              <Text style={s.socialText}>Continue with Google</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Register link */}
-          <TouchableOpacity
-            onPress={() => router.replace('/register')}
-            style={s.registerLink}
-          >
-            <Text style={s.registerText}>
-              Don't have an account?{' '}
-              <Text style={{ color: Colors.primary, fontWeight: '700' }}>Create one</Text>
-            </Text>
+            {phone.length === 10 && (
+              <View style={s.checkCircle}>
+                <Icon name="checkmark" size={14} color={Colors.white} />
+              </View>
+            )}
           </TouchableOpacity>
-        </ScrollView>
+
+          <TouchableOpacity
+            style={[s.continueBtn, !isValid && s.continueBtnDisabled]}
+            onPress={handleContinue}
+            activeOpacity={0.85}
+            disabled={!isValid || loading}
+          >
+            {loading
+              ? <ActivityIndicator color={Colors.white} />
+              : (
+                <>
+                  <Text style={s.continueBtnText}>Get OTP</Text>
+                  <Icon name="arrow-forward-outline" size={18} color={Colors.white} />
+                </>
+              )
+            }
+          </TouchableOpacity>
+
+          <Text style={s.consent}>
+            By continuing you agree to our{' '}
+            <Text style={s.consentLink}>Terms of Service</Text>
+            {' '}&{' '}
+            <Text style={s.consentLink}>Privacy Policy</Text>
+          </Text>
+        </View>
+
+        {/* ── Footer ────────────────────────────────── */}
+        <View style={s.footer}>
+          <Icon name="shield-checkmark-outline" size={14} color={Colors.success} />
+          <Text style={s.footerText}>Your data is encrypted & secure</Text>
+        </View>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.white },
-  scroll: { paddingHorizontal: 24, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: Colors.primary },
 
-  backBtn:  { marginTop: 8, marginBottom: 20, alignSelf: 'flex-start' },
-  backText: { fontSize: 15, color: Colors.primary, fontWeight: '600' },
-
-  logoRow:    { alignItems: 'center', marginBottom: 24 },
-  logoCircle: {
-    width: 72, height: 72, borderRadius: 36,
+  // ── Hero ──────────────────────────────────
+  hero: {
     backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 12,
+    overflow: 'hidden',
+  },
+  heroBg1: {
+    position: 'absolute', width: 250, height: 250, borderRadius: 125,
+    backgroundColor: 'rgba(255,255,255,0.06)', top: -80, right: -60,
+  },
+  heroBg2: {
+    position: 'absolute', width: 140, height: 140, borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 0, left: 20,
+  },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: Colors.accent,
+    marginBottom: 24,
   },
-  logoEmoji: { fontSize: 34 },
-
-  title: { fontSize: 26, fontWeight: '900', color: Colors.text, letterSpacing: -0.5, textAlign: 'center' },
-  sub:   { fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginTop: 6, marginBottom: 32 },
-
-  form: { gap: 4 },
-  label: {
-    fontSize: 10, fontWeight: '700', color: Colors.textMuted,
-    letterSpacing: 0.8, marginBottom: 6, marginTop: 12,
+  logoRow:   { alignItems: 'center', marginBottom: 20 },
+  logoCircle:{
+    width: 72, height: 72, borderRadius: 22,
+    backgroundColor: Colors.white,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)',
   },
-  input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, color: Colors.text, backgroundColor: Colors.bg,
-    marginBottom: 4,
+  logoText:  { fontSize: 18, fontWeight: '900', color: Colors.primary, letterSpacing: 2 },
+  heroTitle: { fontSize: 26, fontWeight: '900', color: Colors.white, textAlign: 'center', letterSpacing: -0.5, marginBottom: 6 },
+  heroSub:   { fontSize: 14, color: 'rgba(255,255,255,0.65)', textAlign: 'center' },
+
+  // ── Card ──────────────────────────────────
+  card: {
+    flex: 1,
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 32,
   },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eyeBtn:      { padding: 13, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.bg },
-  eyeText:     { fontSize: 16 },
+  cardTitle: { fontSize: 22, fontWeight: '900', color: Colors.text, letterSpacing: -0.4, marginBottom: 6 },
+  cardSub:   { fontSize: 14, color: Colors.textMuted, marginBottom: 28, lineHeight: 20 },
 
-  forgotBtn:  { alignSelf: 'flex-end', paddingVertical: 8 },
-  forgotText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
-
-  loginBtn: {
-    backgroundColor: Colors.primary, borderRadius: 14,
-    paddingVertical: 15, alignItems: 'center', marginTop: 8,
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 2, borderColor: Colors.primary,
+    borderRadius: 16, overflow: 'hidden',
+    marginBottom: 20, backgroundColor: Colors.bg,
   },
-  loginBtnText: { fontSize: 15, fontWeight: '800', color: Colors.white },
-
-  divider: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 18,
+  prefix: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 16,
+    borderRightWidth: 2, borderRightColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: 13, color: Colors.textLight, fontWeight: '500' },
-
-  socialBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14,
-    paddingVertical: 13, backgroundColor: Colors.white,
+  flag:       { fontSize: 18 },
+  prefixText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+  phoneInput: {
+    flex: 1, fontSize: 20, fontWeight: '700',
+    color: Colors.text, paddingHorizontal: 14, paddingVertical: 16,
+    letterSpacing: 1.5,
   },
-  socialEmoji: { fontSize: 18 },
-  socialText:  { fontSize: 14, fontWeight: '600', color: Colors.text },
+  checkCircle: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: Colors.success,
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 14,
+  },
 
-  registerLink: { alignItems: 'center', marginTop: 24 },
-  registerText: { fontSize: 14, color: Colors.textMuted },
+  continueBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 16, paddingVertical: 16,
+    marginBottom: 20,
+  },
+  continueBtnDisabled: { backgroundColor: Colors.textLight },
+  continueBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white },
+
+  consent:     { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  consentLink: { color: Colors.primary, fontWeight: '600' },
+
+  // ── Footer ────────────────────────────────
+  footer: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 16, backgroundColor: Colors.white,
+  },
+  footerText: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
 });

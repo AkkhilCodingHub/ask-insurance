@@ -25,7 +25,13 @@
       "Bash(node /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/typescript/bin/tsc --noEmit --project /Users/singhhardil/Development/bitdecentro/insurance/mobile/tsconfig.json)",
       "Bash(grep -r \"SFSymbol\" /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/expo-symbols/build/*.d.ts)",
       "Bash(node -e \"const s = require\\('/Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/expo-symbols/build/android/symbols.json'\\); const keys = Object.keys\\(s\\); console.log\\('total:', keys.length\\); console.log\\('house?', keys.filter\\(k=>k.includes\\('house'\\)\\)\\); console.log\\('shield?', keys.filter\\(k=>k.includes\\('shield'\\)\\)\\); console.log\\('person?', keys.filter\\(k=>k.includes\\('person'\\)\\)\\); console.log\\('search?', keys.filter\\(k=>k.includes\\('search'\\)\\)\\); console.log\\('list?', keys.filter\\(k=>k.includes\\('list'\\)\\).slice\\(0,5\\)\\);\")",
-      "Bash(ls /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/@expo/vector-icons/build/*.js)"
+      "Bash(ls /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/@expo/vector-icons/build/*.js)",
+      "Bash(npx next:*)",
+      "Bash(sed -n '98,102p' /Users/singhhardil/Development/bitdecentro/insurance/web/app/dashboard/page.tsx)",
+      "Bash(sed -n '228,232p' /Users/singhhardil/Development/bitdecentro/insurance/web/app/dashboard/plans/page.tsx)",
+      "Bash(sed -n '636,640p' /Users/singhhardil/Development/bitdecentro/insurance/web/app/dashboard/claims/page.tsx)",
+      "Bash(sed -n '73,77p' /Users/singhhardil/Development/bitdecentro/insurance/web/app/dashboard/profile/page.tsx)",
+      "Bash(npm run:*)"
     ]
   }
 }

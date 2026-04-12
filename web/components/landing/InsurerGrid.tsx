@@ -226,6 +226,7 @@ export function InsurerGrid() {
             gridTemplateColumns: "repeat(3, 1fr)",
             gap: 20,
           }}
+          className="grid-responsive-insurers"
         >
           {insurers.map((ins, i) => (
             <InsurerCard key={ins.name} ins={ins} index={i} />

@@ -53,10 +53,7 @@ export default function ProfileTab() {
           <Text style={s.guestTitle}>You're browsing as a guest</Text>
           <Text style={s.guestSub}>Sign in to view your policies, file claims, and track everything in one place.</Text>
           <TouchableOpacity style={s.guestLoginBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
-            <Text style={s.guestLoginText}>Sign In</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.guestRegisterBtn} onPress={() => router.push('/register')} activeOpacity={0.85}>
-            <Text style={s.guestRegisterText}>Create Account</Text>
+            <Text style={s.guestLoginText}>Sign In / Create Account</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -85,8 +82,8 @@ export default function ProfileTab() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.userName}>{user.name}</Text>
-            <Text style={s.userEmail}>{user.email}</Text>
-            <Text style={s.userPhone}>{user.phone}</Text>
+            <Text style={s.userEmail}>{user.phone}</Text>
+            {user.dob ? <Text style={s.userPhone}>DOB: {user.dob}</Text> : null}
           </View>
           <View style={s.verifiedBadge}>
             <Text style={s.verifiedText}>✓ Verified</Text>

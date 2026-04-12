@@ -1,8 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import React from 'react';
-import { Platform } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
@@ -21,7 +23,30 @@ const TAB_LABELS: Record<string, string> = {
   profile: 'Profile',
 };
 
+/** Wraps each tab screen in a fade-in animation on focus */
+export function FadeScreen({ children }: { children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(() => {
+    opacity.setValue(0);
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  });
+
+  return (
+    <Animated.View style={{ flex: 1, opacity }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 52 + insets.bottom;
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -32,9 +57,9 @@ export default function TabLayout() {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: tabBarHeight,
           paddingTop: 8,
-          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
         },
         tabBarLabelStyle: {
           fontSize: 10,
@@ -52,6 +77,8 @@ export default function TabLayout() {
           );
         },
         title: TAB_LABELS[route.name] ?? route.name,
+        // Fade between tab screens
+        sceneStyle: { backgroundColor: Colors.bg },
       })}
     >
       <Tabs.Screen name="index" />

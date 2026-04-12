@@ -52,6 +52,7 @@ export function Stats() {
           gap: 24,
           position: "relative",
         }}
+        className="grid-responsive-stats"
       >
         {stats.map((s, i) => (
           <div

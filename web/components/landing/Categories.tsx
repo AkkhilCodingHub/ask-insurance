@@ -45,6 +45,7 @@ export function Categories() {
             gridTemplateColumns: "repeat(6, 1fr)",
             gap: 16,
           }}
+          className="grid-responsive-categories"
         >
           {categories.map(({ Icon, label, desc, color }) => (
             <div

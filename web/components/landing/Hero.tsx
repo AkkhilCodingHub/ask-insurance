@@ -65,6 +65,7 @@ export function Hero() {
           alignItems: "center",
           position: "relative",
         }}
+        className="grid-responsive-hero"
       >
         {/* Left — headline */}
         <div className="animate-fade-up">
