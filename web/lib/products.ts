@@ -1,4 +1,4 @@
-import { ArrowRight, Briefcase, Car, Heart, Home, Plane, Shield } from "lucide-react";
+import { Briefcase, Car, Heart, Home, Plane, Shield } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type Product = {
