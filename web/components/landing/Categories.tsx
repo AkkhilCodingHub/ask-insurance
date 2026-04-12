@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 import { Heart, Activity, Car, Home, Plane, Briefcase } from "lucide-react";
 
 const categories = [

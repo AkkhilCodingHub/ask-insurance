@@ -1,38 +1,56 @@
 @import "tailwindcss";
 
+/*
+  ASK Insurance Broker — design tokens
+  Extracted directly from brand logo:
+
+  Ring core      #1580FF  pure electric blue
+  Ring halo      #4DB8FF  sky-blue glow
+  Ring outer     #7DCFFF  ice-blue ambient
+  Chrome hands   #9DAAB8  cool steel (mid)
+  Chrome hi      #DFE8F0  bright metallic
+  Chrome shadow  #647585  deep steel
+  ASK letters    #DDE4EC  silver-white
+*/
+
 :root {
-  /* ASK Insurance Broker — brand palette from logo */
-  /* Electric blue neon ring + silver metallic hands + shield */
+  /* Primary — ring blue */
+  --primary:       #1580FF;
+  --primary-dark:  #0D60CC;
+  --primary-deep:  #083A8C;
+  --primary-light: #E8F2FF;
+  --primary-glow:  #4DB8FF;
 
-  --primary: #1A6BF5;
-  --primary-dark: #1452C8;
-  --primary-deep: #0D3A9E;
-  --primary-light: #EBF2FF;
-  --primary-glow: #3B8BFF;
+  /* Silver / Chrome — metallic hands & shield */
+  --silver:        #9DAAB8;
+  --silver-light:  #DFE8F0;
+  --silver-dark:   #647585;
+  --silver-text:   #DDE4EC;
+  --chrome:        #C8D2DC;
 
-  --silver: #94A3B8;
-  --silver-light: #CBD5E1;
-  --silver-dark: #64748B;
-  --metallic: #E2E8F0;
+  /* Accent — halo & glow */
+  --accent:        #4DB8FF;
+  --accent-bright: #7DCFFF;
+  --accent-dark:   #0EA5E9;
+  --accent-light:  #E0F5FF;
 
-  --accent: #38BDF8;
-  --accent-dark: #0EA5E9;
-  --accent-light: #E0F6FF;
+  /* Neutrals */
+  --text:          #0A1628;
+  --text-muted:    #5A6B80;
+  --text-light:    #8C9DB0;
+  --border:        #DDE4EC;
+  --border-dark:   #C0CAD6;
+  --bg:            #F6F9FC;
+  --bg-warm:       #EFF3F8;
+  --bg-dark:       #0A1628;
+  --white:         #FFFFFF;
 
-  --text: #0F172A;
-  --text-muted: #64748B;
-  --text-light: #94A3B8;
-  --border: #E2E8F0;
-  --border-dark: #CBD5E1;
-  --bg: #F8FAFC;
-  --bg-warm: #F1F5F9;
-  --white: #FFFFFF;
-
-  --success: #059669;
+  /* Semantic */
+  --success:       #059669;
   --success-light: #ECFDF5;
-  --error: #DC2626;
-  --error-light: #FEF2F2;
-  --warning: #D97706;
+  --error:         #DC2626;
+  --error-light:   #FEF2F2;
+  --warning:       #D97706;
   --warning-light: #FFFBEB;
 
   --background: var(--bg);
@@ -44,13 +62,9 @@
   --color-foreground: var(--foreground);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
@@ -60,40 +74,61 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Blue electric glow — from the neon ring in the logo */
+/* ── Glow utilities — ring from logo ──────────────────────────── */
 .glow-blue {
-  box-shadow: 0 0 24px rgba(26, 107, 245, 0.4), 0 0 48px rgba(56, 189, 248, 0.2);
+  box-shadow:
+    0 0 20px rgba(21, 128, 255, 0.45),
+    0 0 40px rgba(77, 184, 255, 0.2);
 }
 .glow-blue-sm {
-  box-shadow: 0 0 12px rgba(26, 107, 245, 0.3), 0 0 24px rgba(56, 189, 248, 0.1);
+  box-shadow:
+    0 0 10px rgba(21, 128, 255, 0.3),
+    0 0 20px rgba(77, 184, 255, 0.12);
 }
 .glow-blue-lg {
-  box-shadow: 0 0 40px rgba(26, 107, 245, 0.5), 0 0 80px rgba(56, 189, 248, 0.25);
+  box-shadow:
+    0 0 36px rgba(21, 128, 255, 0.55),
+    0 0 72px rgba(77, 184, 255, 0.28);
 }
 
-/* Metallic silver gradient text */
+/* ── Chrome / metallic text — from ASK 3D letters ─────────────── */
 .text-metallic {
-  background: linear-gradient(135deg, #94A3B8 0%, #E2E8F0 45%, #CBD5E1 70%, #94A3B8 100%);
+  background: linear-gradient(
+    145deg,
+    #647585 0%,
+    #DFE8F0 35%,
+    #FFFFFF 50%,
+    #C8D2DC 65%,
+    #9DAAB8 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Brand gradients */
+/* ── Brand gradients ───────────────────────────────────────────── */
 .bg-brand {
-  background: linear-gradient(135deg, #1A6BF5 0%, #38BDF8 100%);
+  background: linear-gradient(135deg, #1580FF 0%, #4DB8FF 100%);
 }
 .bg-brand-dark {
-  background: linear-gradient(135deg, #0D3A9E 0%, #1A6BF5 100%);
+  background: linear-gradient(135deg, #083A8C 0%, #1580FF 100%);
 }
 .bg-brand-subtle {
-  background: linear-gradient(135deg, #EBF2FF 0%, #E0F6FF 100%);
+  background: linear-gradient(135deg, #E8F2FF 0%, #E0F5FF 100%);
 }
 
-/* Neon ring animation — from the logo */
+/* ── Neon ring pulse — echoes the logo animation ──────────────── */
 @keyframes ring-pulse {
-  0%, 100% { box-shadow: 0 0 16px rgba(56, 189, 248, 0.4), 0 0 32px rgba(26, 107, 245, 0.2); }
-  50%       { box-shadow: 0 0 32px rgba(56, 189, 248, 0.7), 0 0 64px rgba(26, 107, 245, 0.4); }
+  0%, 100% {
+    box-shadow:
+      0 0 12px rgba(77, 184, 255, 0.5),
+      0 0 24px rgba(21, 128, 255, 0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 28px rgba(77, 184, 255, 0.8),
+      0 0 56px rgba(21, 128, 255, 0.45);
+  }
 }
 .animate-ring {
   animation: ring-pulse 2.4s ease-in-out infinite;
@@ -103,15 +138,24 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up {
-  animation: fade-up 0.55s ease forwards;
-}
-
-@keyframes fade-up-delay {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+.animate-fade-up { animation: fade-up 0.55s ease forwards; }
 .animate-fade-up-delay {
   animation: fade-up 0.55s ease 0.12s forwards;
   opacity: 0;
+}
+
+/* ── Chrome shimmer — hover effect for cards ──────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.25) 50%,
+    transparent 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2s linear infinite;
 }

@@ -4,12 +4,11 @@
   "version": "0.0.1",
   "workspaces": [
     "web",
-    "mobile",
     "shared"
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace=web",
-    "dev:mobile": "npm run start --workspace=mobile",
+    "dev:mobile": "cd mobile && npx expo start --clear",
     "dev": "npm run dev:web",
     "build:web": "npm run build --workspace=web",
     "lint": "npm run lint --workspaces --if-present",

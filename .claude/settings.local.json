@@ -15,7 +15,17 @@
       "Bash(python3 -c \"import json,sys; v=json.load\\(sys.stdin\\); stable=[x for x in v if '0.79' in x and 'alpha' not in x and 'beta' not in x and 'rc' not in x]; print\\('\\\\n'.join\\(stable[-5:]\\)\\)\")",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(npx create-expo-app@latest mobile --template default@sdk-55)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(node /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/typescript/bin/tsc --noEmit --project /Users/singhhardil/Development/bitdecentro/insurance/mobile/tsconfig.json)",
+      "Bash(grep -r \"SFSymbol\" /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/expo-symbols/build/*.d.ts)",
+      "Bash(node -e \"const s = require\\('/Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/expo-symbols/build/android/symbols.json'\\); const keys = Object.keys\\(s\\); console.log\\('total:', keys.length\\); console.log\\('house?', keys.filter\\(k=>k.includes\\('house'\\)\\)\\); console.log\\('shield?', keys.filter\\(k=>k.includes\\('shield'\\)\\)\\); console.log\\('person?', keys.filter\\(k=>k.includes\\('person'\\)\\)\\); console.log\\('search?', keys.filter\\(k=>k.includes\\('search'\\)\\)\\); console.log\\('list?', keys.filter\\(k=>k.includes\\('list'\\)\\).slice\\(0,5\\)\\);\")",
+      "Bash(ls /Users/singhhardil/Development/bitdecentro/insurance/mobile/node_modules/@expo/vector-icons/build/*.js)"
     ]
   }
 }
