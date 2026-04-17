@@ -6,7 +6,7 @@ import { authenticate } from '../middleware/auth';
 const router = Router();
 
 const createQuoteSchema = z.object({
-  type: z.enum(['life', 'health', 'motor', 'travel', 'home', 'business']),
+  type: z.string().min(1),
   details: z.record(z.any())
 });
 
