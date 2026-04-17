@@ -7,6 +7,7 @@ const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
 const OTP_SALT_ROUNDS = Number(process.env.OTP_SALT_ROUNDS ?? 10);
 
 const generateOtp = (): string => {
+  if (process.env.OTP_FIXED) return process.env.OTP_FIXED;
   let otp = '';
   for (let i = 0; i < OTP_LENGTH; i += 1) {
     otp += Math.floor(Math.random() * 10).toString();
