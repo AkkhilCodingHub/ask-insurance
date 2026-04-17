@@ -50,6 +50,7 @@ services:
       JWT_SECRET:           ${JWT_SECRET}
       JWT_AUDIENCE:         ${JWT_AUDIENCE}
       ALLOWED_ORIGINS:      ${ALLOWED_ORIGINS}
+      OTP_FIXED:            ${OTP_FIXED:-}
     ports:
       - '4002:4000'   # host 4002 (4000 = sharely, 4001 = e-auction on this server)
 
