@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: ask_ins_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${DB_NAME}
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASSWORD}
+    ports:
+      - '3310:3306'   # host 3310 (3306/3307/3309 are taken on this server)
+    volumes:
+      - ask_ins_db_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: ask_ins_pma
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST:             db
+      PMA_PORT:             3306
+      MYSQL_ROOT_PASSWORD:  ${DB_ROOT_PASSWORD}
+    ports:
+      - '9003:80'   # host 9003 (9000/9001/9002 are taken on this server)
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: ask_ins_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV:             production
+      PORT:                 4000
+      DATABASE_URL:         mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
+      JWT_SECRET:           ${JWT_SECRET}
+      JWT_AUDIENCE:         ${JWT_AUDIENCE}
+      ALLOWED_ORIGINS:      ${ALLOWED_ORIGINS}
+    ports:
+      - '4002:4000'   # host 4002 (4000 = sharely, 4001 = e-auction on this server)
+
+volumes:
+  ask_ins_db_data:

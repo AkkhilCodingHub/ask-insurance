@@ -1,0 +1,44 @@
+# Build context: workspace root
+FROM node:22-alpine AS base
+WORKDIR /app
+
+# ── Install deps (workspace-aware) ───────────────────────────────────────────
+FROM base AS deps
+# Copy workspace manifests first for layer caching
+COPY package.json package-lock.json* ./
+COPY shared/package.json ./shared/package.json
+COPY api/package.json    ./api/package.json
+RUN npm ci --omit=dev --workspace=api --include-workspace-root
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+FROM base AS builder
+COPY package.json package-lock.json* ./
+COPY shared/package.json ./shared/package.json
+COPY api/package.json    ./api/package.json
+RUN npm ci --workspace=api --include-workspace-root
+
+# Copy source
+COPY shared/ ./shared/
+COPY api/    ./api/
+
+WORKDIR /app/api
+RUN npx prisma generate
+RUN npm run build
+
+# ── Production image ──────────────────────────────────────────────────────────
+FROM base AS runner
+ENV NODE_ENV=production
+
+WORKDIR /app/api
+
+COPY --from=deps    /app/node_modules          /app/node_modules
+COPY --from=builder /app/api/dist              ./dist
+COPY --from=builder /app/api/src/generated     ./src/generated
+COPY --from=builder /app/api/prisma            ./prisma
+COPY --from=builder /app/api/prisma.config.ts  ./prisma.config.ts
+COPY api/package.json ./package.json
+
+EXPOSE 4000
+
+# Run migrations then start — safe because Prisma migrate deploy is idempotent
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
