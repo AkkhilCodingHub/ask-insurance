@@ -3,8 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Icon } from '@/components/Icon';
+import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 
 function Section({ title, body }: { title: string; body: string }) {
@@ -22,9 +21,7 @@ export default function PrivacyScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Icon name="arrow-back-outline" size={22} color={Colors.text} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={s.title}>Privacy Policy</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -119,7 +116,6 @@ const s = StyleSheet.create({
     backgroundColor: Colors.white,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title:   { fontSize: 17, fontWeight: '800', color: Colors.text },
   scroll:  { flex: 1 },
   content: { paddingBottom: 48 },

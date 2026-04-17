@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useAuth, mapApiUser } from '@/context/auth';
 import { usersApi, ApiError } from '@/lib/api';
 import { Icon } from '@/components/Icon';
+import { BackButton } from '@/components/BackButton';
 import { useDialog } from '@/components/Dialog';
 import { Colors } from '@/constants/theme';
 
@@ -148,9 +149,7 @@ export default function EditProfileScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Icon name="arrow-back-outline" size={22} color={Colors.text} />
-        </TouchableOpacity>
+        <BackButton />
         <Text style={s.title}>Edit Profile</Text>
         <TouchableOpacity
           style={[s.saveBtn, loading && { opacity: 0.6 }]}
@@ -372,7 +371,6 @@ const s = StyleSheet.create({
     backgroundColor: Colors.white,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title:   { fontSize: 17, fontWeight: '800', color: Colors.text },
   saveBtn: {
     backgroundColor: Colors.primary, borderRadius: 10,

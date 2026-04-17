@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { plansApi, ApiPlan } from '@/lib/api';
 import { Icon } from '@/components/Icon';
+import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 
 function formatPremium(v: number): string {
@@ -69,9 +70,7 @@ export default function PlanDetailScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={[s.header, { borderBottomColor: color + '40' }]}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>← Back</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={s.headerTitle}>{plan.insurer?.name ?? plan.name}</Text>
         <View style={{ width: 60 }} />
       </View>
@@ -189,7 +188,7 @@ export default function PlanDetailScreen() {
         <TouchableOpacity
           style={[s.ctaBtn, { backgroundColor: color }]}
           activeOpacity={0.85}
-          onPress={() => router.push({ pathname: '/quote', params: { planId: plan.id, type: plan.type } })}
+          onPress={() => router.push({ pathname: '/quote', params: { planId: plan.id, type: plan.type, planName: plan.name, minCover: plan.minCover, maxCover: plan.maxCover } })}
         >
           <Text style={s.ctaBtnText}>Get Quote →</Text>
         </TouchableOpacity>
@@ -206,8 +205,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     backgroundColor: Colors.white, borderBottomWidth: 1,
   },
-  backBtn:      { width: 60 },
-  backText:     { fontSize: 15, color: Colors.primary, fontWeight: '600' },
   headerTitle:  { fontSize: 16, fontWeight: '700', color: Colors.text },
   backPillBtn:  { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: Colors.primary, borderRadius: 10 },
   backPillText: { fontSize: 14, fontWeight: '700', color: Colors.white },

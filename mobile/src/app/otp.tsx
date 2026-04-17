@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
+import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
 
@@ -95,9 +96,7 @@ export default function OTPScreen() {
         <View style={s.hero}>
           <View style={s.heroBg1} /><View style={s.heroBg2} />
 
-          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-            <Icon name="arrow-back-outline" size={22} color="rgba(255,255,255,0.9)" />
-          </TouchableOpacity>
+          <BackButton color="rgba(255,255,255,0.9)" style={s.backBtn} />
 
           <View style={s.heroIcon}>
             <Icon name="phone-portrait-outline" size={32} color={Colors.white} />

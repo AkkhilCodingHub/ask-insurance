@@ -9,10 +9,16 @@ import { quotesApi, usersApi, QuoteOffer, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
+import { Icon } from '@/components/Icon';
+import { BackButton } from '@/components/BackButton';
 
 const { width: W } = Dimensions.get('window');
 
-const TOTAL_STEPS = 4;
+// If arriving from a plan, type is pre-filled so we skip step 0
+// Steps when type known:  0=personal, 1=coverage, 2=review
+// Steps when type unknown: 0=type, 1=personal, 2=coverage, 3=review
+const TOTAL_STEPS_WITH_TYPE    = 3;
+const TOTAL_STEPS_WITHOUT_TYPE = 4;
 
 const INSURANCE_TYPES = [
   { id: 'life',   label: 'Life',   icon: '❤️', desc: 'Term & ULIP plans' },
@@ -22,7 +28,9 @@ const INSURANCE_TYPES = [
 ];
 
 const GENDERS = ['Male', 'Female', 'Other'];
-const COVER_OPTIONS = [
+
+// Fallback presets when no plan min/max is available
+const DEFAULT_COVER_OPTIONS = [
   { label: '₹25 Lakh', value: 2500000 },
   { label: '₹50 Lakh', value: 5000000 },
   { label: '₹1 Crore', value: 10000000 },
@@ -30,16 +38,54 @@ const COVER_OPTIONS = [
   { label: '₹5 Crore', value: 50000000 },
 ];
 
-function ProgressBar({ step }: { step: number }) {
+function roundToNice(val: number): number {
+  if (val >= 1e8)  return Math.round(val / 1e7)  * 1e7;   // nearest 1 Cr
+  if (val >= 1e7)  return Math.round(val / 5e6)  * 5e6;   // nearest 50 L
+  if (val >= 5e6)  return Math.round(val / 1e6)  * 1e6;   // nearest 10 L
+  if (val >= 1e6)  return Math.round(val / 5e5)  * 5e5;   // nearest 5 L
+  if (val >= 1e5)  return Math.round(val / 1e5)  * 1e5;   // nearest 1 L
+  return           Math.round(val / 1e4)  * 1e4;           // nearest 10 K
+}
+
+function fmtCover(val: number): string {
+  if (val >= 1e7)  return `₹${+(val / 1e7).toFixed(2)} Cr`;
+  if (val >= 1e5)  return `₹${+(val / 1e5).toFixed(1)} L`;
+  if (val >= 1000) return `₹${+(val / 1000).toFixed(0)}K`;
+  return `₹${val}`;
+}
+
+function buildPresets(min: number, max: number): Array<{ label: string; value: number }> {
+  if (!min || !max || min >= max) return DEFAULT_COVER_OPTIONS;
+  const logMin = Math.log10(min);
+  const logMax = Math.log10(max);
+  const COUNT  = 4;
+  const seen   = new Set<number>();
+  const result: Array<{ label: string; value: number }> = [];
+  for (let i = 0; i < COUNT; i++) {
+    const logVal = logMin + (logMax - logMin) * (i / (COUNT - 1));
+    const nice   = roundToNice(Math.pow(10, logVal));
+    if (!seen.has(nice)) { seen.add(nice); result.push({ label: fmtCover(nice), value: nice }); }
+  }
+  return result;
+}
+
+function coverStepTitle(type: string): string {
+  if (type === 'motor') return 'What is your vehicle\'s\nInsured Declared Value (IDV)?';
+  if (['fire', 'marine', 'engineering'].includes(type)) return 'What is the asset /\nproperty value?';
+  if (type === 'liability') return 'What liability limit\ndo you need?';
+  return 'How much cover\ndo you need?';
+}
+
+function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number }) {
   return (
     <View style={p.wrap}>
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+      {Array.from({ length: totalSteps }, (_, i) => (
         <React.Fragment key={i}>
           <View style={[p.dot, step > i && p.dotDone, step === i && p.dotActive]}>
             {step > i && <Text style={p.dotCheck}>✓</Text>}
             {step <= i && <Text style={[p.dotNum, step === i && { color: Colors.primary }]}>{i + 1}</Text>}
           </View>
-          {i < TOTAL_STEPS - 1 && <View style={[p.line, step > i && p.lineDone]} />}
+          {i < totalSteps - 1 && <View style={[p.line, step > i && p.lineDone]} />}
         </React.Fragment>
       ))}
     </View>
@@ -84,16 +130,24 @@ export default function QuoteScreen() {
   const router   = useRouter();
   const { user } = useAuth();
   const { alert } = useDialog();
-  const params   = useLocalSearchParams<{ planId?: string; type?: string }>();
+  const params   = useLocalSearchParams<{ planId?: string; type?: string; planName?: string; minCover?: string; maxCover?: string }>();
+
+  const typeFromPlan = params.type ?? '';
+  const planMinCover = params.minCover ? Number(params.minCover) : 0;
+  const planMaxCover = params.maxCover ? Number(params.maxCover) : 0;
+  const coverPresets = buildPresets(planMinCover, planMaxCover);
+  const TOTAL_STEPS  = typeFromPlan ? TOTAL_STEPS_WITH_TYPE : TOTAL_STEPS_WITHOUT_TYPE;
 
   const [step, setStep] = useState(0);
 
   // Form state
-  const [insuranceType, setInsuranceType] = useState(params.type ?? '');
+  const [insuranceType, setInsuranceType] = useState(typeFromPlan);
   const [age, setAge]       = useState('');
   const [gender, setGender] = useState('');
   const [smoker, setSmoker] = useState<boolean | null>(null);
-  const [cover, setCover]   = useState<{ label: string; value: number } | null>(null);
+  const [cover, setCover]         = useState<{ label: string; value: number } | null>(null);
+  const [customCover, setCustomCover] = useState('');
+  const [isCustom, setIsCustom]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Results
@@ -105,6 +159,12 @@ export default function QuoteScreen() {
   const coverLabel = cover?.label ?? '';
   const next = () => setStep(s => Math.min(s + 1, TOTAL_STEPS - 1));
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
+
+  // When type is pre-filled, logical steps are shifted:
+  //   rendered step 0 → content step 1 (personal)
+  //   rendered step 1 → content step 2 (coverage)
+  //   rendered step 2 → content step 3 (review)
+  const contentStep = typeFromPlan ? step + 1 : step;
 
   const handleGetQuotes = async () => {
     if (!insuranceType || !cover) return;
@@ -145,9 +205,7 @@ export default function QuoteScreen() {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.header}>
-          <TouchableOpacity onPress={() => setStep(TOTAL_STEPS - 1)}>
-            <Text style={s.backText}>← Back</Text>
-          </TouchableOpacity>
+          <BackButton onPress={() => setStep(TOTAL_STEPS - 1)} />
           <Text style={s.headerTitle}>Your Quotes</Text>
           <Text style={s.stepCount}>{quotes.length} offers</Text>
         </View>
@@ -213,14 +271,12 @@ export default function QuoteScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <TouchableOpacity onPress={back}>
-          <Text style={s.backText}>← {step === 0 ? 'Close' : 'Back'}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={back} />
         <Text style={s.headerTitle}>Get a Quote</Text>
-        <Text style={s.stepCount}>{step + 1}/{TOTAL_STEPS}</Text>
+        <Text style={s.stepCount}>{step + 1} / {TOTAL_STEPS}</Text>
       </View>
 
-      <ProgressBar step={step} />
+      <ProgressBar step={step} totalSteps={TOTAL_STEPS} />
 
       <ScrollView
         style={s.scroll}
@@ -228,8 +284,8 @@ export default function QuoteScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Step 0: Insurance type */}
-        {step === 0 && (
+        {/* Step 0: Insurance type — only shown when arriving without a pre-selected plan */}
+        {contentStep === 0 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>What type of insurance{'\n'}are you looking for?</Text>
             <View style={s.typeGrid}>
@@ -262,7 +318,7 @@ export default function QuoteScreen() {
         )}
 
         {/* Step 1: Personal details */}
-        {step === 1 && (
+        {contentStep === 1 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>Tell us about yourself</Text>
 
@@ -317,23 +373,71 @@ export default function QuoteScreen() {
         )}
 
         {/* Step 2: Coverage */}
-        {step === 2 && (
+        {contentStep === 2 && (
           <View style={s.stepWrap}>
-            <Text style={s.stepTitle}>How much cover{'\n'}do you need?</Text>
+            <Text style={s.stepTitle}>{coverStepTitle(insuranceType)}</Text>
+            {planMinCover > 0 && planMaxCover > 0 && (
+              <Text style={s.coverRange}>
+                Range: {fmtCover(planMinCover)} – {fmtCover(planMaxCover)}
+              </Text>
+            )}
             <View style={s.coverGrid}>
-              {COVER_OPTIONS.map(opt => (
+              {coverPresets.map(opt => (
                 <TouchableOpacity
                   key={opt.label}
-                  style={[s.coverCard, cover?.label === opt.label && s.coverCardActive]}
-                  onPress={() => setCover(opt)}
+                  style={[s.coverCard, !isCustom && cover?.value === opt.value && s.coverCardActive]}
+                  onPress={() => { setIsCustom(false); setCover(opt); setCustomCover(''); }}
                 >
-                  <Text style={[s.coverText, cover?.label === opt.label && { color: Colors.primary, fontWeight: '800' }]}>
+                  <Text style={[s.coverText, !isCustom && cover?.value === opt.value && { color: Colors.primary, fontWeight: '800' }]}>
                     {opt.label}
                   </Text>
-                  {cover?.label === opt.label && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
+                  {!isCustom && cover?.value === opt.value && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
                 </TouchableOpacity>
               ))}
+              {/* Other / Custom option */}
+              <TouchableOpacity
+                style={[s.coverCard, isCustom && s.coverCardActive]}
+                onPress={() => { setIsCustom(true); setCover(null); }}
+              >
+                <Text style={[s.coverText, isCustom && { color: Colors.primary, fontWeight: '800' }]}>
+                  Other (Custom)
+                </Text>
+                {isCustom && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
+              </TouchableOpacity>
             </View>
+            {isCustom && (
+              <View>
+                <Text style={s.label}>
+                  ENTER AMOUNT{planMinCover > 0 && planMaxCover > 0 ? ` (${fmtCover(planMinCover)} – ${fmtCover(planMaxCover)})` : ''}
+                </Text>
+                <TextInput
+                  style={s.input}
+                  placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
+                  placeholderTextColor={Colors.textLight}
+                  value={customCover}
+                  onChangeText={t => {
+                    const num = t.replace(/[^0-9]/g, '');
+                    setCustomCover(num);
+                    const val = Number(num);
+                    if (val > 0) {
+                      const clamped = planMinCover && planMaxCover
+                        ? Math.min(Math.max(val, planMinCover), planMaxCover)
+                        : val;
+                      setCover({ label: fmtCover(clamped), value: clamped });
+                    } else {
+                      setCover(null);
+                    }
+                  }}
+                  keyboardType="numeric"
+                />
+                {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) < planMinCover && (
+                  <Text style={s.coverError}>Minimum cover is {fmtCover(planMinCover)}</Text>
+                )}
+                {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) > planMaxCover && (
+                  <Text style={s.coverError}>Maximum cover is {fmtCover(planMaxCover)}</Text>
+                )}
+              </View>
+            )}
             <TouchableOpacity
               style={[s.nextBtn, !cover && { opacity: 0.4 }]}
               onPress={next}
@@ -345,7 +449,7 @@ export default function QuoteScreen() {
         )}
 
         {/* Step 3: Review & Submit */}
-        {step === 3 && (
+        {contentStep === 3 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>Review & get quotes</Text>
 
@@ -354,6 +458,12 @@ export default function QuoteScreen() {
                 <Text style={s.summaryLabel}>Type</Text>
                 <Text style={s.summaryValue}>{INSURANCE_TYPES.find(t => t.id === insuranceType)?.label ?? insuranceType}</Text>
               </View>
+              {params.planName && (
+                <View style={s.summaryRow}>
+                  <Text style={s.summaryLabel}>Plan</Text>
+                  <Text style={s.summaryValue}>{params.planName}</Text>
+                </View>
+              )}
               <View style={s.summaryRow}>
                 <Text style={s.summaryLabel}>Age</Text>
                 <Text style={s.summaryValue}>{age} years</Text>
@@ -445,7 +555,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backText:    { fontSize: 15, color: Colors.primary, fontWeight: '600' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: Colors.text },
   stepCount:   { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
 
@@ -478,10 +587,12 @@ const s = StyleSheet.create({
   optionPillActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   optionText:       { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
 
-  coverGrid: { gap: 10, marginBottom: 24 },
+  coverGrid: { gap: 10, marginBottom: 16 },
   coverCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.bg },
   coverCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   coverText: { fontSize: 16, fontWeight: '600', color: Colors.text },
+  coverRange: { fontSize: 12, color: Colors.textMuted, marginBottom: 14, marginTop: -12 },
+  coverError: { fontSize: 12, color: '#EF4444', marginTop: 4 },
 
   authNotice: {
     backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14, marginBottom: 8,
