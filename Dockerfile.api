@@ -8,20 +8,26 @@ FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY shared/package.json ./shared/package.json
 COPY api/package.json    ./api/package.json
-RUN npm ci --omit=dev --workspace=api --include-workspace-root
+COPY web/package.json    ./web/package.json
+COPY admin/package.json  ./admin/package.json
+RUN npm ci --omit=dev --workspace=api --workspace=shared --include-workspace-root
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 FROM base AS builder
 COPY package.json package-lock.json* ./
 COPY shared/package.json ./shared/package.json
 COPY api/package.json    ./api/package.json
-RUN npm ci --workspace=api --include-workspace-root
+COPY web/package.json    ./web/package.json
+COPY admin/package.json  ./admin/package.json
+RUN npm ci --workspace=api --workspace=shared --include-workspace-root
 
 # Copy source
 COPY shared/ ./shared/
 COPY api/    ./api/
 
 WORKDIR /app/api
+ARG DATABASE_URL=mysql://dummy:dummy@localhost:3306/dummy
+ENV DATABASE_URL=${DATABASE_URL}
 RUN npx prisma generate
 RUN npm run build
 
@@ -31,7 +37,8 @@ ENV NODE_ENV=production
 
 WORKDIR /app/api
 
-COPY --from=deps    /app/node_modules          /app/node_modules
+COPY --from=builder /app/node_modules          /app/node_modules
+COPY --from=builder /app/api/node_modules      ./node_modules
 COPY --from=builder /app/api/dist              ./dist
 COPY --from=builder /app/api/src/generated     ./src/generated
 COPY --from=builder /app/api/prisma            ./prisma
