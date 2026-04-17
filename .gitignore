@@ -47,6 +47,7 @@ web-build/
 
 # Prisma
 prisma/migrations/dev/
+api/src/generated/
 
 # Claude Code
 .claude/settings.local.json

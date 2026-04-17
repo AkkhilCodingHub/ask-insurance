@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -10,9 +11,9 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  phone       String   @unique
-  email       String?  @unique
+  id          String    @id @default(cuid())
+  phone       String    @unique
+  email       String?   @unique
   name        String?
   dateOfBirth DateTime?
   gender      String?
@@ -20,105 +21,270 @@ model User {
   city        String?
   state       String?
   pincode     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  policies    Policy[]
-  claims      Claim[]
-  quotes      Quote[]
+  policies      Policy[]
+  claims        Claim[]
+  quotes        Quote[]
   otpChallenges OtpChallenge[]
+  payments      Payment[]
+  notifications Notification[]
+  conversations Conversation[]
 
+  @@index([createdAt])
+  @@index([email])
   @@map("users")
 }
 
-model Policy {
-  id              String   @id @default(cuid())
-  policyNumber    String   @unique
-  type            String   // life, health, motor, travel, home, business
-  provider        String   // insurer name
-  sumInsured      Float
-  premium         Float
-  startDate       DateTime
-  endDate         DateTime
-  status          String   @default("active") // active, expired, cancelled
-  paymentStatus   String   @default("pending") // pending, paid, failed
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+model Insurer {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  shortName    String
+  logo         String // absolute URL
+  brandColor   String // hex e.g. #FF6600
+  tagline      String?
+  founded      Int?
+  headquarters String?
+  website      String?
+  claimsRatio  Float // percentage e.g. 98.5
+  rating       Float // out of 5
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  claims          Claim[]
+  plans    Plan[]
+  policies Policy[]
 
-  @@map("policies")
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("insurers")
 }
 
-model Claim {
-  id              String   @id @default(cuid())
-  claimNumber     String   @unique
-  type            String   // medical, accident, theft, etc.
-  amount          Float
-  status          String   @default("pending") // pending, approved, rejected, paid
-  description     String?
-  incidentDate    DateTime
-  submittedDate   DateTime @default(now())
-  approvedDate    DateTime?
-  paidDate        DateTime?
-  documents       String?  // JSON array of document URLs
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policyId        String
-  policy          Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
-
-  @@map("claims")
-}
-
-model Quote {
-  id              String   @id @default(cuid())
-  type            String   // life, health, motor, travel, home, business
-  details         String   // JSON with quote parameters
-  providers       String   // JSON array of provider quotes
-  status          String   @default("active") // active, expired, converted
-  expiresAt       DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("quotes")
-}
-
-model Admin {
+model Plan {
   id          String   @id @default(cuid())
-  email       String   @unique
-  password    String
   name        String
-  role        String   @default("admin") // admin, superadmin
+  slug        String   @unique
+  type        String // life, health, motor, travel, home, business
+  description String   @db.Text
+  features    String   @db.Text // JSON string[]
+  minAge      Int?
+  maxAge      Int?
+  minCover    Float
+  maxCover    Float
+  basePremium Float // annual base premium in INR
+  isFeatured  Boolean  @default(false)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relations
+  insurerId String
+  insurer   Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policies  Policy[]
+
+  @@index([insurerId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("plans")
+}
+
+model Policy {
+  id            String    @id @default(cuid())
+  policyNumber  String    @unique
+  type          String // life, health, motor, travel, home, business
+  provider      String // insurer name (denormalised for easy reads)
+  sumInsured    Float
+  premium       Float
+  startDate     DateTime
+  endDate       DateTime
+  status        String    @default("active") // active, expired, cancelled
+  paymentStatus String    @default("pending") // pending, paid, failed
+  cancelledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quoteId   String?
+  quote     Quote?    @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  insurerId String?
+  insurer   Insurer?  @relation(fields: [insurerId], references: [id], onDelete: SetNull)
+  planId    String?
+  plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  claims    Claim[]
+  payments  Payment[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([insurerId])
+  @@index([planId])
+  @@index([userId, paymentStatus])
+  @@index([status])
+  @@map("policies")
+}
+
+model Claim {
+  id            String    @id @default(cuid())
+  claimNumber   String    @unique
+  type          String // medical, accident, theft, etc.
+  amount        Float
+  status        String    @default("pending") // pending, approved, rejected, paid
+  description   String?
+  incidentDate  DateTime
+  submittedDate DateTime  @default(now())
+  approvedDate  DateTime?
+  paidDate      DateTime?
+  documents     String? // JSON array of document URLs
+  notes         String? // admin notes
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policyId String
+  policy   Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([policyId])
+  @@index([status])
+  @@map("claims")
+}
+
+model Quote {
+  id        String   @id @default(cuid())
+  type      String // life, health, motor, travel, home, business
+  details   String // JSON with quote parameters
+  providers String // JSON array of provider quotes
+  status    String   @default("active") // active, expired, converted
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policies Policy[]
+
+  @@index([userId, status])
+  @@index([userId, expiresAt])
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("quotes")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float
+  currency    String   @default("INR")
+  status      String   @default("pending") // pending, success, failed, refunded
+  provider    String? // razorpay, stripe, etc.
+  providerRef String? // external payment ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  policyId String
+  policy   Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([policyId, status])
+  @@index([userId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  type      String // claim_update, policy_expiry, payment_due, general
+  title     String
+  body      String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin") // admin, superadmin
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  conversations Conversation[]
+
+  @@index([isActive])
+  @@index([createdAt])
   @@map("admins")
 }
 
+model Conversation {
+  id        String   @id @default(cuid())
+  subject   String?
+  status    String   @default("open") // open, closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminId String?
+  admin   Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([updatedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  content        String   @db.Text
+  senderType     String   // "user" | "admin"
+  senderId       String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
 model OtpChallenge {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   phone      String
   otpHash    String
-  attempts   Int      @default(0)
-  createdAt  DateTime @default(now())
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
   expiresAt  DateTime
   consumedAt DateTime?
-  userId     String? 
-  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([phone])
+  @@index([phone, expiresAt])
+  @@index([phone, consumedAt])
+  @@index([userId])
   @@map("otp_challenges")
 }

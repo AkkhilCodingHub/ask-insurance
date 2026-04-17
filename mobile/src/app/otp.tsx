@@ -1,19 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
+import { useDialog } from '@/components/Dialog';
 
 const OTP_LEN = 6;
 
 export default function OTPScreen() {
   const router              = useRouter();
   const { pendingPhone, verifyOTP, sendOTP } = useAuth();
+  const { alert }           = useDialog();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
   const [loading, setLoading]   = useState(false);
   const [resending, setResending] = useState(false);
@@ -60,7 +62,7 @@ export default function OTPScreen() {
         router.replace('/(tabs)');
       }
     } catch {
-      Alert.alert('Invalid OTP', 'The code you entered is incorrect. Please try again.');
+      alert({ type: 'error', title: 'Invalid OTP', message: 'The code you entered is incorrect. Please try again.' });
       setDigits(Array(OTP_LEN).fill(''));
       refs.current[0]?.focus();
     } finally {
@@ -138,7 +140,7 @@ export default function OTPScreen() {
           {/* Hint */}
           <View style={s.hintRow}>
             <Icon name="information-circle-outline" size={14} color={Colors.textLight} />
-            <Text style={s.hintText}>Use <Text style={{ fontWeight: '700', color: Colors.primary }}>123456</Text> for demo</Text>
+            <Text style={s.hintText}>Check the API server console for your OTP</Text>
           </View>
 
           {/* Verify button */}

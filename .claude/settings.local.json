@@ -42,7 +42,12 @@
       "Bash(vercel inspect:*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://web-one-lime-90.vercel.app/)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://web-5tnaxzmjp-hardilsinghs-projects.vercel.app/)",
-      "Bash(curl -sI https://web-5tnaxzmjp-hardilsinghs-projects.vercel.app/)"
+      "Bash(curl -sI https://web-5tnaxzmjp-hardilsinghs-projects.vercel.app/)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('packages',{}\\).get\\('api/node_modules/prisma',{}\\).get\\('version',''\\) or d.get\\('packages',{}\\).get\\('node_modules/prisma',{}\\).get\\('version','not found'\\)\\)\")",
+      "WebFetch(domain:www.prisma.io)",
+      "WebSearch",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('prisma:', d['devDependencies'].get\\('prisma',''\\)\\); print\\('@prisma/client:', d['dependencies'].get\\('@prisma/client',''\\)\\)\")",
+      "Bash(npx prisma:*)"
     ]
   }
 }

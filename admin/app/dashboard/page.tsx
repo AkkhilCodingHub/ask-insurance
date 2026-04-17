@@ -1,7 +1,9 @@
 "use client";
 
-import { Users, FileText, Shield, TrendingUp, ArrowUpRight, Clock, CheckCircle, AlertCircle, XCircle } from "lucide-react";
-import { USERS, POLICIES, CLAIMS, QUOTES, MONTHLY_REVENUE, CATEGORY_BREAKDOWN } from "@/lib/mock";
+import { useEffect, useState } from "react";
+import { Users, FileText, Shield, TrendingUp, ArrowUpRight } from "lucide-react";
+import { LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { adminApi, DashboardStats, AdminClaim, AdminUser, ClaimsResponse, UsersResponse, AnalyticsData } from "@/lib/api";
 
 function KpiCard({ label, value, sub, icon: Icon, color, trend }: { label: string; value: string; sub: string; icon: React.ElementType; color: string; trend?: string }) {
   return (
@@ -30,6 +32,9 @@ function StatusBadge({ status }: { status: string }) {
     "Blocked":      { bg: "#FEF2F2", color: "#DC2626" },
     "Active":       { bg: "#ECFDF5", color: "#059669" },
     "Expired":      { bg: "#FEF2F2", color: "#DC2626" },
+    "pending":      { bg: "#FFFBEB", color: "#D97706" },
+    "approved":     { bg: "#ECFDF5", color: "#059669" },
+    "rejected":     { bg: "#FEF2F2", color: "#DC2626" },
     "Submitted":    { bg: "#E0F7FF", color: "#0891B2" },
     "Under Review": { bg: "#FFFBEB", color: "#D97706" },
     "Approved":     { bg: "#ECFDF5", color: "#059669" },
@@ -49,102 +54,199 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function OverviewPage() {
-  const totalPremium = POLICIES.filter(p => p.status === "Active").reduce((s, p) => s + p.premiumRaw, 0);
-  const activePolicies = POLICIES.filter(p => p.status === "Active").length;
-  const pendingClaims = CLAIMS.filter(c => c.status === "Submitted" || c.status === "Under Review").length;
-  const newQuotes = QUOTES.filter(q => q.status === "New").length;
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [claims, setClaims] = useState<AdminClaim[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const maxRev = Math.max(...MONTHLY_REVENUE.map(r => r.revenue));
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [statsData, claimsData, usersData, analyticsData] = await Promise.all([
+          adminApi.getStats(),
+          adminApi.getClaims(1, 5),
+          adminApi.getUsers(1, 5),
+          adminApi.getAnalytics()
+        ]);
+
+        setStats(statsData);
+        setClaims(claimsData.claims);
+        setUsers(usersData.users);
+        setAnalytics(analyticsData);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load dashboard data";
+        setError(message);
+        console.error("Dashboard error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <p style={{ color: "var(--text-muted)" }}>Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 12 }}>
+        <p style={{ color: "var(--text-muted)" }}>Error loading dashboard</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{error}</p>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <p style={{ color: "var(--text-muted)" }}>No data available</p>
+      </div>
+    );
+  }
+
+  const premiumDisplay = stats.totalPremium >= 100000 ? `₹${(stats.totalPremium / 100000).toFixed(1)}L` : `₹${(stats.totalPremium / 1000).toFixed(0)}k`;
+
+  // Real revenue trend data from analytics
+  const revenueData = (analytics?.monthly || []).slice(-4).map(m => ({
+    name: m.label,
+    revenue: m.premium
+  }));
+
+  // Real claims by status
+  const claimsData = [
+    { name: "Approved", value: stats.approvedClaimsLastMonth, color: "#059669" },
+    { name: "Pending", value: stats.pendingClaims, color: "#D97706" },
+    { name: "Rejected", value: Math.max(0, stats.totalClaims - stats.approvedClaimsLastMonth - stats.pendingClaims), color: "#DC2626" },
+  ].filter(d => d.value > 0);
+
+  // Real insurers data
+  const insurersData = (analytics?.topInsurers || []).slice(0, 4).map(ins => ({
+    name: ins.name || ins.shortName,
+    policies: ins.policies,
+    premium: ins.premium
+  }));
 
   return (
     <div style={{ width: "100%" }}>
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }} className="kpi-grid">
-        <KpiCard label="Total Users"       value={USERS.length.toString()}      sub={`${USERS.filter(u => u.status === "Verified").length} verified`}          icon={Users}     color="#1580FF" trend="+12%" />
-        <KpiCard label="Active Policies"   value={activePolicies.toString()}    sub={`${POLICIES.filter(p => p.status === "Expired").length} expired`}         icon={FileText}  color="#059669" trend="+8%"  />
-        <KpiCard label="Open Claims"       value={pendingClaims.toString()}     sub={`${CLAIMS.filter(c => c.status === "Settled").length} settled this month`} icon={Shield}    color="#D97706"             />
-        <KpiCard label="Monthly Premium"   value={`₹${(totalPremium/100000).toFixed(1)}L`} sub={`from ${activePolicies} active policies`}                      icon={TrendingUp} color="#7C3AED" trend="+15%" />
+        <KpiCard 
+          label="Total Users" 
+          value={stats.totalUsers.toString()} 
+          sub={`${stats.newUsersLastMonth} joined this month`}
+          icon={Users} 
+          color="#1580FF" 
+          trend={`+${Math.round((stats.newUsersLastMonth / Math.max(stats.totalUsers, 1)) * 100)}%`}
+        />
+        <KpiCard 
+          label="Active Policies" 
+          value={stats.activePolicies.toString()}
+          sub={`${stats.totalPolicies - stats.activePolicies} inactive`}
+          icon={FileText} 
+          color="#059669"
+          trend="+8%"
+        />
+        <KpiCard 
+          label="Open Claims" 
+          value={stats.pendingClaims.toString()}
+          sub={`${stats.approvedClaimsLastMonth} approved this month`}
+          icon={Shield} 
+          color="#D97706"
+        />
+        <KpiCard 
+          label="Monthly Premium" 
+          value={premiumDisplay}
+          sub={`from ${stats.activePolicies} active policies`}
+          icon={TrendingUp} 
+          color="#7C3AED" 
+          trend="+15%"
+        />
       </div>
 
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, marginBottom: 24 }} className="charts-row">
-        {/* Revenue bar chart */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 24 }} className="charts-row">
+        {/* Revenue chart */}
         <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-            <div>
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Premium Revenue</h3>
-              <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Last 6 months</p>
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Premium Revenue Trend</h3>
+            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Last months</p>
+          </div>
+          {revenueData && revenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="name" stroke="var(--text-muted)" style={{ fontSize: 11 }} />
+                <YAxis stroke="var(--text-muted)" style={{ fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8 }} />
+                <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2} dot={{ fill: "var(--primary)", r: 4 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 240, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+              No revenue data available
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "4px 10px", borderRadius: 100 }}>↑ 21% YoY</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 140 }}>
-            {MONTHLY_REVENUE.map(({ month, revenue }) => (
-              <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>₹{(revenue/1000).toFixed(0)}k</span>
-                <div
-                  style={{
-                    width: "100%",
-                    height: `${(revenue / maxRev) * 100}px`,
-                    background: month === "Mar" ? "var(--primary)" : "var(--primary-light)",
-                    borderRadius: "6px 6px 0 0",
-                    transition: "opacity 0.15s",
-                    cursor: "pointer",
-                    minHeight: 8,
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "0.75")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.opacity = "1")}
-                />
-                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{month}</span>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
 
-        {/* Category donut */}
+        {/* Claims distribution */}
         <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 4 }}>By Category</h3>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 20 }}>Active policy mix</p>
-
-          {/* SVG Donut */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-            <svg width="120" height="120" viewBox="0 0 120 120">
-              {(() => {
-                let offset = -25;
-                return CATEGORY_BREAKDOWN.map(({ category, value, color }) => {
-                  const circumference = 2 * Math.PI * 40;
-                  const dash = (value / 100) * circumference;
-                  const el = (
-                    <circle
-                      key={category}
-                      cx="60" cy="60" r="40"
-                      fill="none"
-                      stroke={color}
-                      strokeWidth="18"
-                      strokeDasharray={`${dash} ${circumference - dash}`}
-                      strokeDashoffset={-offset * circumference / 100}
-                      style={{ transition: "opacity 0.15s", cursor: "pointer" }}
-                    />
-                  );
-                  offset += value;
-                  return el;
-                });
-              })()}
-              <text x="60" y="64" textAnchor="middle" style={{ fontSize: 14, fontWeight: 800, fill: "var(--text)" }}>
-                {activePolicies}
-              </text>
-            </svg>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {CATEGORY_BREAKDOWN.map(({ category, value, color }) => (
-              <div key={category} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: "var(--text)", flex: 1 }}>{category}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>{value}%</span>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 20 }}>Claims Distribution</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie data={claimsData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
+                {claimsData.map((entry, idx) => (
+                  <Cell key={`cell-${idx}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => value && value.toString ? value.toString() : '0'} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+            {claimsData.map(d => (
+              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: d.color }} />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{d.name}: {d.value}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Insurers chart */}
+      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 24 }}>
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Top Performing Insurers</h3>
+          <p style={{ fontSize: 12, color: "var(--text-muted)" }}>By policies and premium</p>
+        </div>
+        {insurersData && insurersData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={insurersData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="name" stroke="var(--text-muted)" style={{ fontSize: 11 }} />
+              <YAxis stroke="var(--text-muted)" style={{ fontSize: 11 }} yAxisId="left" />
+              <YAxis orientation="right" stroke="var(--text-muted)" style={{ fontSize: 11 }} yAxisId="right" />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8 }} />
+              <Legend />
+              <Bar yAxisId="left" dataKey="policies" fill="var(--primary)" radius={[8, 8, 0, 0]} name="Policies" />
+              <Bar yAxisId="right" dataKey="premium" fill="#059669" radius={[8, 8, 0, 0]} name="Premium (₹)" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+            No insurer data available
+          </div>
+        )}
       </div>
 
       {/* Bottom tables row */}
@@ -155,43 +257,50 @@ export default function OverviewPage() {
             <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>Recent Claims</h3>
             <a href="/dashboard/claims" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
           </div>
-          {CLAIMS.slice(0, 5).map((c) => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 22px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.userName}</p>
-                <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.description} · ₹{c.amount.toLocaleString("en-IN")}</p>
+          {claims.length > 0 ? (
+            claims.map((c) => (
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 22px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.status === "approved" ? "#059669" : c.status === "rejected" ? "#DC2626" : "#D97706", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Claim #{c.id.slice(0, 8)}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Created {new Date(c.createdAt).toLocaleDateString()}</p>
+                </div>
+                <StatusBadge status={c.status} />
               </div>
-              <StatusBadge status={c.status} />
-            </div>
-          ))}
+            ))
+          ) : (
+            <div style={{ padding: "20px 22px", textAlign: "center", color: "var(--text-muted)" }}>No recent claims</div>
+          )}
         </div>
 
-        {/* Recent signups */}
+        {/* Recent users */}
         <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
           <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>New Quotes</h3>
-            <a href="/dashboard/quotes" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
+            <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>New Users</h3>
+            <a href="/dashboard/users" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
           </div>
-          {QUOTES.slice(0, 5).map((q) => (
-            <div key={q.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 22px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{q.name.split(" ").map(n => n[0]).join("").slice(0,2)}</span>
+          {users.length > 0 ? (
+            users.map((u) => (
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 22px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{u.phone.slice(-2)}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name || u.phone}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(u.createdAt).toLocaleDateString()}</p>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.name}</p>
-                <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{q.category} · {q.premium}</p>
-              </div>
-              <StatusBadge status={q.status} />
-            </div>
-          ))}
+            ))
+          ) : (
+            <div style={{ padding: "20px 22px", textAlign: "center", color: "var(--text-muted)" }}>No new users</div>
+          )}
         </div>
       </div>
 
       <style>{`
         @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 768px) {
-          .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+          .kpi-grid { grid-template-columns: 1fr !important; }
           .charts-row { grid-template-columns: 1fr !important; }
           .tables-row { grid-template-columns: 1fr !important; }
         }

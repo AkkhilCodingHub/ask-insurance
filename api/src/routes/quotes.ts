@@ -174,4 +174,71 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
   }
 });
 
+const convertQuoteSchema = z.object({
+  providerIndex: z.number().int().min(0).max(5).optional()
+});
+
+router.post('/:id/convert', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { providerIndex = 0 } = convertQuoteSchema.parse(req.body);
+
+    const quote = await prisma.quote.findFirst({ where: { id, userId } });
+    if (!quote) {
+      res.status(404).json({ error: 'Quote not found' });
+      return;
+    }
+    if (quote.expiresAt < new Date()) {
+      res.status(410).json({ error: 'Quote has expired' });
+      return;
+    }
+    if (quote.status !== 'active') {
+      res.status(400).json({ error: 'Quote has already been converted or is no longer active' });
+      return;
+    }
+
+    const offers = JSON.parse(quote.providers) as QuoteOffer[];
+    const selected = offers[providerIndex] ?? offers[0];
+    if (!selected) {
+      res.status(400).json({ error: 'Invalid provider selection' });
+      return;
+    }
+
+    const now = new Date();
+    const [policy] = await prisma.$transaction([
+      prisma.policy.create({
+        data: {
+          policyNumber: `POL${Date.now()}`,
+          type: quote.type,
+          provider: selected.insurer,
+          sumInsured: selected.sumInsured,
+          premium: selected.premium,
+          startDate: now,
+          endDate: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+          userId,
+          quoteId: quote.id
+        }
+      }),
+      prisma.quote.update({ where: { id: quote.id }, data: { status: 'converted' } })
+    ]);
+
+    res.status(201).json({ policy });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 export { router as quotesRouter };

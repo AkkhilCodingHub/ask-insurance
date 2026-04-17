@@ -1,0 +1,467 @@
+import axios, { AxiosInstance } from 'axios';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+interface ApiResponse<T> {
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Insurer Types ──────────────────────────────────────────────────────────
+export interface Insurer {
+  id: string;
+  name: string;
+  slug: string;
+  shortName: string;
+  logo: string;
+  brandColor: string;
+  tagline?: string;
+  founded?: number;
+  headquarters?: string;
+  website?: string;
+  claimsRatio: number;
+  rating: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { plans: number; policies: number };
+}
+
+// ── Plan Types ─────────────────────────────────────────────────────────────
+export interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  insurerId: string;
+  type: 'life' | 'health' | 'motor' | 'travel' | 'home' | 'business';
+  description: string;
+  features: string[];
+  minAge?: number;
+  maxAge?: number;
+  minCover: number;
+  maxCover: number;
+  basePremium: number;
+  isFeatured: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  insurer?: { id: string; name: string; shortName: string };
+  _count?: { policies: number };
+}
+
+// ── User Types ─────────────────────────────────────────────────────────────
+export interface AdminUser {
+  id: string;
+  phone: string;
+  name: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { policies: number; claims: number; payments: number };
+}
+
+// ── Policy Types ───────────────────────────────────────────────────────────
+export interface AdminPolicy {
+  id: string;
+  policyNumber: string;
+  userId: string;
+  insurerId?: string;
+  planId?: string;
+  type: string;
+  provider: string;
+  status: 'active' | 'expired' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  startDate: string;
+  endDate: string;
+  sumInsured: number;
+  premium: number;
+  createdAt: string;
+  updatedAt: string;
+  user?: { id: string; name: string; phone: string };
+  insurer?: { id: string; name: string };
+  plan?: { id: string; name: string };
+  _count?: { claims: number };
+}
+
+// ── Claim Types ────────────────────────────────────────────────────────────
+export interface AdminClaim {
+  id: string;
+  policyId: string;
+  userId?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  amount: number;
+  incidentDate: string;
+  description?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedDate?: string;
+  user?: { id: string; name: string; phone: string };
+  policy?: { id: string; policyNumber: string; type: string; provider: string };
+}
+
+// ── Stats Types ────────────────────────────────────────────────────────────
+export interface DashboardStats {
+  totalUsers: number;
+  totalPolicies: number;
+  totalClaims: number;
+  pendingClaims: number;
+  activePolicies: number;
+  newUsersLastMonth: number;
+  totalInsurers: number;
+  totalPlans: number;
+  totalPremium: number;
+  totalClaimsAmount: number;
+  approvedClaimsLastMonth: number;
+  renewalsPending: number;
+  timestamp: string;
+}
+
+// ── Insurers Response ──────────────────────────────────────────────────
+export interface InsurersResponse {
+  insurers: Insurer[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Plans Response ──────────────────────────────────────────────────────
+export interface PlansResponse {
+  plans: Plan[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Policies Response ───────────────────────────────────────────────────
+export interface PoliciesResponse {
+  policies: AdminPolicy[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Claims Response ─────────────────────────────────────────────────────
+export interface ClaimsResponse {
+  claims: AdminClaim[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Quote Types ────────────────────────────────────────────────────────────
+export interface AdminQuote {
+  id: string;
+  userId: string;
+  type: string;
+  status: 'pending' | 'viewed' | 'converted' | 'expired';
+  createdAt: string;
+  updatedAt: string;
+  user?: { id: string; name: string; phone: string; email: string };
+}
+
+export interface QuotesResponse {
+  quotes: AdminQuote[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Chat Types ─────────────────────────────────────────────────────────────
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  content: string;
+  senderType: 'user' | 'admin';
+  senderId: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  subject: string | null;
+  status: 'open' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  adminId: string | null;
+  user: { id: string; name: string | null; phone: string; email: string | null };
+  admin: { id: string; name: string } | null;
+  messages: ChatMessage[];
+  _count?: { messages: number };
+}
+
+export interface ConversationsResponse {
+  conversations: Conversation[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── Analytics Types ────────────────────────────────────────────────────────
+export interface AnalyticsData {
+  byType: { type: string; policies: number; premium: number }[];
+  monthly: {
+    label: string;
+    policies: number;
+    premium: number;
+    claims: number;
+    claimsAmount: number;
+  }[];
+  topPlans: { id: string; name: string; type: string; _count: { policies: number } }[];
+  topInsurers: { insurerId: string | null; name: string; shortName: string; premium: number; policies: number }[];
+}
+
+// ── Users Response ─────────────────────────────────────────────────────
+export interface UsersResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ── API Client ─────────────────────────────────────────────────────────────
+class AdminApiClient {
+  private instance: AxiosInstance;
+
+  constructor() {
+    this.instance = axios.create({
+      baseURL: `${API_BASE_URL}/admin`,
+      timeout: 10000
+    });
+
+    // Add token to requests
+    this.instance.interceptors.request.use((config) => {
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    // Handle errors
+    this.instance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('adminToken');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // ── Authentication ─────────────────────────────────────────────────────
+  async login(email: string, password: string): Promise<{ token: string; admin: { id: string; name: string; email: string; role: string } }> {
+    const { data } = await this.instance.post('/auth/login', { email, password });
+    if (data.error) throw new Error(data.error);
+    if (!data.token) throw new Error('No token received');
+    localStorage.setItem('adminToken', data.token);
+    return data;
+  }
+
+  // ── Dashboard ──────────────────────────────────────────────────────────
+  async getStats(): Promise<DashboardStats> {
+    const { data } = await this.instance.get('/stats');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Insurers ───────────────────────────────────────────────────────────
+  async getInsurers(page = 1, limit = 20): Promise<InsurersResponse> {
+    const { data } = await this.instance.get('/insurers', {
+      params: { page, limit }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async getInsurer(id: string): Promise<Insurer> {
+    const { data } = await this.instance.get(`/insurers/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data.insurer;
+  }
+
+  async createInsurer(insurer: Omit<Insurer, 'id' | 'createdAt' | 'updatedAt' | '_count'>): Promise<Insurer> {
+    const { data } = await this.instance.post('/insurers', insurer);
+    if (data.error) throw new Error(data.error);
+    return data.insurer;
+  }
+
+  async updateInsurer(id: string, updates: Partial<Omit<Insurer, 'id' | 'createdAt' | 'updatedAt' | '_count'>>): Promise<Insurer> {
+    const { data } = await this.instance.put(`/insurers/${id}`, updates);
+    if (data.error) throw new Error(data.error);
+    return data.insurer;
+  }
+
+  async deleteInsurer(id: string): Promise<{ success: boolean }> {
+    const { data } = await this.instance.delete(`/insurers/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Plans ──────────────────────────────────────────────────────────────
+  async getPlans(page = 1, limit = 20, insurerId?: string): Promise<PlansResponse> {
+    const { data } = await this.instance.get('/plans', {
+      params: { page, limit, ...(insurerId && { insurerId }) }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async createPlan(plan: Omit<Plan, 'id' | 'createdAt' | 'updatedAt' | 'insurer' | '_count'>): Promise<Plan> {
+    const { data } = await this.instance.post('/plans', plan);
+    if (data.error) throw new Error(data.error);
+    return data.plan;
+  }
+
+  async updatePlan(id: string, updates: Partial<Omit<Plan, 'id' | 'createdAt' | 'updatedAt' | 'insurerId' | 'insurer' | '_count'>>): Promise<Plan> {
+    const { data } = await this.instance.put(`/plans/${id}`, updates);
+    if (data.error) throw new Error(data.error);
+    return data.plan;
+  }
+
+  async deletePlan(id: string): Promise<{ success: boolean }> {
+    const { data } = await this.instance.delete(`/plans/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Users ──────────────────────────────────────────────────────────────
+  async getUsers(page = 1, limit = 20): Promise<UsersResponse> {
+    const { data } = await this.instance.get('/users', {
+      params: { page, limit }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async getUser(id: string): Promise<AdminUser> {
+    const { data } = await this.instance.get(`/users/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data.user;
+  }
+
+  async searchUsers(query: string): Promise<AdminUser[]> {
+    const { data } = await this.instance.get(`/users/search/${query}`);
+    if (data.error) throw new Error(data.error);
+    return data.users;
+  }
+
+  // ── Policies ───────────────────────────────────────────────────────────
+  async getPolicies(page = 1, limit = 20): Promise<PoliciesResponse> {
+    const { data } = await this.instance.get('/policies', {
+      params: { page, limit }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async getPolicy(id: string): Promise<AdminPolicy> {
+    const { data } = await this.instance.get(`/policies/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data.policy;
+  }
+
+  async updatePolicy(id: string, updates: Partial<Omit<AdminPolicy, 'id' | 'policyNumber' | 'userId' | 'createdAt' | 'updatedAt' | 'user' | 'insurer' | 'plan'>>): Promise<AdminPolicy> {
+    const { data } = await this.instance.put(`/policies/${id}`, updates);
+    if (data.error) throw new Error(data.error);
+    return data.policy;
+  }
+
+  async deletePolicy(id: string): Promise<{ success: boolean }> {
+    const { data } = await this.instance.delete(`/policies/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Claims ─────────────────────────────────────────────────────────────
+  async getClaims(page = 1, limit = 20): Promise<ClaimsResponse> {
+    const { data } = await this.instance.get('/claims', {
+      params: { page, limit }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async updateClaimStatus(id: string, status: 'pending' | 'approved' | 'rejected'): Promise<AdminClaim> {
+    const { data } = await this.instance.put(`/claims/${id}/status`, { status });
+    if (data.error) throw new Error(data.error);
+    return data.claim;
+  }
+
+  // ── Quotes ─────────────────────────────────────────────────────────────
+  async getQuotes(page = 1, limit = 20): Promise<QuotesResponse> {
+    const { data } = await this.instance.get('/quotes', {
+      params: { page, limit }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Analytics ──────────────────────────────────────────────────────────
+  async getAnalytics(): Promise<AnalyticsData> {
+    const { data } = await this.instance.get('/analytics');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  // ── Chat ───────────────────────────────────────────────────────────────
+  async getConversations(page = 1, limit = 30, status?: 'open' | 'closed'): Promise<ConversationsResponse> {
+    const { data } = await this.instance.get('/chat/conversations', {
+      params: { page, limit, ...(status ? { status } : {}) }
+    });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async getConversation(id: string): Promise<Conversation> {
+    const { data } = await this.instance.get(`/chat/conversations/${id}`);
+    if (data.error) throw new Error(data.error);
+    return data.conversation;
+  }
+
+  async createConversation(userId: string, subject?: string): Promise<Conversation> {
+    const { data } = await this.instance.post('/chat/conversations', { userId, subject });
+    if (data.error) throw new Error(data.error);
+    return data.conversation;
+  }
+
+  async sendMessage(conversationId: string, content: string): Promise<ChatMessage> {
+    const { data } = await this.instance.post(`/chat/conversations/${conversationId}/messages`, { content });
+    if (data.error) throw new Error(data.error);
+    return data.message;
+  }
+
+  async pollMessages(conversationId: string, after?: string): Promise<ChatMessage[]> {
+    const { data } = await this.instance.get(`/chat/conversations/${conversationId}/messages`, {
+      params: after ? { after } : {}
+    });
+    if (data.error) throw new Error(data.error);
+    return data.messages;
+  }
+
+  async setConversationStatus(id: string, status: 'open' | 'closed'): Promise<Conversation> {
+    const { data } = await this.instance.put(`/chat/conversations/${id}/status`, { status });
+    if (data.error) throw new Error(data.error);
+    return data.conversation;
+  }
+
+  async getChatUnread(): Promise<number> {
+    const { data } = await this.instance.get('/chat/unread');
+    if (data.error) throw new Error(data.error);
+    return data.unread;
+  }
+}
+
+export const adminApi = new AdminApiClient();

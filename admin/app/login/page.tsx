@@ -110,12 +110,6 @@ export default function LoginPage() {
             Sign in to your admin account
           </p>
 
-          {/* Demo credentials hint */}
-          <div style={{ background: "var(--primary-light)", border: "1px solid #C7DEFF", borderRadius: 10, padding: "10px 14px", marginBottom: 24 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", marginBottom: 2 }}>Demo credentials</p>
-            <p style={{ fontSize: 12, color: "var(--text-muted)" }}>admin@ask.in &nbsp;/&nbsp; Admin@123</p>
-          </div>
-
           <form onSubmit={handleSubmit}>
             {/* Email */}
             <div style={{ marginBottom: 16 }}>
@@ -131,7 +125,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@ask.in"
+                  placeholder="your@email.com"
                   style={{ flex: 1, border: "none", outline: "none", fontSize: 14, color: "var(--text)", background: "transparent" }}
                 />
               </div>

@@ -1,151 +1,494 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Filter, CheckCircle, Clock, Ban, X, Phone, Mail, MapPin, Calendar, FileText, Shield } from "lucide-react";
-import { USERS, POLICIES, CLAIMS, type AdminUser } from "@/lib/mock";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Search, X, Phone, Mail, Calendar, MessageSquare, FileText, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { adminApi, AdminUser, AdminPolicy, AdminClaim } from "@/lib/api";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string }> = {
     Verified: { bg: "#ECFDF5", color: "#059669" },
     Pending:  { bg: "#FFFBEB", color: "#D97706" },
     Blocked:  { bg: "#FEF2F2", color: "#DC2626" },
+    active: { bg: "#ECFDF5", color: "#059669" },
+    expired: { bg: "#FEF2F2", color: "#DC2626" },
+    cancelled: { bg: "#F3F4F6", color: "#6B7280" },
+    approved: { bg: "#ECFDF5", color: "#059669" },
+    rejected: { bg: "#FEF2F2", color: "#DC2626" },
+    pending: { bg: "#FFFBEB", color: "#D97706" },
   };
   const s = map[status] ?? { bg: "var(--bg)", color: "var(--text-muted)" };
-  return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: s.bg, color: s.color }}>{status}</span>;
+  return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: s.bg, color: s.color, textTransform: "capitalize" }}>{status}</span>;
 }
 
-function UserDrawer({ user, onClose }: { user: AdminUser; onClose: () => void }) {
-  const [tab, setTab] = useState<"policies" | "claims">("policies");
-  const policies = POLICIES.filter(p => p.userId === user.id);
-  const claims = CLAIMS.filter(c => c.userId === user.id);
+// Claim Detail Drawer
+function ClaimDrawer({ claim, onClose }: { claim: AdminClaim; onClose: () => void }) {
+  const statusIcon: Record<string, any> = {
+    approved: <CheckCircle size={16} color="#059669" />,
+    rejected: <AlertCircle size={16} color="#DC2626" />,
+    pending: <Clock size={16} color="#D97706" />,
+  };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex" }}>
       <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-      <div style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)" }}>
+      <div style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>User Profile</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Claim Details</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Profile card */}
-        <div style={{ padding: "24px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 800 }}>
-              {user.name.split(" ").map(n => n[0]).join("").slice(0,2)}
-            </div>
+        {/* Content */}
+        <div style={{ padding: "24px", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, padding: "14px 16px", background: "var(--bg)", borderRadius: 10 }}>
+            {statusIcon[claim.status] || <FileText size={16} color="var(--text-muted)" />}
             <div>
-              <p style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{user.name}</p>
-              <StatusBadge status={user.status} />
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Status</p>
+              <StatusBadge status={claim.status} />
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* Claim Info Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
             {[
-              { icon: Phone,    label: "Phone",   value: "+91 " + user.phone },
-              { icon: Mail,     label: "Email",   value: user.email },
-              { icon: MapPin,   label: "City",    value: user.city },
-              { icon: Calendar, label: "DOB",     value: user.dob },
-              { icon: Calendar, label: "Joined",  value: user.joinedAt },
-              { icon: FileText, label: "Premium", value: user.premiumTotal },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <Icon size={14} color="var(--text-muted)" style={{ marginTop: 2, flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 1 }}>{label}</p>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{value}</p>
-                </div>
+              { label: "Claim ID", value: claim.id.slice(0, 8) },
+              { label: "Amount", value: `₹${claim.amount.toLocaleString("en-IN")}` },
+              { label: "Incident Date", value: new Date(claim.incidentDate).toLocaleDateString() },
+              { label: "Filed Date", value: new Date(claim.createdAt).toLocaleDateString() },
+              { label: "Policy", value: claim.policy?.policyNumber || "N/A" },
+              { label: "Type", value: claim.policy?.type || "N/A" },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{label}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{value}</p>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Stats strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", borderBottom: "1px solid var(--border)" }}>
-          {[
-            { label: "Policies", value: user.policyCount },
-            { label: "Claims",   value: user.claimCount },
-            { label: "Total premium", value: user.premiumTotal },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ padding: "14px 16px", textAlign: "center", borderRight: "1px solid var(--border)" }}>
-              <p style={{ fontSize: 18, fontWeight: 800, color: "var(--primary)", letterSpacing: "-0.04em" }}>{value}</p>
-              <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{label}</p>
+          {claim.description && (
+            <div style={{ marginBottom: 20, padding: "12px 14px", background: "var(--bg)", borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Description</p>
+              <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{claim.description}</p>
             </div>
-          ))}
+          )}
+
+          {claim.notes && (
+            <div style={{ padding: "12px 14px", background: "#FEF2F2", borderLeft: "3px solid #D97706", borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Admin Notes</p>
+              <p style={{ fontSize: 13, color: "#DC2626", lineHeight: 1.5 }}>{claim.notes}</p>
+            </div>
+          )}
+
+          {claim.approvedDate && (
+            <div style={{ marginTop: 20, padding: "12px 14px", background: "#ECFDF5", borderRadius: 8, borderLeft: "3px solid #059669" }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Approved On</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>{new Date(claim.approvedDate).toLocaleDateString()}</p>
+            </div>
+          )}
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-          {(["policies", "claims"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ flex: 1, padding: "12px", border: "none", background: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", color: tab === t ? "var(--primary)" : "var(--text-muted)", borderBottom: tab === t ? "2px solid var(--primary)" : "2px solid transparent" }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)} ({tab === "policies" ? policies.length : claims.length})
+        <style>{`
+          @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+}
+
+function UserDrawer({ user, onClose, onChat }: { user: AdminUser; onClose: () => void; onChat: (id: string) => void }) {
+  const [tab, setTab] = useState<"profile" | "policies" | "claims">("profile");
+  const [policies, setPolicies] = useState<AdminPolicy[]>([]);
+  const [claims, setClaims] = useState<AdminClaim[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<AdminPolicy | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<AdminClaim | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      if (tab === "policies" && policies.length === 0) {
+        setLoadingData(true);
+        try {
+          const resp = await adminApi.getPolicies(1, 100);
+          setPolicies(resp.policies.filter(p => p.userId === user.id));
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingData(false);
+        }
+      }
+      if (tab === "claims" && claims.length === 0) {
+        setLoadingData(true);
+        try {
+          const resp = await adminApi.getClaims(1, 100);
+          setClaims(resp.claims.filter(c => c.userId === user.id));
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingData(false);
+        }
+      }
+    }
+    load();
+  }, [tab, user.id]);
+
+  const tabs = [
+    { id: "profile", label: "Profile", count: 0 },
+    { id: "policies", label: "Policies", count: user._count?.policies || 0 },
+    { id: "claims", label: "Claims", count: user._count?.claims || 0 },
+  ] as const;
+
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
+        <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
+        <div style={{ width: 520, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
+          {/* Header */}
+          <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>
+              {tab === "profile" && "User Profile"}
+              {tab === "policies" && "User Policies"}
+              {tab === "claims" && "User Claims"}
+            </h3>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
+              <X size={20} />
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* Tab content */}
-        <div style={{ flex: 1, padding: "16px 24px" }}>
-          {tab === "policies" ? (
-            policies.length ? policies.map(p => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.planName}</p>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.policyNo} · {p.premium}</p>
+          {/* Profile card - always visible at top when profile tab */}
+          {tab === "profile" && (
+            <div style={{ padding: "22px 24px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 800 }}>
+                  {user.name.split(" ").map(n => n[0]).join("").slice(0,2)}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: p.status === "Active" ? "#ECFDF5" : "#FEF2F2", color: p.status === "Active" ? "#059669" : "#DC2626" }}>{p.status}</span>
-              </div>
-            )) : <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", paddingTop: 32 }}>No policies found</p>
-          ) : (
-            claims.length ? claims.map(c => (
-              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-                <Shield size={14} color={c.color} style={{ flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{c.description}</p>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)" }}>₹{c.amount.toLocaleString("en-IN")} · {c.filedDate}</p>
+                <div>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{user.name}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Member since {new Date(user.createdAt).toLocaleDateString()}</p>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{c.status}</span>
               </div>
-            )) : <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", paddingTop: 32 }}>No claims found</p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+                {[
+                  { icon: Phone,    label: "Phone",   value: "+91 " + user.phone },
+                  { icon: Mail,     label: "Email",   value: user.email || "Not provided" },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <Icon size={16} color="var(--primary)" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>{label}</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {[
+                  { label: "Active Policies", value: user._count?.policies || 0 },
+                  { label: "Claims Filed", value: user._count?.claims || 0 },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ padding: "14px", background: "var(--bg)", borderRadius: 10, textAlign: "center" }}>
+                    <p style={{ fontSize: 16, fontWeight: 800, color: "var(--primary)", letterSpacing: "-0.04em" }}>{value}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", padding: "0 12px", background: "#fff", position: "sticky", top: tab === "profile" ? 60 : 56, zIndex: 9 }}>
+            {tabs.map(({ id, label, count }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                style={{
+                  flex: 1,
+                  padding: "12px 16px",
+                  background: tab === id ? "var(--primary)" : "transparent",
+                  border: "none",
+                  borderRadius: "0",
+                  color: tab === id ? "#fff" : "var(--text-muted)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  textTransform: "capitalize",
+                }}
+              >
+                {label}
+                {count > 0 && (
+                  <span style={{
+                    background: tab === id ? "rgba(255,255,255,0.3)" : "var(--bg)",
+                    color: tab === id ? "#fff" : "var(--text-muted)",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: "1px 7px",
+                    borderRadius: 100,
+                  }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 12px" }}>
+            {tab === "policies" && (
+              loadingData ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200, color: "var(--text-muted)", fontSize: 13 }}>Loading policies...</div>
+              ) : policies.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 200, color: "var(--text-muted)" }}>
+                  <FileText size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                  <p>No policies found</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {policies.map(policy => (
+                    <div
+                      key={policy.id}
+                      onClick={() => setSelectedPolicy(policy)}
+                      style={{
+                        padding: "14px",
+                        background: "#fff",
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "var(--bg)";
+                        e.currentTarget.style.borderColor = "var(--primary)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "#fff";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 8 }}>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{policy.policyNumber}</p>
+                          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{policy.provider}</p>
+                        </div>
+                        <StatusBadge status={policy.status} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Premium: <span style={{ fontWeight: 700, color: "var(--text)" }}>₹{policy.premium.toLocaleString("en-IN")}</span></p>
+                        <p style={{ fontSize: 10, color: "var(--primary)", fontWeight: 700 }}>View →</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {tab === "claims" && (
+              loadingData ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200, color: "var(--text-muted)", fontSize: 13 }}>Loading claims...</div>
+              ) : claims.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 200, color: "var(--text-muted)" }}>
+                  <AlertCircle size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                  <p>No claims found</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {claims.map(claim => (
+                    <div
+                      key={claim.id}
+                      onClick={() => setSelectedClaim(claim)}
+                      style={{
+                        padding: "14px",
+                        background: "#fff",
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = "var(--bg)";
+                        e.currentTarget.style.borderColor = "var(--primary)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "#fff";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 8 }}>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{claim.policy?.policyNumber}</p>
+                          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Incident: {new Date(claim.incidentDate).toLocaleDateString()}</p>
+                        </div>
+                        <StatusBadge status={claim.status} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Amount: <span style={{ fontWeight: 700, color: "var(--text)" }}>₹{claim.amount.toLocaleString("en-IN")}</span></p>
+                        <p style={{ fontSize: 10, color: "var(--primary)", fontWeight: 700 }}>View →</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+
+          {/* Actions Footer */}
+          {tab === "profile" && (
+            <div style={{ padding: "16px 12px", borderTop: "1px solid var(--border)", display: "flex", gap: 10 }}>
+              <button
+                onClick={() => { onClose(); onChat(user.id); }}
+                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", background: "var(--primary)", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              >
+                <MessageSquare size={16} /> Chat with User
+              </button>
+            </div>
+          )}
+
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateX(100%); }
+              to { transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      </div>
+
+      {selectedPolicy && (
+        <PolicyDetailDrawer policy={selectedPolicy} onClose={() => setSelectedPolicy(null)} />
+      )}
+      {selectedClaim && (
+        <ClaimDrawer claim={selectedClaim} onClose={() => setSelectedClaim(null)} />
+      )}
+    </>
+  );
+}
+
+// Policy Detail Drawer
+function PolicyDetailDrawer({ policy, onClose }: { policy: AdminPolicy; onClose: () => void }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex" }}>
+      <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
+      <div style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
+        {/* Header */}
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Policy Details</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "24px", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, padding: "14px 16px", background: "var(--bg)", borderRadius: 10 }}>
+            <FileText size={16} color="var(--text-muted)" />
+            <div>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Policy Number</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{policy.policyNumber}</p>
+            </div>
+          </div>
+
+          {/* Status */}
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Status</p>
+            <StatusBadge status={policy.status} />
+          </div>
+
+          {/* Details Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+            {[
+              { label: "Provider", value: policy.provider },
+              { label: "Type", value: policy.type },
+              { label: "Premium", value: `₹${policy.premium.toLocaleString("en-IN")}` },
+              { label: "Sum Insured", value: `₹${policy.sumInsured.toLocaleString("en-IN")}` },
+              { label: "Start Date", value: new Date(policy.startDate).toLocaleDateString() },
+              { label: "End Date", value: new Date(policy.endDate).toLocaleDateString() },
+              { label: "Payment Status", value: policy.paymentStatus },
+              { label: "Claims Filed", value: policy._count?.claims || 0 },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{label}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {policy.insurer && (
+            <div style={{ padding: "14px 16px", background: "var(--bg)", borderRadius: 10 }}>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Insurer</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{policy.insurer.name}</p>
+            </div>
           )}
         </div>
 
-        {/* Actions */}
-        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", gap: 10 }}>
-          {user.status !== "Verified" && (
-            <button style={{ flex: 1, padding: "10px", background: "#ECFDF5", border: "1.5px solid #A7F3D0", borderRadius: 10, color: "#059669", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              ✓ Verify KYC
-            </button>
-          )}
-          {user.status !== "Blocked" ? (
-            <button style={{ flex: 1, padding: "10px", background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: 10, color: "#DC2626", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              Block User
-            </button>
-          ) : (
-            <button style={{ flex: 1, padding: "10px", background: "var(--bg)", border: "1.5px solid var(--border)", borderRadius: 10, color: "var(--text-muted)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              Unblock User
-            </button>
-          )}
-        </div>
+        <style>{`
+          @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+          }
+        `}</style>
       </div>
     </div>
   );
 }
 
 export default function UsersPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = USERS.filter(u => {
-    const matchStatus = statusFilter === "All" || u.status === statusFilter;
+  function goToChat(userId: string) {
+    router.push(`/dashboard/chat?userId=${userId}`);
+  }
+
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        setLoading(true);
+        const response = await adminApi.getUsers(1, 100); // Get all users for now
+        setUsers(response.users);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUsers();
+  }, []);
+
+  const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return matchStatus && (!q || u.name.toLowerCase().includes(q) || u.phone.includes(q) || u.email.toLowerCase().includes(q) || u.city.toLowerCase().includes(q));
+    return !q || u.name.toLowerCase().includes(q) || u.phone.includes(q) || (u.email && u.email.toLowerCase().includes(q));
   });
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <p style={{ color: "var(--text-muted)" }}>Loading users...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
+        <p style={{ color: "var(--text-muted)" }}>Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: "100%" }}>
@@ -153,15 +496,12 @@ export default function UsersPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.03em", marginBottom: 2 }}>Users</h1>
-          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>{USERS.length} registered users</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>{users.length} registered users</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {["All", "Verified", "Pending", "Blocked"].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              style={{ padding: "7px 16px", borderRadius: 8, border: statusFilter === s ? "none" : "1.5px solid var(--border)", background: statusFilter === s ? "var(--primary)" : "#fff", color: statusFilter === s ? "#fff" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              {s}
-            </button>
-          ))}
+          <button style={{ padding: "7px 16px", borderRadius: 8, border: "none", background: "var(--primary)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            All Users
+          </button>
         </div>
       </div>
 
@@ -177,7 +517,7 @@ export default function UsersPage() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--bg)" }}>
-              {["User", "Phone", "City", "Policies", "Claims", "Premium", "Joined", "Status", ""].map(h => (
+              {["User", "Phone", "Policies", "Claims", "Joined", ""].map((h, i) => (
                 <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
@@ -199,17 +539,20 @@ export default function UsersPage() {
                   </div>
                 </td>
                 <td style={{ padding: "14px 16px", fontSize: 13, color: "var(--text-muted)" }}>+91 {u.phone}</td>
-                <td style={{ padding: "14px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.city}</td>
-                <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u.policyCount}</td>
-                <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u.claimCount}</td>
-                <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{u.premiumTotal}</td>
-                <td style={{ padding: "14px 16px", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{u.joinedAt}</td>
-                <td style={{ padding: "14px 16px" }}><StatusBadge status={u.status} /></td>
+                <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u._count?.policies || 0}</td>
+                <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u._count?.claims || 0}</td>
+                <td style={{ padding: "14px 16px", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td style={{ padding: "14px 16px" }}>
-                  <button onClick={() => setSelected(u)}
-                    style={{ padding: "6px 14px", background: "var(--primary-light)", border: "none", borderRadius: 7, color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                    View
-                  </button>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => setSelected(u)}
+                      style={{ padding: "6px 14px", background: "var(--primary-light)", border: "none", borderRadius: 7, color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      View
+                    </button>
+                    <button onClick={() => goToChat(u.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "#ECFDF5", border: "none", borderRadius: 7, color: "#059669", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      <MessageSquare size={12} /> Chat
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -223,7 +566,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} />}
+      {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} onChat={goToChat} />}
     </div>
   );
 }

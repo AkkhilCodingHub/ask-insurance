@@ -106,9 +106,21 @@ npm run dev:admin
 ```
 Opens at `http://localhost:3001`
 
+#### API Server
+```bash
+npm run dev:api
+```
+Runs on `http://localhost:4000`
+
 #### All Applications
 ```bash
 npm run dev:all
+```
+
+#### Stopping Development Servers
+If processes don't stop with Ctrl+C, use:
+```bash
+npm run kill:dev
 ```
 
 ### Building for Production

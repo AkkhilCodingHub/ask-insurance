@@ -6,20 +6,21 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
-  LogOut, Bell, Search, ChevronRight, Menu, X,
+  LogOut, Bell, Search, ChevronRight, Menu, X, Headphones,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const nav = [
-  { label: "Overview",   icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Users",      icon: Users,            href: "/dashboard/users" },
-  { label: "Policies",   icon: FileText,         href: "/dashboard/policies" },
-  { label: "Claims",     icon: Shield,           href: "/dashboard/claims" },
-  { label: "Plans",      icon: Package,          href: "/dashboard/plans" },
-  { label: "Insurers",   icon: Building2,        href: "/dashboard/insurers" },
-  { label: "Quotes",     icon: MessageSquare,    href: "/dashboard/quotes" },
-  { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics" },
-  { label: "Settings",   icon: Settings,         href: "/dashboard/settings" },
+  { label: "Overview",   icon: LayoutDashboard, href: "/dashboard",           badge: false },
+  { label: "Users",      icon: Users,            href: "/dashboard/users",     badge: false },
+  { label: "Policies",   icon: FileText,         href: "/dashboard/policies",  badge: false },
+  { label: "Claims",     icon: Shield,           href: "/dashboard/claims",    badge: false },
+  { label: "Plans",      icon: Package,          href: "/dashboard/plans",     badge: false },
+  { label: "Insurers",   icon: Building2,        href: "/dashboard/insurers",  badge: false },
+  { label: "Quotes",     icon: MessageSquare,    href: "/dashboard/quotes",    badge: false },
+  { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",      badge: true  },
+  { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics", badge: false },
+  { label: "Settings",   icon: Settings,         href: "/dashboard/settings",  badge: false },
 ];
 
 function getTitle(path: string) {
@@ -33,6 +34,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { admin, loading, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+
+  useEffect(() => {
+    if (!admin) return;
+    const poll = async () => {
+      try {
+        const { adminApi } = await import("@/lib/api");
+        const n = await adminApi.getChatUnread();
+        setChatUnread(n);
+      } catch { /* silent */ }
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, [admin]);
 
   useEffect(() => {
     if (!loading && !admin) router.replace("/login");
@@ -89,8 +105,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "12px 8px" }}>
-        {nav.map(({ label, icon: Icon, href }) => {
+        {nav.map(({ label, icon: Icon, href, badge }) => {
           const active = href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+          const showBadge = badge && chatUnread > 0;
           return (
             <Link
               key={href}
@@ -112,13 +129,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 justifyContent: collapsed ? "center" : "flex-start",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
+                position: "relative",
               }}
               onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
-              <Icon size={17} color={active ? "#1580FF" : "#64748B"} strokeWidth={active ? 2.5 : 2} style={{ flexShrink: 0 }} />
+              <span style={{ position: "relative", flexShrink: 0 }}>
+                <Icon size={17} color={active ? "#1580FF" : "#64748B"} strokeWidth={active ? 2.5 : 2} />
+                {showBadge && collapsed && (
+                  <span style={{ position: "absolute", top: -3, right: -3, width: 8, height: 8, borderRadius: "50%", background: "#EF4444", border: "1.5px solid #0F172A" }} />
+                )}
+              </span>
               {!collapsed && label}
-              {!collapsed && active && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#1580FF" }} />}
+              {!collapsed && showBadge && (
+                <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 100, minWidth: 18, textAlign: "center" }}>
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
+              {!collapsed && active && !showBadge && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: "#1580FF" }} />}
             </Link>
           );
         })}

@@ -9,10 +9,12 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
+import { useDialog } from '@/components/Dialog';
 
 export default function LoginScreen() {
   const router       = useRouter();
   const { sendOTP }  = useAuth();
+  const { alert }    = useDialog();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -26,8 +28,9 @@ export default function LoginScreen() {
     try {
       await sendOTP(phone);
       router.push('/otp');
-    } catch {
-      // handle error silently for now
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not send OTP. Please try again.';
+      alert({ type: 'error', title: 'Error', message: msg });
     } finally {
       setLoading(false);
     }

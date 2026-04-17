@@ -1,47 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Modal, TextInput, Alert, ActivityIndicator,
+  StyleSheet, Modal, TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MY_CLAIMS, MyClaim } from '@/data/mock';
+import { claimsApi, policiesApi, ApiClaim, ApiPolicy } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useDialog } from '@/components/Dialog';
 
 const STATUS_COLOR: Record<string, string> = {
-  Approved:   Colors.success,
-  Processing: Colors.warning,
-  Submitted:  Colors.primary,
-  Rejected:   Colors.error,
+  approved:    Colors.success,
+  settled:     Colors.success,
+  under_review: Colors.warning,
+  submitted:   Colors.primary,
+  rejected:    Colors.error,
 };
 
-function ClaimTimeline({ claim }: { claim: MyClaim }) {
+const STATUS_LABEL: Record<string, string> = {
+  approved:    'Approved',
+  settled:     'Settled',
+  under_review: 'In Review',
+  submitted:   'Submitted',
+  rejected:    'Rejected',
+};
+
+const CLAIM_STEPS = ['Submitted', 'Under Review', 'Approved', 'Settled'];
+
+function statusToStep(status: string): number {
+  const map: Record<string, number> = {
+    submitted: 0, under_review: 1, approved: 2, settled: 3, rejected: 1
+  };
+  return map[status] ?? 0;
+}
+
+function formatAmount(v: number): string {
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L`;
+  if (v >= 1000)   return `₹${(v / 1000).toFixed(1)}K`;
+  return `₹${v}`;
+}
+
+function ClaimTimeline({ status }: { status: string }) {
+  const currentStep = statusToStep(status);
+  const color       = STATUS_COLOR[status] ?? Colors.primary;
   return (
     <View style={t.wrap}>
-      {claim.steps.map((step, i) => {
-        const done    = i <= claim.currentStep;
-        const current = i === claim.currentStep;
+      {CLAIM_STEPS.map((step, i) => {
+        const done    = i <= currentStep;
+        const current = i === currentStep;
         return (
           <View key={step} style={t.row}>
             <View style={t.col}>
               <View style={[
                 t.circle,
-                done    && { backgroundColor: claim.color, borderColor: claim.color },
+                done    && { backgroundColor: color, borderColor: color },
                 current && { borderWidth: 2.5 },
               ]}>
                 {done && <Text style={t.tick}>✓</Text>}
               </View>
-              {i < claim.steps.length - 1 && (
-                <View style={[t.line, done && { backgroundColor: claim.color }]} />
+              {i < CLAIM_STEPS.length - 1 && (
+                <View style={[t.line, done && { backgroundColor: color }]} />
               )}
             </View>
             <View style={t.body}>
-              <Text style={[t.stepLabel, current && { color: claim.color, fontWeight: '700' }]}>
-                {step}
-              </Text>
-              {current && (
-                <Text style={[t.stepSub, { color: claim.color }]}>In progress</Text>
-              )}
+              <Text style={[t.stepLabel, current && { color, fontWeight: '700' }]}>{step}</Text>
+              {current && <Text style={[t.stepSub, { color }]}>In progress</Text>}
             </View>
           </View>
         );
@@ -50,37 +73,38 @@ function ClaimTimeline({ claim }: { claim: MyClaim }) {
   );
 }
 
-function ClaimCard({ claim }: { claim: MyClaim }) {
+function ClaimCard({ claim }: { claim: ApiClaim }) {
   const [expanded, setExpanded] = useState(false);
-  const color = STATUS_COLOR[claim.status] ?? Colors.primary;
+  const color  = STATUS_COLOR[claim.status]  ?? Colors.primary;
+  const label  = STATUS_LABEL[claim.status]  ?? claim.status;
+  const date   = new Date(claim.submittedDate || claim.incidentDate)
+    .toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const typeColor = '#7C3AED';
 
   return (
     <View style={c.card}>
-      {/* Thin color indicator */}
-      <View style={[c.colorBar, { backgroundColor: claim.color }]} />
-      {/* Top row */}
+      <View style={[c.colorBar, { backgroundColor: typeColor }]} />
       <View style={c.top}>
-        <View style={[c.icon, { backgroundColor: claim.color + '18' }]}>
-          <Text style={[c.iconText, { color: claim.color }]}>{claim.type.slice(0, 2)}</Text>
+        <View style={[c.icon, { backgroundColor: typeColor + '18' }]}>
+          <Text style={[c.iconText, { color: typeColor }]}>{claim.type.slice(0, 2).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={c.desc}>{claim.description}</Text>
-          <Text style={c.sub}>{claim.insurer} · {claim.date}</Text>
+          <Text style={c.sub}>{claim.policy?.provider ?? '—'} · {date}</Text>
         </View>
         <View style={[c.statusPill, { backgroundColor: color + '18' }]}>
-          <Text style={[c.statusText, { color }]}>{claim.status}</Text>
+          <Text style={[c.statusText, { color }]}>{label}</Text>
         </View>
       </View>
 
-      {/* Meta */}
       <View style={c.meta}>
         <View>
           <Text style={c.metaLabel}>AMOUNT</Text>
-          <Text style={[c.metaValue, { color: claim.color }]}>{claim.amount}</Text>
+          <Text style={[c.metaValue, { color: typeColor }]}>{formatAmount(claim.amount)}</Text>
         </View>
         <View style={{ alignItems: 'center' }}>
           <Text style={c.metaLabel}>CLAIM NO.</Text>
-          <Text style={c.metaValue}>{claim.claimNo}</Text>
+          <Text style={c.metaValue}>{claim.claimNumber}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={c.metaLabel}>TYPE</Text>
@@ -88,35 +112,83 @@ function ClaimCard({ claim }: { claim: MyClaim }) {
         </View>
       </View>
 
-      {/* Expand toggle */}
       <TouchableOpacity style={c.trackBtn} onPress={() => setExpanded(!expanded)}>
         <Text style={c.trackBtnText}>{expanded ? 'Hide timeline ↑' : 'Track status ↓'}</Text>
       </TouchableOpacity>
 
-      {expanded && <ClaimTimeline claim={claim} />}
+      {expanded && <ClaimTimeline status={claim.status} />}
     </View>
   );
 }
 
 export default function ClaimsTab() {
+  const { alert } = useDialog();
+  const [claims, setClaims]         = useState<ApiClaim[]>([]);
+  const [policies, setPolicies]     = useState<ApiPolicy[]>([]);
+  const [loadingClaims, setLoadingClaims] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [step, setStep]       = useState(1);
+
+  // File claim form state
+  const [step, setStep]         = useState(1);
   const [claimType, setClaimType] = useState('Health');
-  const [amount, setAmount]   = useState('');
-  const [desc, setDesc]       = useState('');
+  const [policyId, setPolicyId] = useState('');
+  const [amount, setAmount]     = useState('');
+  const [desc, setDesc]         = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const loadClaims = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoadingClaims(true);
+    try {
+      const [claimsRes, policiesRes] = await Promise.allSettled([
+        claimsApi.list(),
+        policiesApi.list()
+      ]);
+      if (claimsRes.status === 'fulfilled')   setClaims(claimsRes.value.claims);
+      if (policiesRes.status === 'fulfilled') setPolicies(policiesRes.value.policies);
+    } finally {
+      setLoadingClaims(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { loadClaims(); }, [loadClaims]);
 
   const handleSubmit = async () => {
     if (!amount.trim() || !desc.trim()) {
-      Alert.alert('Missing info', 'Please fill in all fields.');
+      alert({ type: 'warning', title: 'Missing info', message: 'Please fill in all fields.' });
+      return;
+    }
+    const policy = policies.find(p => p.id === policyId) ?? policies[0];
+    if (!policy) {
+      alert({ type: 'warning', title: 'No policy', message: 'You need an active policy to file a claim.' });
       return;
     }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSubmitting(false);
-    setModalVisible(false);
+    try {
+      const { claim } = await claimsApi.create({
+        policyId: policy.id,
+        type: claimType,
+        amount: Number(amount),
+        description: desc,
+        incidentDate: new Date().toISOString()
+      });
+      setClaims(prev => [claim, ...prev]);
+      setModalVisible(false);
+      setStep(1); setAmount(''); setDesc('');
+      alert({ type: 'success', title: 'Claim Submitted!', message: `Your claim has been received.\nClaim No: ${claim.claimNumber}` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Please try again.';
+      alert({ type: 'error', title: 'Error', message: msg });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openModal = () => {
     setStep(1); setAmount(''); setDesc('');
-    Alert.alert('Claim Submitted!', 'Your claim has been received. Claim No: ICL-CLM-2025-002');
+    setModalVisible(true);
   };
 
   return (
@@ -125,13 +197,9 @@ export default function ClaimsTab() {
       <View style={s.header}>
         <View>
           <Text style={s.title}>My Claims</Text>
-          <Text style={s.sub}>{MY_CLAIMS.length} claim{MY_CLAIMS.length !== 1 ? 's' : ''} on record</Text>
+          <Text style={s.sub}>{claims.length} claim{claims.length !== 1 ? 's' : ''} on record</Text>
         </View>
-        <TouchableOpacity
-          style={s.fileBtn}
-          onPress={() => setModalVisible(true)}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={s.fileBtn} onPress={openModal} activeOpacity={0.85}>
           <Text style={s.fileBtnText}>+ File Claim</Text>
         </TouchableOpacity>
       </View>
@@ -140,12 +208,19 @@ export default function ClaimsTab() {
         style={s.scroll}
         contentContainerStyle={{ padding: 16, paddingBottom: BottomTabInset + 24, gap: 14 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadClaims(true)} />}
       >
-        {MY_CLAIMS.map(claim => (
+        {loadingClaims && (
+          <View style={{ paddingTop: 60, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+
+        {!loadingClaims && claims.map(claim => (
           <ClaimCard key={claim.id} claim={claim} />
         ))}
 
-        {MY_CLAIMS.length === 0 && (
+        {!loadingClaims && claims.length === 0 && (
           <View style={s.empty}>
             <Icon name="document-outline" size={40} color={Colors.border} />
             <Text style={s.emptyTitle}>No claims yet</Text>
@@ -169,7 +244,6 @@ export default function ClaimsTab() {
             </TouchableOpacity>
           </View>
 
-          {/* Steps indicator */}
           <View style={m.steps}>
             {[1, 2, 3].map(n => (
               <View key={n} style={m.stepRow}>
@@ -197,6 +271,31 @@ export default function ClaimsTab() {
                     {claimType === type && <Text style={{ color: Colors.primary }}>✓</Text>}
                   </TouchableOpacity>
                 ))}
+
+                {/* Policy selector */}
+                {policies.length > 0 && (
+                  <>
+                    <Text style={[m.stepTitle, { fontSize: 14, marginTop: 16 }]}>Select policy</Text>
+                    {policies.map(p => (
+                      <TouchableOpacity
+                        key={p.id}
+                        style={[m.typeOption, policyId === p.id && m.typeOptionActive]}
+                        onPress={() => setPolicyId(p.id)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[m.typeText, policyId === p.id && { color: Colors.primary }]}>
+                            {p.provider}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
+                            {p.policyNumber} · {p.type}
+                          </Text>
+                        </View>
+                        {policyId === p.id && <Text style={{ color: Colors.primary }}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+
                 <TouchableOpacity style={m.nextBtn} onPress={() => setStep(2)}>
                   <Text style={m.nextBtnText}>Next →</Text>
                 </TouchableOpacity>
@@ -285,29 +384,18 @@ const s = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '900', color: Colors.text, letterSpacing: -0.4 },
   sub:   { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  fileBtn: {
-    backgroundColor: Colors.primary, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 9,
-  },
+  fileBtn: { backgroundColor: Colors.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
   fileBtnText: { fontSize: 13, fontWeight: '700', color: Colors.white },
   scroll: { flex: 1 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyIcon:  { fontSize: 42 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   emptySub:   { fontSize: 13, color: Colors.textMuted },
 });
 
 const c = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.border,
-  },
+  card: { backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
   colorBar: { height: 3 },
-  top: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, padding: 14, paddingBottom: 10,
-  },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, paddingBottom: 10 },
   icon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 14, fontWeight: '800' },
   desc:   { fontSize: 13, fontWeight: '700', color: Colors.text, marginBottom: 2 },
@@ -322,26 +410,18 @@ const c = StyleSheet.create({
   },
   metaLabel: { fontSize: 9, color: Colors.textLight, fontWeight: '600', letterSpacing: 0.3, marginBottom: 2 },
   metaValue: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  trackBtn: {
-    paddingHorizontal: 14, paddingVertical: 11,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    alignItems: 'center',
-  },
+  trackBtn: { paddingHorizontal: 14, paddingVertical: 11, borderTopWidth: 1, borderTopColor: Colors.border, alignItems: 'center' },
   trackBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
 });
 
 const t = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: 14, paddingBottom: 14, paddingTop: 4,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  row: { flexDirection: 'row', gap: 12 },
-  col: { alignItems: 'center', width: 24 },
+  wrap: { paddingHorizontal: 14, paddingBottom: 14, paddingTop: 4, borderTopWidth: 1, borderTopColor: Colors.border },
+  row:  { flexDirection: 'row', gap: 12 },
+  col:  { alignItems: 'center', width: 24 },
   circle: {
     width: 24, height: 24, borderRadius: 12,
     borderWidth: 2, borderColor: Colors.border,
-    backgroundColor: Colors.bg,
-    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center',
   },
   tick: { fontSize: 11, color: Colors.white, fontWeight: '800' },
   line: { width: 2, flex: 1, minHeight: 20, backgroundColor: Colors.border, marginVertical: 2 },
@@ -352,56 +432,26 @@ const t = StyleSheet.create({
 
 const m = StyleSheet.create({
   safe:    { flex: 1, backgroundColor: Colors.white },
-  header:  {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
+  header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
   title:   { fontSize: 18, fontWeight: '800', color: Colors.text },
   close:   { fontSize: 20, color: Colors.textMuted, padding: 4 },
-  steps: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 40, paddingVertical: 16,
-  },
+  steps:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 40, paddingVertical: 16 },
   stepRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  stepDot: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   stepNum: { fontSize: 12, fontWeight: '700', color: Colors.textMuted },
-  stepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 4 },
+  stepLine:{ flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 4 },
   content: { paddingHorizontal: 20, paddingBottom: 40 },
   stepContent: { gap: 8 },
-  stepTitle: { fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 12 },
-  label: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.8, marginTop: 8, marginBottom: 6 },
-  input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, color: Colors.text, backgroundColor: Colors.bg,
-  },
-  typeOption: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    backgroundColor: Colors.bg,
-  },
+  stepTitle:   { fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+  label:       { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.8, marginTop: 8, marginBottom: 6 },
+  input:       { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.bg },
+  typeOption:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: Colors.bg },
   typeOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  typeText: { fontSize: 15, color: Colors.text, fontWeight: '500' },
-  nextBtn: {
-    backgroundColor: Colors.primary, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', marginTop: 8,
-  },
+  typeText:    { fontSize: 15, color: Colors.text, fontWeight: '500' },
+  nextBtn:     { backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   nextBtnText: { fontSize: 15, fontWeight: '700', color: Colors.white },
-  summary: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, overflow: 'hidden',
-    backgroundColor: Colors.bg,
-  },
-  summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  summaryLabel: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
-  summaryValue: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  summary:     { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14, overflow: 'hidden', backgroundColor: Colors.bg },
+  summaryRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  summaryLabel:{ fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
+  summaryValue:{ fontSize: 14, fontWeight: '700', color: Colors.text },
 });

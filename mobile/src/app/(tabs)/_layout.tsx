@@ -10,16 +10,18 @@ import { Colors } from '@/constants/theme';
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { outline: IoniconsName; filled: IoniconsName }> = {
-  index:   { outline: 'home-outline',          filled: 'home'            },
-  plans:   { outline: 'document-text-outline', filled: 'document-text'   },
-  claims:  { outline: 'shield-outline',        filled: 'shield'          },
-  profile: { outline: 'person-outline',        filled: 'person'          },
+  index:   { outline: 'home-outline',             filled: 'home'               },
+  plans:   { outline: 'document-text-outline',    filled: 'document-text'      },
+  claims:  { outline: 'shield-outline',           filled: 'shield'             },
+  chat:    { outline: 'chatbubble-outline',        filled: 'chatbubble'         },
+  profile: { outline: 'person-outline',           filled: 'person'             },
 };
 
 const TAB_LABELS: Record<string, string> = {
   index:   'Home',
   plans:   'Plans',
   claims:  'Claims',
+  chat:    'Support',
   profile: 'Profile',
 };
 
@@ -84,6 +86,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="plans" />
       <Tabs.Screen name="claims" />
+      <Tabs.Screen name="chat" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

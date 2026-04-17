@@ -121,4 +121,87 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
   }
 });
 
+router.put('/:id/cancel', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = paramsSchema.parse(req.params);
+    const policy = await prisma.policy.findFirst({ where: { id, userId } });
+
+    if (!policy) {
+      res.status(404).json({ error: 'Policy not found' });
+      return;
+    }
+    if (policy.status !== 'active') {
+      res.status(400).json({ error: `Policy is already ${policy.status}` });
+      return;
+    }
+
+    const updated = await prisma.policy.update({
+      where: { id },
+      data: { status: 'cancelled', cancelledAt: new Date() }
+    });
+
+    res.json({ policy: updated });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid policy id' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
+router.put('/:id/renew', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = paramsSchema.parse(req.params);
+    const renewSchema = z.object({ durationDays: z.number().int().positive().optional() });
+    const { durationDays = 365 } = renewSchema.parse(req.body);
+
+    const policy = await prisma.policy.findFirst({ where: { id, userId } });
+    if (!policy) {
+      res.status(404).json({ error: 'Policy not found' });
+      return;
+    }
+    if (policy.status === 'cancelled') {
+      res.status(400).json({ error: 'Cancelled policies cannot be renewed' });
+      return;
+    }
+
+    const baseDate = policy.endDate > new Date() ? policy.endDate : new Date();
+    const updated = await prisma.policy.update({
+      where: { id },
+      data: {
+        status: 'active',
+        endDate: new Date(baseDate.getTime() + durationDays * 24 * 60 * 60 * 1000),
+        paymentStatus: 'pending'
+      }
+    });
+
+    res.json({ policy: updated });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 export { router as policiesRouter };
