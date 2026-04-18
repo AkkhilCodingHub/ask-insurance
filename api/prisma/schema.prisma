@@ -159,8 +159,8 @@ model Claim {
 model Quote {
   id        String   @id @default(cuid())
   type      String // life, health, motor, travel, home, business
-  details   String // JSON with quote parameters
-  providers String // JSON array of provider quotes
+  details   String @db.Text // JSON with quote parameters
+  providers String @db.Text // JSON array of provider quotes
   status    String   @default("active") // active, expired, converted
   expiresAt DateTime
   createdAt DateTime @default(now())

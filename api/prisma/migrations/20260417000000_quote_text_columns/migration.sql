@@ -1,0 +1,2 @@
+ALTER TABLE `quotes` MODIFY COLUMN `details` TEXT NOT NULL;
+ALTER TABLE `quotes` MODIFY COLUMN `providers` TEXT NOT NULL;
