@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { quotesApi, usersApi, QuoteOffer, ApiError } from '@/lib/api';
+import { quotesApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
@@ -93,38 +93,6 @@ function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number })
 }
 
 // Quote results card
-function QuoteCard({ offer, color, onSelect }: { offer: QuoteOffer; color: string; onSelect: () => void }) {
-  return (
-    <TouchableOpacity style={qc.card} onPress={onSelect} activeOpacity={0.85}>
-      {offer.recommended && (
-        <View style={[qc.recommended, { backgroundColor: color }]}>
-          <Text style={qc.recommendedText}>RECOMMENDED</Text>
-        </View>
-      )}
-      <View style={qc.top}>
-        <View style={[qc.avatar, { backgroundColor: color + '18' }]}>
-          <Text style={[qc.avatarText, { color }]}>{offer.insurer.slice(0, 2).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={qc.insurer}>{offer.insurer}</Text>
-          <Text style={qc.claims}>Claims: {offer.claimsRatio} · ⭐ {offer.rating}</Text>
-        </View>
-        <View>
-          <Text style={[qc.premium, { color }]}>₹{offer.premium.toLocaleString('en-IN')}</Text>
-          <Text style={qc.premiumLbl}>per year</Text>
-        </View>
-      </View>
-      <View style={qc.features}>
-        {offer.features.slice(0, 2).map((f, i) => (
-          <Text key={i} style={qc.feature}>✓ {f}</Text>
-        ))}
-      </View>
-      <View style={[qc.selectBtn, { backgroundColor: color }]}>
-        <Text style={qc.selectBtnText}>Select this plan →</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 export default function QuoteScreen() {
   const router   = useRouter();
@@ -149,118 +117,77 @@ export default function QuoteScreen() {
   const [customCover, setCustomCover] = useState('');
   const [isCustom, setIsCustom]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  // Results
-  const [quotes, setQuotes]  = useState<QuoteOffer[]>([]);
-  const [quoteId, setQuoteId] = useState<string | null>(null);
-  const [done, setDone]      = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const coverLabel = cover?.label ?? '';
   const next = () => setStep(s => Math.min(s + 1, TOTAL_STEPS - 1));
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
-
-  // When type is pre-filled, logical steps are shifted:
-  //   rendered step 0 → content step 1 (personal)
-  //   rendered step 1 → content step 2 (coverage)
-  //   rendered step 2 → content step 3 (review)
   const contentStep = typeFromPlan ? step + 1 : step;
 
-  const handleGetQuotes = async () => {
+  const handleSubmit = async () => {
     if (!insuranceType || !cover) return;
     setSubmitting(true);
     try {
       if (!user) {
-        alert({ type: 'info', title: 'Sign in required', message: 'Please sign in to get personalised quotes.' });
+        alert({ type: 'info', title: 'Sign in required', message: 'Please sign in to submit a quote request.' });
         setSubmitting(false);
         return;
       }
       const details: Record<string, unknown> = {
-        age: Number(age),
-        gender: gender.toLowerCase(),
+        age:        Number(age),
+        gender:     gender.toLowerCase(),
         sumInsured: cover.value,
-        ...(insuranceType === 'life' ? { smoker } : {})
+        planId:     params.planId ?? null,
+        planName:   params.planName ?? null,
+        ...(insuranceType === 'life' ? { smoker } : {}),
       };
 
-      // Update user profile if name/age provided
-      if (user && !user.name && age) {
-        await usersApi.updateProfile({ name: user.name ?? user.phone }).catch(() => {});
-      }
-
-      const { quote } = await quotesApi.create(insuranceType, details);
-      setQuotes(quote.quotes);
-      setQuoteId(quote.id);
-      setStep(TOTAL_STEPS);   // Show results step
+      await quotesApi.create(insuranceType, details);
+      setSubmitted(true);
     } catch (e: unknown) {
-      const msg = e instanceof ApiError ? e.message : 'Could not fetch quotes. Please try again.';
+      const msg = e instanceof ApiError ? e.message : 'Could not submit request. Please try again.';
       alert({ type: 'error', title: 'Error', message: msg });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Quote results view ────────────────────────────────────────────────────
-  if (step === TOTAL_STEPS && quotes.length > 0) {
-    const typeColor = '#1580FF';
-    return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
-          <BackButton onPress={() => setStep(TOTAL_STEPS - 1)} />
-          <Text style={s.headerTitle}>Your Quotes</Text>
-          <Text style={s.stepCount}>{quotes.length} offers</Text>
-        </View>
-        <ScrollView
-          style={s.scroll}
-          contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 4 }}>
-            {INSURANCE_TYPES.find(t => t.id === insuranceType)?.label} · Cover: {coverLabel}
-          </Text>
-          {quotes.map((offer, i) => (
-            <QuoteCard
-              key={offer.id}
-              offer={offer}
-              color={typeColor}
-              onSelect={() => {
-                setSelectedPlan(offer.insurer);
-                setDone(true);
-              }}
-            />
-          ))}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Success screen ─────────────────────────────────────────────────────────
-  if (done) {
+  // ── Submitted screen ──────────────────────────────────────────────────────
+  if (submitted) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.successScreen}>
           <View style={s.successIcon}>
-            <Text style={{ fontSize: 52 }}>🎉</Text>
+            <Icon name="checkmark-circle" size={56} color={Colors.success} />
           </View>
-          <Text style={s.successTitle}>Quote Selected!</Text>
+          <Text style={s.successTitle}>Request Submitted!</Text>
           <Text style={s.successSub}>
-            Our advisor will contact you shortly to complete your {selectedPlan} policy.
+            Our advisor will review your requirements and get back to you with the best quote within 24 hours.
           </Text>
           <View style={s.summaryCard}>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>Insurer</Text>
-              <Text style={s.summaryValue}>{selectedPlan}</Text>
-            </View>
             <View style={s.summaryRow}>
               <Text style={s.summaryLabel}>Type</Text>
               <Text style={s.summaryValue}>{INSURANCE_TYPES.find(t => t.id === insuranceType)?.label ?? insuranceType}</Text>
             </View>
+            {params.planName ? (
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Plan</Text>
+                <Text style={s.summaryValue}>{params.planName}</Text>
+              </View>
+            ) : null}
             <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
               <Text style={s.summaryLabel}>Cover</Text>
               <Text style={[s.summaryValue, { color: Colors.primary }]}>{coverLabel}</Text>
             </View>
           </View>
+          <View style={s.infoBox}>
+            <Icon name="information-circle-outline" size={16} color={Colors.primary} />
+            <Text style={s.infoText}>
+              You'll receive a notification once your quote is ready. You can also check "My Quotes" in your profile.
+            </Text>
+          </View>
           <TouchableOpacity style={s.doneBtn} onPress={() => router.replace('/(tabs)')}>
-            <Text style={s.doneBtnText}>Back to Home →</Text>
+            <Text style={s.doneBtnText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -493,12 +420,12 @@ export default function QuoteScreen() {
 
             <TouchableOpacity
               style={[s.nextBtn, submitting && { opacity: 0.7 }]}
-              onPress={handleGetQuotes}
+              onPress={handleSubmit}
               disabled={submitting}
             >
               {submitting
                 ? <ActivityIndicator color={Colors.white} />
-                : <Text style={s.nextBtnText}>Get My Quotes →</Text>
+                : <Text style={s.nextBtnText}>Submit Quote Request →</Text>
               }
             </TouchableOpacity>
           </View>
@@ -528,25 +455,6 @@ const p = StyleSheet.create({
   lineDone:  { backgroundColor: Colors.primary },
 });
 
-const qc = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-  },
-  recommended: { paddingVertical: 5, alignItems: 'center' },
-  recommendedText: { fontSize: 10, fontWeight: '800', color: Colors.white, letterSpacing: 1 },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  avatar: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 14, fontWeight: '800' },
-  insurer: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  claims:  { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  premium: { fontSize: 18, fontWeight: '900', textAlign: 'right' },
-  premiumLbl: { fontSize: 10, color: Colors.textMuted, textAlign: 'right' },
-  features: { paddingHorizontal: 14, paddingBottom: 12, gap: 4 },
-  feature: { fontSize: 12, color: Colors.textMuted },
-  selectBtn: { margin: 14, marginTop: 6, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  selectBtnText: { fontSize: 14, fontWeight: '700', color: Colors.white },
-});
 
 const s = StyleSheet.create({
   safe:  { flex: 1, backgroundColor: Colors.white },
@@ -610,6 +518,8 @@ const s = StyleSheet.create({
   summaryRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
   summaryLabel:  { fontSize: 13, color: Colors.textMuted },
   summaryValue:  { fontSize: 14, fontWeight: '700', color: Colors.text },
+  infoBox:       { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 12, width: '100%' },
+  infoText:      { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
   doneBtn:       { backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8, width: '100%', alignItems: 'center' },
   doneBtnText:   { fontSize: 15, fontWeight: '800', color: Colors.white },
 });

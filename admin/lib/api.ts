@@ -158,14 +158,27 @@ export interface ClaimsResponse {
 }
 
 // ── Quote Types ────────────────────────────────────────────────────────────
+export interface AdminQuoteResponse {
+  insurer:      string;
+  planName:     string;
+  netPremium:   number;
+  gst:          number;
+  totalPremium: number;
+  notes?:       string;
+}
+
 export interface AdminQuote {
-  id: string;
-  userId: string;
-  type: string;
-  status: 'pending' | 'viewed' | 'converted' | 'expired';
-  createdAt: string;
-  updatedAt: string;
-  user?: { id: string; name: string; phone: string; email: string };
+  id:             string;
+  userId:         string;
+  type:           string;
+  details:        string; // JSON string
+  status:         'pending' | 'responded' | 'approved' | 'converted' | 'expired';
+  adminResponse:  AdminQuoteResponse | null;
+  adminResponseAt:string | null;
+  approvedAt:     string | null;
+  createdAt:      string;
+  updatedAt:      string;
+  user?:          { id: string; name: string; phone: string; email: string };
 }
 
 export interface QuotesResponse {
@@ -407,6 +420,16 @@ class AdminApiClient {
     });
     if (data.error) throw new Error(data.error);
     return data;
+  }
+
+  async respondToQuote(id: string, response: AdminQuoteResponse): Promise<void> {
+    const { data } = await this.instance.post(`/quotes/${id}/respond`, response);
+    if (data.error) throw new Error(data.error);
+  }
+
+  async confirmPayment(policyId: string, payload: { documentUrl?: string; providerRef?: string; notes?: string }): Promise<void> {
+    const { data } = await this.instance.post(`/policies/${policyId}/confirm-payment`, payload);
+    if (data.error) throw new Error(data.error);
   }
 
   // ── Analytics ──────────────────────────────────────────────────────────

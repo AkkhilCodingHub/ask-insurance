@@ -279,6 +279,13 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
+            icon="chatbubble-ellipses-outline"
+            label="My Quotes"
+            sub="Track quote requests & responses"
+            onPress={() => router.push('/my-quotes')}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
             icon="card-outline"
             label="Payment History"
             sub={payments.length > 0 ? `${payments.filter(p => p.status === 'success').length} successful payments` : 'Premiums & receipts'}

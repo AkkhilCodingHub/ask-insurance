@@ -804,6 +804,113 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
   }
 });
 
+// ── Admin: respond to a quote request ────────────────────────────────────────
+router.post('/quotes/:id/respond', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const respondSchema = z.object({
+      insurer:      z.string().min(1),
+      planName:     z.string().min(1),
+      netPremium:   z.number().positive(),
+      gst:          z.number().min(0),
+      totalPremium: z.number().positive(),
+      notes:        z.string().optional(),
+    });
+    const data = respondSchema.parse(req.body);
+
+    const quote = await prisma.quote.findUnique({ where: { id } });
+    if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
+    if (!['pending', 'responded'].includes(quote.status)) {
+      res.status(400).json({ error: 'Quote cannot be updated at this stage' }); return;
+    }
+
+    const updated = await prisma.quote.update({
+      where: { id },
+      data: {
+        adminResponse:   JSON.stringify(data),
+        adminResponseAt: new Date(),
+        status:          'responded',
+      },
+      include: { user: { select: { id: true, name: true, phone: true } } }
+    });
+
+    // Notify user
+    await prisma.notification.create({
+      data: {
+        userId: quote.userId,
+        type:   'info',
+        title:  'Your Quote is Ready!',
+        body:   `We've received a quote for your ${quote.type} insurance from ${data.insurer}. Total premium: ₹${data.totalPremium.toLocaleString('en-IN')}. Open the app to review and approve.`,
+      }
+    }).catch(() => {});
+
+    res.json({ quote: updated });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Admin: confirm payment + upload policy document ───────────────────────────
+router.post('/policies/:id/confirm-payment', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const schema = z.object({
+      documentUrl:  z.string().url().optional(),
+      providerRef:  z.string().optional(),
+      notes:        z.string().optional(),
+    });
+    const { documentUrl, providerRef, notes } = schema.parse(req.body);
+
+    const policy = await prisma.policy.findUnique({ where: { id } });
+    if (!policy) { res.status(404).json({ error: 'Policy not found' }); return; }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const p = await tx.policy.update({
+        where: { id },
+        data: {
+          status:        'active',
+          paymentStatus: 'paid',
+          documentUrl:   documentUrl ?? policy.documentUrl,
+          notes:         notes ?? policy.notes,
+        }
+      });
+
+      // Create payment record
+      await tx.payment.create({
+        data: {
+          amount:      policy.premium,
+          currency:    'INR',
+          status:      'success',
+          provider:    'manual',
+          providerRef: providerRef ?? `MANUAL-${Date.now()}`,
+          policyId:    id,
+          userId:      policy.userId,
+        }
+      });
+
+      return p;
+    });
+
+    // Notify user
+    await prisma.notification.create({
+      data: {
+        userId: policy.userId,
+        type:   'info',
+        title:  'Payment Confirmed — Policy Active!',
+        body:   `Your ${policy.type} policy (${policy.policyNumber}) is now active.${documentUrl ? ' Your policy document is available in the app.' : ''}`,
+      }
+    }).catch(() => {});
+
+    res.json({ policy: updated });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 router.get('/analytics', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {

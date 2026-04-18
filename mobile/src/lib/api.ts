@@ -327,14 +327,19 @@ export interface ApiPayment {
 }
 
 export interface QuoteOffer {
-  id:          string;
-  insurer:     string;
-  premium:     number;
-  sumInsured:  number;
-  rating:      number;
-  claimsRatio: string;
-  features:    string[];
-  recommended: boolean;
+  id:           string;
+  planId:       string;
+  planName:     string;
+  insurer:      string;
+  insurerShort: string;
+  netPremium:   number;
+  gst:          number;
+  premium:      number; // total = net + gst
+  sumInsured:   number;
+  rating:       number;
+  claimsRatio:  string;
+  features:     string[];
+  recommended:  boolean;
 }
 
 export interface ApiQuote {
@@ -446,14 +451,32 @@ export const claimsApi = {
 // ── Quotes ────────────────────────────────────────────────────────────────────
 
 export const quotesApi = {
-  create: (type: string, details: Record<string, unknown>) =>
+  create: (type: string, details: Record<string, unknown>, planId?: string) =>
     request<{ quote: ApiQuote }>('/api/quotes', {
       method: 'POST',
-      body:   JSON.stringify({ type, details })
+      body:   JSON.stringify({ type, details, planId })
     }, true),
   list: () =>
-    request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true)
+    request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true),
+  approve: (quoteId: string) =>
+    request<{ policy: ApiPolicy }>(`/api/quotes/${quoteId}/approve`, {
+      method: 'POST',
+    }, true),
 };
+
+export interface ApiApplication {
+  id:           string;
+  policyNumber: string;
+  status:       string;
+  paymentStatus:string;
+  plan:         string;
+  insurer:      string;
+  sumInsured:   number;
+  netPremium:   number;
+  gst:          number;
+  totalPremium: number;
+  message:      string;
+}
 
 // ── Payments ──────────────────────────────────────────────────────────────────
 

@@ -44,6 +44,7 @@ export default function RootLayout() {
 
         {/* Profile sub-screens */}
         <Stack.Screen name="my-policies"  options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="my-quotes"    options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="payments"     options={{ animation: 'slide_from_right' }} />
       </Stack>
     </AuthProvider>

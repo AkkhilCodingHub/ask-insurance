@@ -358,7 +358,25 @@ export default function PoliciesPage() {
                   <td style={{ padding: "14px 16px", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                     {new Date(p.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
-                  <td style={{ padding: "14px 16px" }}><StatusBadge status={p.status} /></td>
+                  <td style={{ padding: "14px 16px" }}>
+                    <StatusBadge status={p.status} />
+                    {p.paymentStatus === "pending" && p.status === "pending" && (
+                      <button
+                        onClick={async () => {
+                          const docUrl = prompt("Policy document URL (optional):", "");
+                          const ref    = prompt("Payment reference / UTR (optional):", "");
+                          try {
+                            await adminApi.confirmPayment(p.id, { documentUrl: docUrl || undefined, providerRef: ref || undefined });
+                            load(page);
+                          } catch (e) {
+                            alert(e instanceof Error ? e.message : "Failed");
+                          }
+                        }}
+                        style={{ marginTop: 6, display: "block", padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#fff", background: "#059669", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                        ✓ Confirm Payment
+                      </button>
+                    )}
+                  </td>
                 </tr>
               );
             })}

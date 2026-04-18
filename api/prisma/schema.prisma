@@ -100,9 +100,11 @@ model Policy {
   premium       Float
   startDate     DateTime
   endDate       DateTime
-  status        String    @default("active") // active, expired, cancelled
+  status        String    @default("active") // pending, active, expired, cancelled
   paymentStatus String    @default("pending") // pending, paid, failed
   cancelledAt   DateTime?
+  documentUrl   String?   // URL to uploaded policy PDF
+  notes         String?   @db.Text // admin notes visible to customer
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -157,14 +159,18 @@ model Claim {
 }
 
 model Quote {
-  id        String   @id @default(cuid())
-  type      String // life, health, motor, travel, home, business
-  details   String @db.Text // JSON with quote parameters
-  providers String @db.Text // JSON array of provider quotes
-  status    String   @default("active") // active, expired, converted
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  type            String
+  details         String    @db.Text  // JSON: user requirements (age, cover, etc.)
+  providers       String    @db.Text  // JSON: kept for legacy, empty for new flow
+  status          String    @default("pending") // pending, responded, approved, converted, expired
+  // Admin's actual quote response
+  adminResponse   String?   @db.Text  // JSON: { insurer, planName, netPremium, gst, totalPremium, notes }
+  adminResponseAt DateTime?
+  approvedAt      DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
   userId   String
