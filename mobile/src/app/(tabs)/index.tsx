@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Dimensions, RefreshControl,
+  StyleSheet, Dimensions, RefreshControl, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,65 @@ import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 
 const { width: W } = Dimensions.get('window');
+
+// ── Shimmer ───────────────────────────────────────────────────────────────────
+
+function Shimmer({ width, height, borderRadius = 8, style }: {
+  width: number | string; height: number; borderRadius?: number; style?: object;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 850, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 850, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [anim]);
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] });
+  return (
+    <Animated.View
+      style={[{ width, height, borderRadius, backgroundColor: Colors.border, opacity }, style]}
+    />
+  );
+}
+
+function RecommendedCardSkeleton() {
+  return (
+    <View style={sk.card}>
+      <View style={sk.header}>
+        <View style={sk.headerTop}>
+          <Shimmer width={38} height={38} borderRadius={19} />
+          <Shimmer width={70} height={14} borderRadius={6} style={{ marginLeft: 8 }} />
+        </View>
+        <Shimmer width="80%" height={16} borderRadius={6} style={{ marginTop: 12 }} />
+        <Shimmer width="55%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
+      </View>
+      <View style={sk.metrics}>
+        <View style={sk.metricBox}>
+          <Shimmer width={36} height={9}  borderRadius={4} />
+          <Shimmer width={52} height={14} borderRadius={5} style={{ marginTop: 4 }} />
+        </View>
+        <View style={[sk.metricBox, { alignItems: 'center' }]}>
+          <Shimmer width={48} height={9}  borderRadius={4} />
+          <Shimmer width={40} height={14} borderRadius={5} style={{ marginTop: 4 }} />
+        </View>
+        <View style={[sk.metricBox, { alignItems: 'flex-end' }]}>
+          <Shimmer width={36} height={9}  borderRadius={4} />
+          <Shimmer width={44} height={14} borderRadius={5} style={{ marginTop: 4 }} />
+        </View>
+      </View>
+      <View style={sk.features}>
+        <Shimmer width="90%" height={11} borderRadius={5} />
+        <Shimmer width="70%" height={11} borderRadius={5} style={{ marginTop: 6 }} />
+      </View>
+      <View style={sk.footer}>
+        <Shimmer width={52} height={20} borderRadius={10} />
+        <Shimmer width={90} height={30} borderRadius={8} />
+      </View>
+    </View>
+  );
+}
 
 const QUICK_ACTIONS = [
   { icon: 'document-text-outline', label: 'Compare\nPlans',  route: '/plans'   },
@@ -268,8 +327,8 @@ export default function HomeTab() {
             </View>
           )}
 
-          {/* Recommended plans */}
-          {featured.length > 0 && (
+          {/* Recommended plans — skeletons while loading */}
+          {(featured.length > 0 || !dashboard) && (
             <View style={s.section}>
               <View style={s.sectionRow}>
                 <Text style={s.sectionTitle}>Recommended</Text>
@@ -277,6 +336,12 @@ export default function HomeTab() {
                   <Text style={s.viewAll}>See all →</Text>
                 </TouchableOpacity>
               </View>
+
+              {!dashboard ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recScroll} scrollEnabled={false}>
+                  {[0, 1, 2].map(i => <RecommendedCardSkeleton key={i} />)}
+                </ScrollView>
+              ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -366,6 +431,7 @@ export default function HomeTab() {
                   );
                 })}
               </ScrollView>
+              )}
             </View>
           )}
 
@@ -688,4 +754,26 @@ const s = StyleSheet.create({
   },
   trustItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   trustText: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
+});
+
+const sk = StyleSheet.create({
+  card: {
+    width: 220, backgroundColor: Colors.white,
+    borderRadius: 16, marginRight: 14,
+    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+  },
+  header:    { padding: 14, backgroundColor: Colors.bg },
+  headerTop: { flexDirection: 'row', alignItems: 'center' },
+  metrics: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  metricBox: { flex: 1 },
+  features:  { paddingHorizontal: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 10, gap: 4 },
+  footer: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
 });

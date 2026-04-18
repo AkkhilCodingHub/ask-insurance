@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  ScrollView, View, Text, TouchableOpacity,
+  FlatList, View, Text, TouchableOpacity,
   TextInput, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,13 +9,20 @@ import { plansApi, ApiPlan } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 
-const CATEGORIES = ['All', 'life', 'health', 'motor', 'travel', 'home'];
-const CATEGORY_LABELS: Record<string, string> = {
-  All: 'All', life: 'Life', health: 'Health',
-  motor: 'Motor', travel: 'Travel', home: 'Home'
-};
+const PAGE_SIZE = 10;
+
+const CATEGORIES: { key: string; label: string; icon: string; color: string }[] = [
+  { key: 'All',         label: 'All',         icon: 'grid-outline',        color: Colors.primary  },
+  { key: 'life',        label: 'Life',         icon: 'heart-outline',       color: '#1580FF'       },
+  { key: 'health',      label: 'Health',       icon: 'medkit-outline',      color: '#059669'       },
+  { key: 'motor',       label: 'Motor',        icon: 'car-outline',         color: '#D97706'       },
+  { key: 'travel',      label: 'Travel',       icon: 'airplane-outline',    color: '#0891B2'       },
+  { key: 'home',        label: 'Home',         icon: 'home-outline',        color: '#7C3AED'       },
+  { key: 'business',    label: 'Business',     icon: 'business-outline',    color: '#DC2626'       },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
 function planColor(plan: ApiPlan): string {
   return plan.insurer?.brandColor ?? '#1580FF';
 }
@@ -38,14 +45,12 @@ function formatCover(v: number): string {
 }
 
 function parsedFeatures(plan: ApiPlan): string[] {
-  try {
-    return JSON.parse(plan.features) as string[];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(plan.features) as string[]; }
+  catch { return []; }
 }
 
-// ── Plan card ─────────────────────────────────────────────────────────────────
+// ── Plan Card ─────────────────────────────────────────────────────────────────
+
 function PlanCard({ plan }: { plan: ApiPlan }) {
   const router   = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -89,7 +94,7 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
         </View>
         <View style={[pc.metaItem, { alignItems: 'flex-end' }]}>
           <Text style={pc.metaLabel}>CATEGORY</Text>
-          <Text style={pc.metaValue}>{CATEGORY_LABELS[plan.type] ?? plan.type}</Text>
+          <Text style={pc.metaValue}>{CATEGORIES.find(c => c.key === plan.type)?.label ?? plan.type}</Text>
         </View>
       </View>
 
@@ -123,40 +128,119 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
   );
 }
 
-// ── Main screen ───────────────────────────────────────────────────────────────
+// ── Main Screen ───────────────────────────────────────────────────────────────
+
 export default function PlansTab() {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [search, setSearch]     = useState('');
-  const [plans, setPlans]       = useState<ApiPlan[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [search, setSearch]   = useState('');
+  const [plans, setPlans]     = useState<ApiPlan[]>([]);
+  const [page, setPage]       = useState(1);
+  const [total, setTotal]     = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading]     = useState(true);   // initial / filter change
+  const [loadingMore, setLoadingMore] = useState(false); // next-page load
+  const [refreshing, setRefreshing]   = useState(false);
+  const [error, setError]     = useState<string | null>(null);
 
-  const fetchPlans = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+  // Debounce timer ref for search
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch a specific page; if page === 1 replace list, else append
+  const fetchPage = useCallback(async (
+    pg: number,
+    cat: string,
+    q: string,
+    isRefresh = false
+  ) => {
+    if (pg === 1) {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
     try {
-      const params: { type?: string; search?: string } = {};
-      if (activeCategory !== 'All') params.type = activeCategory;
-      if (search.trim())             params.search = search.trim();
-      const { plans: data } = await plansApi.list(params);
-      setPlans(data);
-    } catch (e) {
+      const res = await plansApi.list({
+        page: pg,
+        limit: PAGE_SIZE,
+        type: cat !== 'All' ? cat : undefined,
+        search: q.trim() || undefined,
+      });
+      if (pg === 1) setPlans(res.plans);
+      else setPlans(prev => [...prev, ...res.plans]);
+      setTotal(res.total);
+      setHasMore(res.hasMore);
+      setPage(pg);
+    } catch {
       setError('Could not load plans. Please try again.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [activeCategory, search]);
+  }, []);
 
+  // Reset to page 1 when category changes immediately
   useEffect(() => {
-    const tid = setTimeout(() => { fetchPlans(); }, search ? 400 : 0);
-    return () => clearTimeout(tid);
-  }, [fetchPlans, search]);
+    fetchPage(1, activeCategory, search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory]);
 
-  // Re-fetch when category changes (immediately)
-  useEffect(() => { fetchPlans(); }, [activeCategory]);
+  // Debounce search
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchPage(1, activeCategory, search);
+    }, 400);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const handleLoadMore = () => {
+    if (!loadingMore && !loading && hasMore) {
+      fetchPage(page + 1, activeCategory, search);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchPage(1, activeCategory, search, true);
+  };
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  const renderItem = useCallback(({ item }: { item: ApiPlan }) => (
+    <PlanCard plan={item} />
+  ), []);
+
+  const keyExtractor = useCallback((item: ApiPlan) => item.id, []);
+
+  const ListHeaderComponent = total > 0 ? (
+    <Text style={s.count}>{total} plan{total !== 1 ? 's' : ''}</Text>
+  ) : null;
+
+  const ListEmptyComponent = !loading ? (
+    <View style={s.empty}>
+      <Icon name="search-outline" size={40} color={Colors.border} />
+      <Text style={s.emptyTitle}>No plans found</Text>
+      <Text style={s.emptySub}>Try a different category or search term</Text>
+    </View>
+  ) : null;
+
+  const ListFooterComponent = (
+    <View style={s.footer}>
+      {loadingMore && (
+        <View style={s.footerLoading}>
+          <ActivityIndicator color={Colors.primary} size="small" />
+          <Text style={s.footerText}>Loading more plans…</Text>
+        </View>
+      )}
+      {!loadingMore && !hasMore && plans.length > 0 && (
+        <Text style={s.footerEnd}>
+          Showing all {plans.length} of {total} plan{total !== 1 ? 's' : ''}
+        </Text>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -181,72 +265,75 @@ export default function PlansTab() {
           )}
         </View>
 
-        <ScrollView
+        <FlatList
           horizontal
+          data={CATEGORIES}
+          keyExtractor={c => c.key}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.filterList}
-        >
-          {CATEGORIES.map(c => (
-            <TouchableOpacity
-              key={c}
-              onPress={() => setActiveCategory(c)}
-              style={[s.chip, activeCategory === c && s.chipActive]}
-            >
-              <Text style={[s.chipText, activeCategory === c && s.chipTextActive]}>
-                {CATEGORY_LABELS[c] ?? c}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          renderItem={({ item: cat }) => {
+            const active = activeCategory === cat.key;
+            return (
+              <TouchableOpacity
+                onPress={() => setActiveCategory(cat.key)}
+                style={[s.chip, active && { backgroundColor: cat.color, borderColor: cat.color }]}
+              >
+                <Icon
+                  name={cat.icon as any}
+                  size={14}
+                  color={active ? Colors.white : cat.color}
+                />
+                <Text style={[s.chipText, active && s.chipTextActive]}>
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
       </View>
 
+      {/* Error state */}
+      {error && !loading && (
+        <View style={s.errorBanner}>
+          <Icon name="cloud-offline-outline" size={16} color={Colors.error} />
+          <Text style={s.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => fetchPage(1, activeCategory, search)}>
+            <Text style={s.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Initial loading */}
+      {loading && (
+        <View style={s.centred}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
+
       {/* Plan list */}
-      <ScrollView
-        style={s.list}
-        contentContainerStyle={{ padding: 16, paddingBottom: BottomTabInset + 24 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => fetchPlans(true)} />
-        }
-      >
-        {loading && (
-          <View style={s.centred}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        )}
-
-        {!loading && error && (
-          <View style={s.empty}>
-            <Icon name="cloud-offline-outline" size={40} color={Colors.border} />
-            <Text style={s.emptyTitle}>Couldn't load plans</Text>
-            <Text style={s.emptySub}>{error}</Text>
-            <TouchableOpacity onPress={() => fetchPlans()} style={s.retryBtn}>
-              <Text style={s.retryText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!loading && !error && (
-          <>
-            <Text style={s.count}>
-              {plans.length} plan{plans.length !== 1 ? 's' : ''} found
-            </Text>
-
-            {plans.map(plan => <PlanCard key={plan.id} plan={plan} />)}
-
-            {plans.length === 0 && (
-              <View style={s.empty}>
-                <Icon name="search-outline" size={40} color={Colors.border} />
-                <Text style={s.emptyTitle}>No plans found</Text>
-                <Text style={s.emptySub}>Try a different category or search term</Text>
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
+      {!loading && (
+        <FlatList
+          data={plans}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.primary} />
+          }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={ListHeaderComponent}
+          ListEmptyComponent={ListEmptyComponent}
+          ListFooterComponent={ListFooterComponent}
+          removeClippedSubviews
+        />
+      )}
     </SafeAreaView>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: Colors.white },
@@ -268,23 +355,35 @@ const s = StyleSheet.create({
 
   filterList: { gap: 8, paddingBottom: 12 },
   chip: {
-    paddingHorizontal: 14, paddingVertical: 7,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 13, paddingVertical: 7,
     borderRadius: 20, borderWidth: 1.5,
     borderColor: Colors.border, backgroundColor: Colors.white,
   },
-  chipActive:     { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipActive:     {},
   chipText:       { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
   chipTextActive: { color: Colors.white },
 
-  list:  { flex: 1, backgroundColor: Colors.bg },
-  count: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', marginBottom: 14, letterSpacing: 0.3 },
+  listContent: { padding: 16, paddingBottom: BottomTabInset + 24 },
+  count:       { fontSize: 11, color: Colors.textLight, fontWeight: '500', marginBottom: 12, letterSpacing: 0.2 },
 
-  centred: { paddingTop: 80, alignItems: 'center' },
-  empty:   { alignItems: 'center', paddingTop: 60, gap: 8 },
+  centred:    { flex: 1, paddingTop: 80, alignItems: 'center' },
+  empty:      { alignItems: 'center', paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   emptySub:   { fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
-  retryBtn:   { marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: Colors.primary, borderRadius: 10 },
-  retryText:  { fontSize: 14, fontWeight: '700', color: Colors.white },
+
+  footer:        { paddingTop: 12, paddingBottom: 8, alignItems: 'center' },
+  footerLoading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  footerText:    { fontSize: 13, color: Colors.textMuted },
+  footerEnd:     { fontSize: 12, color: Colors.textLight, fontWeight: '500' },
+
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#FECACA',
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.error },
+  retryText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 });
 
 const pc = StyleSheet.create({
@@ -293,7 +392,7 @@ const pc = StyleSheet.create({
     borderRadius: 16, marginBottom: 14,
     borderWidth: 1, borderColor: Colors.border,
   },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
+  badge:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   badgeText: { fontSize: 9, fontWeight: '700' },
 
   top: {
@@ -335,7 +434,7 @@ const pc = StyleSheet.create({
     padding: 14, paddingTop: 12,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
-  detailBtn:     {
+  detailBtn: {
     flex: 1, paddingVertical: 9, borderRadius: 10,
     borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center',
     backgroundColor: Colors.white,

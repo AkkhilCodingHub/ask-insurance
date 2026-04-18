@@ -4,38 +4,46 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
-// GET /api/plans — list active plans (public, optionally authenticated)
+// GET /api/plans — list active plans with pagination
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const type   = typeof req.query.type   === 'string' ? req.query.type   : undefined;
-    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const type     = typeof req.query.type   === 'string' ? req.query.type   : undefined;
+    const search   = typeof req.query.search === 'string' ? req.query.search : undefined;
     const featured = req.query.featured === 'true' ? true : undefined;
+    const page     = Math.max(1, parseInt(req.query.page  as string) || 1);
+    const limit    = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const skip     = (page - 1) * limit;
 
-    const plans = await prisma.plan.findMany({
-      where: {
-        isActive: true,
-        ...(type     ? { type }                                                           : {}),
-        ...(featured ? { isFeatured: true }                                              : {}),
-        ...(search   ? {
-          OR: [
-            { name:        { contains: search } },
-            { description: { contains: search } },
-            { insurer:     { name: { contains: search } } }
-          ]
-        } : {})
-      },
-      include: {
-        insurer: {
-          select: {
-            id: true, name: true, shortName: true,
-            brandColor: true, claimsRatio: true, rating: true, logo: true
-          }
+    const where = {
+      isActive: true,
+      ...(type     ? { type }          : {}),
+      ...(featured ? { isFeatured: true } : {}),
+      ...(search   ? {
+        OR: [
+          { name:        { contains: search } },
+          { description: { contains: search } },
+          { insurer:     { name: { contains: search } } }
+        ]
+      } : {})
+    };
+
+    const include = {
+      insurer: {
+        select: {
+          id: true, name: true, shortName: true,
+          brandColor: true, claimsRatio: true, rating: true, logo: true
         }
-      },
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }]
-    });
+      }
+    };
 
-    res.json({ plans });
+    const orderBy: any[] = [{ isFeatured: 'desc' }, { createdAt: 'desc' }];
+
+    const [plans, total] = await Promise.all([
+      prisma.plan.findMany({ where, include, orderBy, skip, take: limit }),
+      prisma.plan.count({ where })
+    ]);
+
+    res.json({ plans, total, page, limit, hasMore: skip + plans.length < total });
     return;
   } catch (error) {
     console.error(error);

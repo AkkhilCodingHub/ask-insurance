@@ -131,11 +131,13 @@ export default function ClaimsTab() {
 
   // File claim form state
   const [step, setStep]         = useState(1);
-  const [claimType, setClaimType] = useState('Health');
   const [policyId, setPolicyId] = useState('');
   const [amount, setAmount]     = useState('');
   const [desc, setDesc]         = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const activePolicies = policies.filter(p => p.status === 'active');
+  const selectedPolicy = activePolicies.find(p => p.id === policyId) ?? null;
 
   const loadClaims = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -160,16 +162,15 @@ export default function ClaimsTab() {
       alert({ type: 'warning', title: 'Missing info', message: 'Please fill in all fields.' });
       return;
     }
-    const policy = policies.find(p => p.id === policyId) ?? policies[0];
-    if (!policy) {
-      alert({ type: 'warning', title: 'No policy', message: 'You need an active policy to file a claim.' });
+    if (!selectedPolicy) {
+      alert({ type: 'warning', title: 'No policy selected', message: 'Please select an active policy to file a claim.' });
       return;
     }
     setSubmitting(true);
     try {
       const { claim } = await claimsApi.create({
-        policyId: policy.id,
-        type: claimType,
+        policyId: selectedPolicy.id,
+        type: selectedPolicy.type,
         amount: Number(amount),
         description: desc,
         incidentDate: new Date().toISOString()
@@ -187,7 +188,7 @@ export default function ClaimsTab() {
   };
 
   const openModal = () => {
-    setStep(1); setAmount(''); setDesc('');
+    setStep(1); setAmount(''); setDesc(''); setPolicyId('');
     setModalVisible(true);
   };
 
@@ -258,45 +259,49 @@ export default function ClaimsTab() {
           <ScrollView contentContainerStyle={m.content} keyboardShouldPersistTaps="handled">
             {step === 1 && (
               <View style={m.stepContent}>
-                <Text style={m.stepTitle}>Select insurance type</Text>
-                {['Health', 'Life', 'Motor', 'Travel'].map(type => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[m.typeOption, claimType === type && m.typeOptionActive]}
-                    onPress={() => setClaimType(type)}
-                  >
-                    <Text style={[m.typeText, claimType === type && { color: Colors.primary }]}>
-                      {type === 'Health' ? '🏥' : type === 'Life' ? '❤️' : type === 'Motor' ? '🚗' : '✈️'} {type}
-                    </Text>
-                    {claimType === type && <Text style={{ color: Colors.primary }}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
+                <Text style={m.stepTitle}>Select your policy</Text>
+                <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 16, lineHeight: 19 }}>
+                  Claims can only be filed against your active policies.
+                </Text>
 
-                {/* Policy selector */}
-                {policies.length > 0 && (
-                  <>
-                    <Text style={[m.stepTitle, { fontSize: 14, marginTop: 16 }]}>Select policy</Text>
-                    {policies.map(p => (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={[m.typeOption, policyId === p.id && m.typeOptionActive]}
-                        onPress={() => setPolicyId(p.id)}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[m.typeText, policyId === p.id && { color: Colors.primary }]}>
-                            {p.provider}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
-                            {p.policyNumber} · {p.type}
-                          </Text>
-                        </View>
-                        {policyId === p.id && <Text style={{ color: Colors.primary }}>✓</Text>}
-                      </TouchableOpacity>
-                    ))}
-                  </>
+                {activePolicies.length === 0 ? (
+                  <View style={m.noPolicies}>
+                    <Icon name="shield-outline" size={36} color={Colors.border} />
+                    <Text style={m.noPoliciesText}>No active policies found.</Text>
+                    <Text style={{ fontSize: 12, color: Colors.textMuted, textAlign: 'center' }}>
+                      You can only file a claim once you have an active policy.
+                    </Text>
+                  </View>
+                ) : (
+                  activePolicies.map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[m.policyOption, policyId === p.id && m.policyOptionActive]}
+                      onPress={() => setPolicyId(p.id)}
+                    >
+                      <View style={[m.policyTypeTag, { backgroundColor: Colors.primaryLight }]}>
+                        <Text style={[m.policyTypeText, { color: Colors.primary }]}>
+                          {p.type.toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[m.policyProvider, policyId === p.id && { color: Colors.primary }]}>
+                          {p.provider}
+                        </Text>
+                        <Text style={m.policyMeta}>
+                          {p.policyNumber} · Cover ₹{p.sumInsured.toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                      {policyId === p.id && <Icon name="checkmark-circle" size={20} color={Colors.primary} />}
+                    </TouchableOpacity>
+                  ))
                 )}
 
-                <TouchableOpacity style={m.nextBtn} onPress={() => setStep(2)}>
+                <TouchableOpacity
+                  style={[m.nextBtn, !policyId && { opacity: 0.4 }]}
+                  onPress={() => setStep(2)}
+                  disabled={!policyId}
+                >
                   <Text style={m.nextBtnText}>Next →</Text>
                 </TouchableOpacity>
               </View>
@@ -340,7 +345,7 @@ export default function ClaimsTab() {
                 <View style={m.summary}>
                   <View style={m.summaryRow}>
                     <Text style={m.summaryLabel}>Type</Text>
-                    <Text style={m.summaryValue}>{claimType}</Text>
+                    <Text style={m.summaryValue}>{selectedPolicy?.type ?? '—'}</Text>
                   </View>
                   <View style={m.summaryRow}>
                     <Text style={m.summaryLabel}>Amount</Text>
@@ -454,4 +459,17 @@ const m = StyleSheet.create({
   summaryRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
   summaryLabel:{ fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
   summaryValue:{ fontSize: 14, fontWeight: '700', color: Colors.text },
+  // Policy selector styles
+  policyOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 14,
+    padding: 14, backgroundColor: Colors.bg,
+  },
+  policyOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
+  policyTypeTag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  policyTypeText:{ fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  policyProvider:{ fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  policyMeta:    { fontSize: 12, color: Colors.textMuted },
+  noPolicies:    { alignItems: 'center', paddingVertical: 32, gap: 8 },
+  noPoliciesText:{ fontSize: 15, fontWeight: '700', color: Colors.text },
 });

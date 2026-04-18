@@ -405,13 +405,17 @@ export const usersApi = {
 // ── Plans ─────────────────────────────────────────────────────────────────────
 
 export const plansApi = {
-  list: (params?: { type?: string; search?: string; featured?: boolean }) => {
+  list: (params?: { type?: string; search?: string; featured?: boolean; page?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.type)     qs.set('type',     params.type);
     if (params?.search)   qs.set('search',   params.search);
     if (params?.featured) qs.set('featured', 'true');
+    if (params?.page)     qs.set('page',     String(params.page));
+    if (params?.limit)    qs.set('limit',    String(params.limit));
     const query = qs.toString();
-    return request<{ plans: ApiPlan[] }>(`/api/plans${query ? `?${query}` : ''}`);
+    return request<{ plans: ApiPlan[]; total: number; page: number; limit: number; hasMore: boolean }>(
+      `/api/plans${query ? `?${query}` : ''}`
+    );
   },
   get: (id: string) =>
     request<{ plan: ApiPlan }>(`/api/plans/${id}`)
