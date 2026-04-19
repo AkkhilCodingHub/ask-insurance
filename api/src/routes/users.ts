@@ -137,4 +137,33 @@ router.get('/dashboard', authenticate, async (req: Request, res: Response): Prom
   }
 });
 
+router.put('/push-token', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { token } = z.object({ token: z.string().min(1) }).parse(req.body);
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { pushToken: token },
+      select: { id: true }
+    });
+
+    res.json({ success: true, userId: user.id });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 export { router as usersRouter };

@@ -485,8 +485,15 @@ export interface ApiApplication {
 // ── Payments ──────────────────────────────────────────────────────────────────
 
 export const paymentsApi = {
-  list: () =>
-    request<{ payments: ApiPayment[] }>('/api/payments', {}, true)
+  list: () => request<{ payments: ApiPayment[] }>('/api/payments', {}, true),
+  createRazorpayLink: (policyId: string) =>
+    request<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
+      '/api/payments/razorpay/create-link',
+      { method: 'POST', body: JSON.stringify({ policyId }) },
+      true
+    ),
+  savePushToken: (token: string) =>
+    request<void>('/api/users/push-token', { method: 'PUT', body: JSON.stringify({ token }) }, true),
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────

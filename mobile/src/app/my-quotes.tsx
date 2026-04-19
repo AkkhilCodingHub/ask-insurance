@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal,
-  RefreshControl, ActivityIndicator, TextInput, Clipboard, Alert,
+  RefreshControl, ActivityIndicator, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { quotesApi, ApiError } from '@/lib/api';
+import { quotesApi, paymentsApi, ApiError } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
@@ -78,37 +78,68 @@ function statusToStep(s: string) {
 
 function typeInitials(type: string) { return type.slice(0, 2).toUpperCase(); }
 
-// ── Payment Sheet ─────────────────────────────────────────────────────────────
+// ── Payment Sheet (Razorpay) ──────────────────────────────────────────────────
 
 function PaymentSheet({
-  visible, quote, onClose, onSubmit, submitting,
+  visible, quote, onClose, onDone,
 }: {
   visible: boolean; quote: QuoteRequest | null;
-  onClose: () => void; onSubmit: (ref: string) => void; submitting: boolean;
+  onClose: () => void; onDone: () => void;
 }) {
-  const [ref, setRef] = useState('');
-  const color = quote ? (TYPE_COLOR[quote.type] ?? Colors.primary) : Colors.primary;
-  const ar = quote?.adminResponse;
+  const [loading, setLoading]   = useState(false);
+  const [payUrl, setPayUrl]     = useState<string | null>(null);
+  const [err, setErr]           = useState<string | null>(null);
+  const { alert } = useDialog();
 
-  const copyUPI = () => {
-    Clipboard.setString(PAYMENT_UPI);
-    Alert.alert('Copied', `${PAYMENT_UPI} copied to clipboard`);
+  const color = quote ? (TYPE_COLOR[quote.type] ?? Colors.primary) : Colors.primary;
+  const ar    = quote?.adminResponse;
+
+  // Reset when sheet opens for a new quote
+  React.useEffect(() => {
+    if (visible) { setPayUrl(null); setErr(null); }
+  }, [visible, quote?.id]);
+
+  const handleAccept = async () => {
+    if (!quote) return;
+    setLoading(true); setErr(null);
+    try {
+      // 1. Accept quote → creates pending policy
+      await quotesApi.approve(quote.id);
+      // 2. Get Razorpay payment link for the created policy
+      //    The backend returns the link from the pending policy linked to this quote
+      const { paymentUrl } = await paymentsApi.createRazorpayLink(quote.id);
+      setPayUrl(paymentUrl);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openPayment = async () => {
+    if (!payUrl) return;
+    try {
+      await Linking.openURL(payUrl);
+      // After returning from browser, reload quotes
+      onDone();
+    } catch {
+      alert({ type: 'error', title: 'Error', message: 'Could not open payment page.' });
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={ps.safe}>
-        {/* Header */}
         <View style={ps.header}>
           <TouchableOpacity onPress={onClose} style={ps.closeBtn}>
             <Icon name="close" size={20} color={Colors.textMuted} />
           </TouchableOpacity>
-          <Text style={ps.title}>Complete Payment</Text>
+          <Text style={ps.title}>Accept & Pay</Text>
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={ps.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {/* Amount card */}
+        <ScrollView contentContainerStyle={ps.body} showsVerticalScrollIndicator={false}>
+          {/* Premium summary */}
           {ar && (
             <View style={[ps.amountCard, { borderTopColor: color }]}>
               <View style={ps.amountTop}>
@@ -133,65 +164,62 @@ function PaymentSheet({
                 </View>
                 <View style={[ps.breakRow, ps.breakTotal]}>
                   <Text style={ps.breakTotalLabel}>Total Due</Text>
-                  <Text style={[ps.breakTotalVal, { color }]}>{fmtInr(ar.totalPremium)}<Text style={ps.breakTotalSub}> / yr</Text></Text>
+                  <Text style={[ps.breakTotalVal, { color }]}>
+                    {fmtInr(ar.totalPremium)}
+                    <Text style={ps.breakTotalSub}> / yr</Text>
+                  </Text>
                 </View>
               </View>
+              {ar.notes ? <Text style={ps.notes}>"{ar.notes}"</Text> : null}
             </View>
           )}
 
-          {/* UPI */}
-          <Text style={ps.sectionHead}>Pay via UPI</Text>
-          <TouchableOpacity style={ps.upiRow} onPress={copyUPI} activeOpacity={0.75}>
-            <View style={[ps.upiIcon, { backgroundColor: Colors.primaryLight }]}>
-              <Text style={ps.upiIconText}>UPI</Text>
+          {err && (
+            <View style={ps.errBox}>
+              <Icon name="alert-circle-outline" size={15} color={Colors.error} />
+              <Text style={ps.errText}>{err}</Text>
             </View>
-            <Text style={ps.upiId}>{PAYMENT_UPI}</Text>
-            <View style={ps.copyBtn}>
-              <Icon name="copy-outline" size={14} color={Colors.primary} />
-              <Text style={ps.copyText}>Copy</Text>
-            </View>
-          </TouchableOpacity>
+          )}
 
-          {/* Bank */}
-          <Text style={ps.sectionHead}>Bank Transfer</Text>
-          <View style={ps.bankCard}>
-            {[
-              ['Bank', 'HDFC Bank'],
-              ['Account No.', 'XXXX XXXX 4821'],
-              ['IFSC', 'HDFC0001234'],
-              ['Account Name', 'ASK Insurance Brokers Pvt Ltd'],
-            ].map(([k, v]) => (
-              <View key={k} style={ps.bankRow}>
-                <Text style={ps.bankKey}>{k}</Text>
-                <Text style={ps.bankVal}>{v}</Text>
+          {!payUrl ? (
+            <>
+              <View style={ps.infoBox}>
+                <Icon name="shield-checkmark-outline" size={16} color={Colors.success} />
+                <Text style={ps.infoText}>
+                  By accepting, we'll create your policy and generate a secure Razorpay payment link for you.
+                </Text>
               </View>
-            ))}
-          </View>
-
-          {/* Reference */}
-          <Text style={ps.sectionHead}>Payment Reference</Text>
-          <Text style={ps.hint}>Enter the UPI Transaction ID or bank UTR number after completing payment.</Text>
-          <TextInput
-            style={ps.refInput}
-            placeholder="e.g. 412356789012"
-            placeholderTextColor={Colors.textLight}
-            value={ref}
-            onChangeText={setRef}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <TouchableOpacity
-            style={[ps.submitBtn, { backgroundColor: color, opacity: submitting || !ref.trim() ? 0.45 : 1 }]}
-            onPress={() => onSubmit(ref.trim())}
-            disabled={submitting || !ref.trim()}
-          >
-            {submitting
-              ? <ActivityIndicator color={Colors.white} />
-              : <Text style={ps.submitText}>I've Made the Payment →</Text>
-            }
-          </TouchableOpacity>
-          <Text style={ps.footNote}>Our advisor will verify your payment within 1–2 hours and issue your policy.</Text>
+              <TouchableOpacity
+                style={[ps.mainBtn, { backgroundColor: color, opacity: loading ? 0.6 : 1 }]}
+                onPress={handleAccept}
+                disabled={loading}
+              >
+                {loading
+                  ? <ActivityIndicator color={Colors.white} />
+                  : <>
+                      <Icon name="checkmark-circle-outline" size={18} color={Colors.white} />
+                      <Text style={ps.mainBtnText}>Accept Quote & Get Payment Link</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={[ps.infoBox, { backgroundColor: Colors.successLight }]}>
+                <Icon name="checkmark-circle-outline" size={16} color={Colors.success} />
+                <Text style={[ps.infoText, { color: Colors.success }]}>
+                  Quote accepted! Your secure payment link is ready.
+                </Text>
+              </View>
+              <TouchableOpacity style={[ps.mainBtn, { backgroundColor: color }]} onPress={openPayment}>
+                <Icon name="open-outline" size={18} color={Colors.white} />
+                <Text style={ps.mainBtnText}>Open Payment Page</Text>
+              </TouchableOpacity>
+              <Text style={ps.footNote}>
+                You'll be taken to a secure Razorpay page. Come back to the app after payment — your policy will activate automatically.
+              </Text>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -362,12 +390,11 @@ function QuoteCard({
 export default function MyQuotesScreen() {
   const router = useRouter();
   const { alert } = useDialog();
-  const [quotes, setQuotes]           = useState<QuoteRequest[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [refreshing, setRefreshing]   = useState(false);
-  const [error, setError]             = useState<string | null>(null);
+  const [quotes, setQuotes]             = useState<QuoteRequest[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [error, setError]               = useState<string | null>(null);
   const [paymentQuote, setPaymentQuote] = useState<QuoteRequest | null>(null);
-  const [submitting, setSubmitting]   = useState(false);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true); else setLoading(true);
@@ -384,19 +411,10 @@ export default function MyQuotesScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handlePaymentSubmit = async (ref: string) => {
-    if (!paymentQuote) return;
-    setSubmitting(true);
-    try {
-      await quotesApi.approve(paymentQuote.id);
-      setPaymentQuote(null);
-      alert({ type: 'success', title: 'Payment Submitted!', message: `Reference ${ref} received. Our advisor will verify and issue your policy within 1–2 hours.` });
-      load();
-    } catch (e) {
-      alert({ type: 'error', title: 'Error', message: e instanceof ApiError ? e.message : 'Something went wrong' });
-    } finally {
-      setSubmitting(false);
-    }
+  const handlePaymentDone = () => {
+    setPaymentQuote(null);
+    load();
+    alert({ type: 'success', title: 'Payment Initiated', message: 'Your policy will activate automatically once your payment is confirmed.' });
   };
 
   const pending   = quotes.filter(q => q.status === 'pending').length;
@@ -470,8 +488,7 @@ export default function MyQuotesScreen() {
         visible={!!paymentQuote}
         quote={paymentQuote}
         onClose={() => setPaymentQuote(null)}
-        onSubmit={handlePaymentSubmit}
-        submitting={submitting}
+        onDone={handlePaymentDone}
       />
     </SafeAreaView>
   );
@@ -575,53 +592,36 @@ const tl = StyleSheet.create({
 
 const ps = StyleSheet.create({
   safe:    { flex: 1, backgroundColor: Colors.white },
-  header:  {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
+  header:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
   closeBtn:{ width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
   title:   { fontSize: 17, fontWeight: '800', color: Colors.text },
-  body:    { padding: 20, paddingBottom: 48 },
+  body:    { padding: 20, paddingBottom: 48, gap: 14 },
 
-  sectionHead: { fontSize: 11, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 20, marginBottom: 8 },
-
-  amountCard:    { borderTopWidth: 3, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 16, backgroundColor: Colors.bg },
-  amountTop:     { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-  amountInsurer: { fontSize: 16, fontWeight: '800', color: Colors.text },
-  amountPlan:    { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  typeBadge:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 2 },
-  typeText:      { fontSize: 11, fontWeight: '800' },
+  amountCard:     { borderTopWidth: 3, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 16, backgroundColor: Colors.bg },
+  amountTop:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
+  amountInsurer:  { fontSize: 16, fontWeight: '800', color: Colors.text },
+  amountPlan:     { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  typeBadge:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 2 },
+  typeText:       { fontSize: 11, fontWeight: '800' },
   amountBreakdown:{ gap: 6 },
-  breakRow:      { flexDirection: 'row', justifyContent: 'space-between' },
-  breakLabel:    { fontSize: 13, color: Colors.textMuted },
-  breakVal:      { fontSize: 13, fontWeight: '700', color: Colors.text },
-  breakTotal:    { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 10, marginTop: 4 },
+  breakRow:       { flexDirection: 'row', justifyContent: 'space-between' },
+  breakLabel:     { fontSize: 13, color: Colors.textMuted },
+  breakVal:       { fontSize: 13, fontWeight: '700', color: Colors.text },
+  breakTotal:     { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 10, marginTop: 4 },
   breakTotalLabel:{ fontSize: 15, fontWeight: '800', color: Colors.text },
-  breakTotalVal: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  breakTotalSub: { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
+  breakTotalVal:  { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  breakTotalSub:  { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
+  notes:          { fontSize: 12, color: Colors.textMuted, fontStyle: 'italic', marginTop: 10, lineHeight: 18 },
 
-  upiRow:    {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    padding: 14, backgroundColor: Colors.bg,
-  },
-  upiIcon:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  upiIconText:{ fontSize: 10, fontWeight: '900', color: Colors.primary },
-  upiId:     { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.primary },
-  copyBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary },
-  copyText:  { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  infoBox: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 14 },
+  infoText:{ flex: 1, fontSize: 13, color: Colors.textMuted, lineHeight: 19 },
 
-  bankCard:  { borderWidth: 1, borderColor: Colors.border, borderRadius: 12, overflow: 'hidden' },
-  bankRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  bankKey:   { fontSize: 13, color: Colors.textMuted, flex: 1 },
-  bankVal:   { fontSize: 13, fontWeight: '700', color: Colors.text, flex: 1, textAlign: 'right' },
+  errBox:  { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12 },
+  errText: { flex: 1, fontSize: 13, color: Colors.error, lineHeight: 18 },
 
-  hint:      { fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginBottom: 4 },
-  refInput:  { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.bg, marginTop: 4 },
-  submitBtn: { paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 16 },
-  submitText:{ fontSize: 15, fontWeight: '800', color: Colors.white },
-  footNote:  { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18, marginTop: 10 },
+  mainBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: 14 },
+  mainBtnText:{ fontSize: 15, fontWeight: '800', color: Colors.white },
+  footNote:   { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
 });
 
 // ── Screen Styles ─────────────────────────────────────────────────────────────

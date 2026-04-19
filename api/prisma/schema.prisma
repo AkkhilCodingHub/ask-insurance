@@ -21,6 +21,7 @@ model User {
   city        String?
   state       String?
   pincode     String?
+  pushToken   String?   // Expo push token
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

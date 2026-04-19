@@ -422,6 +422,12 @@ class AdminApiClient {
     return data;
   }
 
+  async updateQuoteStatus(id: string, status: 'pending' | 'responded' | 'approved' | 'expired'): Promise<AdminQuote> {
+    const { data } = await this.instance.patch(`/quotes/${id}/status`, { status });
+    if (data.error) throw new Error(data.error);
+    return data.quote;
+  }
+
   async respondToQuote(id: string, response: AdminQuoteResponse): Promise<void> {
     const { data } = await this.instance.post(`/quotes/${id}/respond`, response);
     if (data.error) throw new Error(data.error);
@@ -430,6 +436,18 @@ class AdminApiClient {
   async confirmPayment(policyId: string, payload: { documentUrl?: string; providerRef?: string; notes?: string }): Promise<void> {
     const { data } = await this.instance.post(`/policies/${policyId}/confirm-payment`, payload);
     if (data.error) throw new Error(data.error);
+  }
+
+  async generatePaymentLink(policyId: string): Promise<{ paymentUrl: string; amount: number }> {
+    const { data } = await this.instance.post(`/policies/${policyId}/generate-payment-link`);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async generateQuotePaymentLink(quoteId: string): Promise<{ paymentUrl: string; paymentLinkId: string; amount: number }> {
+    const { data } = await this.instance.post(`/quotes/${quoteId}/payment-link`);
+    if (data.error) throw new Error(data.error);
+    return data;
   }
 
   // ── Analytics ──────────────────────────────────────────────────────────

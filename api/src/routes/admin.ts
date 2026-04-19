@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken } from '../lib/jwt';
+import { sendPush } from '../lib/push';
 
 const router = Router();
 
@@ -202,6 +203,9 @@ router.put('/claims/:id/status', adminAuthenticate, async (req: Request, res: Re
         body: `Your claim ${claim.claimNumber} has been ${status}.${notes ? ` Note: ${notes}` : ''}`
       }
     });
+
+    const claimUser = await prisma.user.findUnique({ where: { id: claim.userId }, select: { pushToken: true } });
+    await sendPush(claimUser?.pushToken, `Claim ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your claim ${claim.claimNumber} has been ${status}.`);
 
     res.json({ claim: updated });
     return;
@@ -771,14 +775,14 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
     const schema = z.object({
       page: z.coerce.number().int().min(1).default(1),
       limit: z.coerce.number().int().min(1).max(100).default(20),
-      status: z.enum(['pending', 'viewed', 'converted', 'expired']).optional()
+      status: z.enum(['pending', 'responded', 'approved', 'converted', 'expired']).optional()
     });
     const { page, limit, status } = schema.parse(req.query);
     const skip = (page - 1) * limit;
 
     const whereStatus = status ? { status } : {};
 
-    const [quotes, total] = await Promise.all([
+    const [rawQuotes, total] = await Promise.all([
       prisma.quote.findMany({
         where: whereStatus,
         skip,
@@ -790,6 +794,12 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
       }),
       prisma.quote.count({ where: whereStatus })
     ]);
+
+    // Parse JSON fields so the frontend gets typed objects, not raw strings
+    const quotes = rawQuotes.map(q => ({
+      ...q,
+      adminResponse: q.adminResponse ? (() => { try { return JSON.parse(q.adminResponse as string); } catch { return null; } })() : null,
+    }));
 
     res.json({ quotes, total, page, limit });
     return;
@@ -844,11 +854,91 @@ router.post('/quotes/:id/respond', adminAuthenticate, async (req: Request, res: 
       }
     }).catch(() => {});
 
+    const quoteUser = await prisma.user.findUnique({ where: { id: quote.userId }, select: { pushToken: true } });
+    await sendPush(quoteUser?.pushToken, 'Your Quote is Ready!', `${data.insurer} quote: ₹${data.totalPremium.toLocaleString('en-IN')}/yr. Open app to review.`);
+
     res.json({ quote: updated });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Admin: manually update a quote's status ───────────────────────────────────
+router.patch('/quotes/:id/status', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { status } = z.object({
+      status: z.enum(['pending', 'responded', 'approved', 'expired'])
+    }).parse(req.body);
+
+    const quote = await prisma.quote.findUnique({ where: { id } });
+    if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
+
+    const updated = await prisma.quote.update({
+      where: { id },
+      data: { status },
+      include: { user: { select: { id: true, name: true, phone: true, email: true } } }
+    });
+
+    // Notify customer on meaningful status changes
+    if (status === 'expired') {
+      await prisma.notification.create({
+        data: {
+          userId: quote.userId,
+          type:   'warning',
+          title:  'Quote Request Expired',
+          body:   `Your ${quote.type} insurance quote request has expired. Please submit a new request to get a fresh quote.`,
+        }
+      }).catch(() => {});
+      const quoteUser = await prisma.user.findUnique({ where: { id: quote.userId }, select: { pushToken: true } });
+      await sendPush(quoteUser?.pushToken, 'Quote Expired', `Your ${quote.type} insurance quote request has expired.`);
+    }
+
+    const parsed = {
+      ...updated,
+      adminResponse: updated.adminResponse ? (() => { try { return JSON.parse(updated.adminResponse as string); } catch { return null; } })() : null,
+    };
+    res.json({ quote: parsed });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Admin: generate Razorpay payment link for an approved quote ───────────────
+router.post('/quotes/:id/payment-link', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const quote = await prisma.quote.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, phone: true } },
+        policies: { where: { paymentStatus: 'pending' }, take: 1, select: { id: true, policyNumber: true, premium: true, type: true, provider: true } }
+      }
+    });
+    if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
+    if (quote.status !== 'approved') { res.status(400).json({ error: 'Quote must be approved before payment link can be generated' }); return; }
+
+    const policy = quote.policies[0];
+    if (!policy) { res.status(404).json({ error: 'No pending policy found for this quote' }); return; }
+
+    const { createPaymentLink } = await import('../lib/razorpay');
+    const link = await createPaymentLink({
+      amount:        policy.premium,
+      policyId:      policy.id,
+      policyNumber:  policy.policyNumber,
+      customerName:  quote.user?.name ?? 'Customer',
+      customerPhone: quote.user?.phone ?? '',
+      description:   `${policy.type} Insurance Premium — ${policy.provider}`,
+    });
+
+    res.json({ paymentUrl: link.short_url, paymentLinkId: link.id, amount: policy.premium });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to create payment link' });
   }
 });
 
@@ -902,6 +992,9 @@ router.post('/policies/:id/confirm-payment', adminAuthenticate, async (req: Requ
         body:   `Your ${policy.type} policy (${policy.policyNumber}) is now active.${documentUrl ? ' Your policy document is available in the app.' : ''}`,
       }
     }).catch(() => {});
+
+    const policyUser = await prisma.user.findUnique({ where: { id: policy.userId }, select: { pushToken: true } });
+    await sendPush(policyUser?.pushToken, 'Policy Activated!', 'Your payment was confirmed. Your policy is now active. Check My Policies.');
 
     res.json({ policy: updated });
   } catch (e) {
@@ -1239,6 +1332,36 @@ router.put('/chat/conversations/:id/status', adminAuthenticate, async (req: Requ
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
+// POST /api/admin/policies/:id/generate-payment-link
+router.post('/policies/:id/generate-payment-link', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const policy = await prisma.policy.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, phone: true } } }
+    });
+    if (!policy) { res.status(404).json({ error: 'Policy not found' }); return; }
+    if (policy.paymentStatus === 'paid') { res.status(400).json({ error: 'Policy already paid' }); return; }
+
+    const { createPaymentLink } = await import('../lib/razorpay');
+    const link = await createPaymentLink({
+      amount: policy.premium,
+      policyId: policy.id,
+      policyNumber: policy.policyNumber,
+      customerName: policy.user?.name ?? 'Customer',
+      customerPhone: policy.user?.phone ?? '',
+      description: `${policy.type} Insurance — ${policy.provider}`,
+    });
+
+    res.json({ paymentUrl: link.short_url, paymentLinkId: link.id, amount: policy.premium });
+    return;
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to create payment link' });
     return;
   }
 });
