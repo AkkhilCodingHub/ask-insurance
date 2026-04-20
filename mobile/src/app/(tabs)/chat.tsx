@@ -11,7 +11,8 @@ import { useAuth } from '@/context/auth';
 import { ApiError, chatApi, ChatMessage, Conversation } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { supportChatFocusedRef } from '@/lib/supportChatFocused';
 import { useDialog } from '@/components/Dialog';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -132,6 +133,23 @@ export default function ChatTab() {
   const scrollRef   = useRef<ScrollView>(null);
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgTime = useRef<string | null>(null);
+  const conversationRef = useRef<Conversation | null>(null);
+  const hasLoadedChatRef = useRef(false);
+
+  conversationRef.current = conversation;
+
+  useFocusEffect(
+    useCallback(() => {
+      supportChatFocusedRef.current = true;
+      return () => {
+        supportChatFocusedRef.current = false;
+      };
+    }, [])
+  );
+
+  useEffect(() => {
+    hasLoadedChatRef.current = false;
+  }, [user?.id]);
 
   // ── Scroll to bottom ───────────────────────────────────────────────────────
   const scrollBottom = useCallback((animated = true) => {
@@ -178,31 +196,87 @@ export default function ChatTab() {
     pollRef.current = setInterval(() => pollMessages(convId), 3000);
   }, [pollMessages]);
 
-  // ── Load existing conversation on mount ───────────────────────────────────
-  useEffect(() => {
-    if (!user) { setLoading(false); return; }
-
-    (async () => {
-      try {
-        const { conversations } = await chatApi.getConversations();
-        const open = conversations.find(c => c.status === 'open');
-        if (open) {
-          setConversation(open);
-          const { messages: msgs } = await chatApi.getMessages(open.id);
-          setMessages(msgs);
-          if (msgs.length > 0) lastMsgTime.current = msgs[msgs.length - 1].createdAt;
-          scrollBottom(false);
-          startPolling(open.id);
-        }
-      } catch {
-        // no conversation yet — show empty state
-      } finally {
+  // ── Refetch whenever Support tab gains focus ───────────────────────────────
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) {
         setLoading(false);
+        return () => {};
       }
-    })();
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [user, startPolling, scrollBottom]);
+      let cancelled = false;
+
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+
+      const quiet = hasLoadedChatRef.current;
+      if (!quiet) setLoading(true);
+
+      (async () => {
+        try {
+          const { conversations } = await chatApi.getConversations();
+          if (cancelled) return;
+
+          const open = conversations.find(c => c.status === 'open');
+
+          if (open) {
+            setConversation(open);
+            const { messages: msgs } = await chatApi.getMessages(open.id);
+            if (cancelled) return;
+            setMessages(msgs);
+            lastMsgTime.current = msgs.length > 0 ? msgs[msgs.length - 1].createdAt : null;
+            scrollBottom(false);
+            startPolling(open.id);
+            hasLoadedChatRef.current = true;
+            return;
+          }
+
+          const cur = conversationRef.current;
+          if (cur?.id) {
+            try {
+              const { conversation: meta } = await chatApi.getConversation(cur.id);
+              const { messages: msgs } = await chatApi.getMessages(cur.id);
+              if (cancelled) return;
+              setConversation(meta);
+              setMessages(msgs);
+              lastMsgTime.current = msgs.length > 0 ? msgs[msgs.length - 1].createdAt : null;
+              scrollBottom(false);
+              startPolling(cur.id);
+              hasLoadedChatRef.current = true;
+            } catch {
+              if (!cancelled) {
+                setConversation(null);
+                setMessages([]);
+                lastMsgTime.current = null;
+                hasLoadedChatRef.current = true;
+              }
+            }
+          } else if (!cancelled) {
+            setConversation(null);
+            setMessages([]);
+            lastMsgTime.current = null;
+            hasLoadedChatRef.current = true;
+          }
+        } catch {
+          if (!cancelled) {
+            // keep existing UI on transient errors
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      };
+    }, [user, startPolling, scrollBottom])
+  );
 
   // ── Create conversation ────────────────────────────────────────────────────
   const handleStart = async () => {
@@ -218,6 +292,7 @@ export default function ChatTab() {
       if (conv.messages?.length) lastMsgTime.current = conv.messages[conv.messages.length - 1].createdAt;
       scrollBottom(false);
       startPolling(conv.id);
+      hasLoadedChatRef.current = true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not start chat.';
       alert({ type: 'error', title: 'Error', message: msg });

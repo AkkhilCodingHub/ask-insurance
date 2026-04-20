@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
+import { supportChatFocusedRef } from '@/lib/supportChatFocused';
+import { router } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +45,8 @@ function resolveStyle(category?: string): { icon: IconName; accent: string } {
       return { icon: 'shield-checkmark',         accent: '#1580FF' };
     case 'quote':
       return { icon: 'document-text',            accent: '#7C3AED' };
+    case 'chat':
+      return { icon: 'chatbubbles',              accent: '#1580FF' };
     case 'warning':
       return { icon: 'warning',                  accent: '#D97706' };
     case 'error':
@@ -57,6 +61,7 @@ function guessCategory(title: string, body?: string): string {
   if (t.includes('payment') || t.includes('premium') || t.includes('paid')) return 'payment';
   if (t.includes('policy') || t.includes('active'))                         return 'policy';
   if (t.includes('quote'))                                                   return 'quote';
+  if (t.includes('support') || t.includes('message from'))                   return 'chat';
   if (t.includes('expired') || t.includes('failed') || t.includes('error')) return 'error';
   if (t.includes('warning') || t.includes('pending'))                        return 'warning';
   return 'info';
@@ -206,36 +211,63 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // ── Register foreground notification handler + listener ─────────────────────
   useEffect(() => {
     let receivedSub: { remove: () => void } | null = null;
+    let responseSub: { remove: () => void } | null = null;
 
     (async () => {
       try {
         const Notifications = await import('expo-notifications');
 
-        // Tell expo-notifications NOT to show the system banner (we do it ourselves)
         Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert:  false,
-            shouldPlaySound:  true,
-            shouldSetBadge:   false,
-          }),
+          handleNotification: async (notification) => {
+            const data = notification.request.content.data as Record<string, unknown> | undefined;
+            const isChat = data?.type === 'chat';
+            const onSupportTab = isChat && supportChatFocusedRef.current;
+            return {
+              shouldShowAlert: false,
+              shouldPlaySound: !onSupportTab,
+              shouldSetBadge: false,
+            };
+          },
         });
 
-        // Listen for notifications received while app is in foreground
         receivedSub = Notifications.addNotificationReceivedListener(notification => {
           const { title, body } = notification.request.content;
           if (!title) return;
           const data = notification.request.content.data as Record<string, unknown> | undefined;
+          if (data?.type === 'chat' && supportChatFocusedRef.current) {
+            return;
+          }
           const category = (data?.category as string | undefined) ??
             guessCategory(title, body ?? undefined);
           showToast({ title, body: body ?? undefined, category });
         });
 
+        responseSub = Notifications.addNotificationResponseReceivedListener(response => {
+          const data = response.notification.request.content.data as Record<string, unknown> | undefined;
+          if (data?.type === 'chat') {
+            router.push('/(tabs)/chat');
+          }
+        });
+
+        const last = await Notifications.getLastNotificationResponseAsync();
+        if (last) {
+          const data = last.notification.request.content.data as Record<string, unknown> | undefined;
+          if (data?.type === 'chat') {
+            const tappedAt = new Date(last.notification.date).getTime();
+            if (Date.now() - tappedAt < 10 * 60 * 1000) {
+              router.push('/(tabs)/chat');
+            }
+          }
+        }
       } catch (e) {
         console.warn('[NotificationToast] setup error:', e);
       }
     })();
 
-    return () => { receivedSub?.remove(); };
+    return () => {
+      receivedSub?.remove();
+      responseSub?.remove();
+    };
   }, [showToast]);
 
   return (

@@ -1249,7 +1249,10 @@ router.post('/chat/conversations/:id/messages', adminAuthenticate, async (req: R
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const { content } = z.object({ content: z.string().min(1).max(4000) }).parse(req.body);
 
-    const conversation = await prisma.conversation.findUnique({ where: { id }, select: { id: true, status: true } });
+    const conversation = await prisma.conversation.findUnique({
+      where: { id },
+      select: { id: true, status: true, userId: true },
+    });
     if (!conversation) {
       res.status(404).json({ error: 'Conversation not found' });
       return;
@@ -1268,6 +1271,17 @@ router.post('/chat/conversations/:id/messages', adminAuthenticate, async (req: R
         data: { updatedAt: new Date(), adminId: adminReq.adminId }
       })
     ]);
+
+    const recipient = await prisma.user.findUnique({
+      where: { id: conversation.userId },
+      select: { pushToken: true },
+    });
+    const preview = content.length > 140 ? `${content.slice(0, 137)}…` : content;
+    await sendPush(recipient?.pushToken ?? null, 'Support', preview, {
+      type: 'chat',
+      conversationId: id,
+      category: 'chat',
+    });
 
     res.status(201).json({ message });
     return;
