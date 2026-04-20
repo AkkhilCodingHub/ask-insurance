@@ -25,8 +25,6 @@ export async function createPaymentLink(opts: {
     notify: { sms: true, email: false },
     reminder_enable: true,
     notes: { policyId: opts.policyId, policyNumber: opts.policyNumber },
-    callback_url:    `${process.env.APP_DEEP_LINK_BASE ?? 'askinsurance://'}payment-result`,
-    callback_method: 'get',
   });
   return link as { id: string; short_url: string; amount: number; status: string };
 }

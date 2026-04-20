@@ -1,46 +1,13 @@
 import { Stack } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import React from 'react';
 import { AuthProvider } from '@/context/auth';
 import { DialogProvider } from '@/components/Dialog';
-import { paymentsApi } from '@/lib/api';
-
-// Register push token with the backend (best-effort, non-blocking)
-async function registerPushToken() {
-  try {
-    // Dynamically import to avoid breaking Expo Go / web
-    const Notifications = await import('expo-notifications');
-    const Device = await import('expo-device');
-
-    if (!Device.default.isDevice) return; // skip simulator
-
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let finalStatus = existing;
-    if (existing !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') return;
-
-    const { data: token } = await Notifications.getExpoPushTokenAsync();
-    if (token) await paymentsApi.savePushToken(token);
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-      });
-    }
-  } catch {
-    // Non-critical — never crash the app over push setup
-  }
-}
+import { NotificationProvider } from '@/components/NotificationToast';
 
 export default function RootLayout() {
-  useEffect(() => { registerPushToken(); }, []);
 
   return (
+    <NotificationProvider>
     <DialogProvider>
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
@@ -85,5 +52,6 @@ export default function RootLayout() {
       </Stack>
     </AuthProvider>
     </DialogProvider>
+    </NotificationProvider>
   );
 }

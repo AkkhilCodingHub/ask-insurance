@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import { authRouter } from './routes/auth';
@@ -42,6 +41,10 @@ app.use(
   })
 );
 
+// Webhook needs the raw body for HMAC verification — must be registered BEFORE
+// the global json() middleware consumes the stream.
+app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
+
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
@@ -49,13 +52,7 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-const authRouteLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 8,
-  message: { error: 'Too many authentication requests. Please wait 15 minutes.' }
-});
-
-app.use('/api/auth', authRouteLimiter, authRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/policies', policiesRouter);
 app.use('/api/claims', claimsRouter);

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
+import { sendPush } from '../lib/push';
 
 const router = Router();
 
@@ -162,6 +163,15 @@ router.post('/:id/approve', authenticate, async (req: Request, res: Response): P
         body:  `Your application for ${adminResp.planName} has been submitted. Our advisor will send you a payment link shortly.`,
       }
     }).catch(() => {});
+
+    // Push notification (non-fatal)
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { pushToken: true } });
+    await sendPush(
+      user?.pushToken ?? null,
+      'Application Approved',
+      `Your ${quote.type} insurance application has been submitted. Expect a payment link shortly.`,
+      { screen: 'my-quotes' }
+    );
 
     res.status(201).json({
       policy: {

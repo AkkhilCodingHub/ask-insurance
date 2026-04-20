@@ -486,10 +486,10 @@ export interface ApiApplication {
 
 export const paymentsApi = {
   list: () => request<{ payments: ApiPayment[] }>('/api/payments', {}, true),
-  createRazorpayLink: (policyId: string) =>
+  createRazorpayLink: (policyId?: string, quoteId?: string) =>
     request<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
       '/api/payments/razorpay/create-link',
-      { method: 'POST', body: JSON.stringify({ policyId }) },
+      { method: 'POST', body: JSON.stringify({ policyId, quoteId }) },
       true
     ),
   savePushToken: (token: string) =>

@@ -1,10 +1,93 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { isDevice } from 'expo-device';
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
   setRefreshToken, clearRefreshToken,
   registerSessionExpiredCallback,
+  paymentsApi,
 } from '@/lib/api';
+
+// ── Push notifications ────────────────────────────────────────────────────────
+
+// Step 1: request permission on app open (no auth needed).
+export async function requestNotificationPermission(): Promise<boolean> {
+  console.log('[push] requestNotificationPermission called');
+  const Notifications = await import('expo-notifications');
+
+  // Channel setup is Android-only and non-fatal — Expo Go may reject this call.
+  if (Platform.OS === 'android') {
+    try {
+      console.log('[push] setting up Android notification channel');
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+      });
+      console.log('[push] Android channel set up successfully');
+    } catch (e) {
+      console.warn('[push] Android channel setup failed (non-fatal, continuing):', e);
+    }
+  }
+
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    console.log('[push] existing permission status:', existing);
+
+    if (existing === 'granted') {
+      console.log('[push] permission already granted');
+      return true;
+    }
+
+    console.log('[push] requesting permission from user...');
+    const { status } = await Notifications.requestPermissionsAsync();
+    console.log('[push] permission result:', status);
+    return status === 'granted';
+  } catch (e) {
+    console.warn('[push] requestNotificationPermission error:', e);
+    return false;
+  }
+}
+
+// Step 2: get token and save it to the DB (requires auth token to be set).
+async function savePushToken() {
+  console.log('[push] savePushToken called');
+  if (!isDevice) {
+    console.warn('[push] skipping — push tokens only work on physical devices, not simulators');
+    return;
+  }
+
+  try {
+    const Notifications = await import('expo-notifications');
+
+    const { status } = await Notifications.getPermissionsAsync();
+    console.log('[push] permission status before token fetch:', status);
+    if (status !== 'granted') {
+      console.warn('[push] permission not granted, skipping token save');
+      return;
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+    console.log('[push] fetching Expo push token (projectId:', projectId, ')');
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
+
+    console.log('[push] got token:', token);
+
+    if (token) {
+      await paymentsApi.savePushToken(token);
+      console.log('[push] token saved to database successfully');
+    } else {
+      console.warn('[push] getExpoPushTokenAsync returned empty token');
+    }
+  } catch (e) {
+    console.warn('[push] savePushToken error:', e);
+  }
+}
 
 // ── AuthUser type (full profile) ──────────────────────────────────────────────
 
@@ -66,12 +149,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
     registerSessionExpiredCallback(() => {
-      // Tokens already cleared inside attemptTokenRefresh
       setUser(null);
       setPendingPhone(null);
     });
     return () => registerSessionExpiredCallback(null);
   }, []);
+
+  // ── Ask for notification permission on app open (no auth required) ────────
+  useEffect(() => {
+    console.log('[push] app opened — checking notification permission');
+    requestNotificationPermission();
+  }, []);
+
+  // ── Save push token to DB whenever user becomes authenticated ─────────────
+  useEffect(() => {
+    if (user) {
+      console.log('[push] user authenticated (id:', user.id, ') — saving push token');
+      savePushToken();
+    }
+  }, [user]);
 
   // ── Restore session on app launch ─────────────────────────────────────────
   useEffect(() => {

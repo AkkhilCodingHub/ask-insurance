@@ -113,22 +113,25 @@ export default function HomeTab() {
   const router   = useRouter();
   const { user } = useAuth();
 
-  const [dashboard, setDashboard]     = useState<DashboardData | null>(null);
-  const [featured, setFeatured]       = useState<ApiPlan[]>([]);
-  const [refreshing, setRefreshing]   = useState(false);
+  const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
+  const [featured, setFeatured]         = useState<ApiPlan[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    else setLoadingFeatured(true);
     try {
       const [dash, plansRes] = await Promise.allSettled([
         user ? usersApi.dashboard() : Promise.reject(new Error('not logged in')),
         plansApi.list({ featured: true })
       ]);
-      if (dash.status === 'fulfilled')   setDashboard(dash.value);
+      if (dash.status === 'fulfilled')    setDashboard(dash.value);
       if (plansRes.status === 'fulfilled') setFeatured(plansRes.value.plans.slice(0, 3));
     } finally {
+      setLoadingFeatured(false);
       if (isRefresh) setRefreshing(false);
     }
   }, [user]);
@@ -328,7 +331,7 @@ export default function HomeTab() {
           )}
 
           {/* Recommended plans — skeletons while loading */}
-          {(featured.length > 0 || !dashboard) && (
+          {(loadingFeatured || featured.length > 0) && (
             <View style={s.section}>
               <View style={s.sectionRow}>
                 <Text style={s.sectionTitle}>Recommended</Text>
@@ -337,7 +340,7 @@ export default function HomeTab() {
                 </TouchableOpacity>
               </View>
 
-              {!dashboard ? (
+              {loadingFeatured ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recScroll} scrollEnabled={false}>
                   {[0, 1, 2].map(i => <RecommendedCardSkeleton key={i} />)}
                 </ScrollView>

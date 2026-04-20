@@ -1271,8 +1271,14 @@ const PLANS: {
 async function main() {
   console.log('🌱 Starting seed...\n');
 
-  // ── 0. Clean existing data ─────────────────────────────────────────────────
+  // ── 0. Clean existing data (order matters for FK constraints) ────────────────
   console.log('🗑  Cleaning existing data...');
+  await prisma.notification.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.claim.deleteMany();
+  await prisma.policy.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.plan.deleteMany();
   await prisma.insurer.deleteMany();
   await prisma.admin.deleteMany();
