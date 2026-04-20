@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
-import { chatApi, ChatMessage, Conversation } from '@/lib/api';
+import { ApiError, chatApi, ChatMessage, Conversation } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 import { useRouter } from 'expo-router';
@@ -128,7 +128,6 @@ export default function ChatTab() {
   const [starting, setStarting]           = useState(false);  // creating conversation
   const [text, setText]                   = useState('');
   const [sending, setSending]             = useState(false);
-  const [closed, setClosed]               = useState(false);
 
   const scrollRef   = useRef<ScrollView>(null);
   const pollRef     = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -142,10 +141,22 @@ export default function ChatTab() {
   // ── Poll for new messages ──────────────────────────────────────────────────
   const pollMessages = useCallback(async (convId: string) => {
     try {
-      const { messages: newMsgs } = await chatApi.getMessages(
-        convId,
-        lastMsgTime.current ?? undefined
-      );
+      const [{ messages: newMsgs }, { conversation: meta }] = await Promise.all([
+        chatApi.getMessages(convId, lastMsgTime.current ?? undefined),
+        chatApi.getConversation(convId),
+      ]);
+
+      setConversation(prev => {
+        if (!prev || prev.id !== convId) return prev;
+        return {
+          ...prev,
+          status:    meta.status,
+          admin:     meta.admin,
+          subject:   meta.subject,
+          updatedAt: meta.updatedAt,
+        };
+      });
+
       if (newMsgs.length > 0) {
         setMessages(prev => {
           // deduplicate by id
@@ -180,7 +191,6 @@ export default function ChatTab() {
           const { messages: msgs } = await chatApi.getMessages(open.id);
           setMessages(msgs);
           if (msgs.length > 0) lastMsgTime.current = msgs[msgs.length - 1].createdAt;
-          setClosed(open.status === 'closed');
           scrollBottom(false);
           startPolling(open.id);
         }
@@ -196,13 +206,16 @@ export default function ChatTab() {
 
   // ── Create conversation ────────────────────────────────────────────────────
   const handleStart = async () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
     setStarting(true);
     try {
       const { conversation: conv } = await chatApi.getOrCreate('Support chat');
       setConversation(conv);
       setMessages(conv.messages ?? []);
       if (conv.messages?.length) lastMsgTime.current = conv.messages[conv.messages.length - 1].createdAt;
-      setClosed(conv.status === 'closed');
       scrollBottom(false);
       startPolling(conv.id);
     } catch (err: unknown) {
@@ -242,6 +255,15 @@ export default function ChatTab() {
       // Remove optimistic on error
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
       setText(content);   // restore text
+      if (err instanceof ApiError && err.status === 400 && /closed/i.test(err.message)) {
+        setConversation(prev => (prev ? { ...prev, status: 'closed' } : null));
+        await alert({
+          type: 'info',
+          title: 'Conversation closed',
+          message: 'Support closed this chat. Scroll down to start a new conversation.',
+        });
+        return;
+      }
       const errMsg = err instanceof Error ? err.message : 'Could not send message.';
       alert({ type: 'error', title: 'Error', message: errMsg });
     } finally {
@@ -300,6 +322,7 @@ export default function ChatTab() {
 
   // ── Active conversation ────────────────────────────────────────────────────
   const agentName = conversation.admin?.name ?? 'Support Team';
+  const isClosed = conversation.status === 'closed';
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -312,8 +335,10 @@ export default function ChatTab() {
           <View>
             <Text style={s.headerTitle}>{agentName}</Text>
             <View style={s.onlineRow}>
-              <View style={[s.onlineDot, closed && { backgroundColor: Colors.textLight }]} />
-              <Text style={s.onlineText}>{closed ? 'Conversation closed' : 'Online · replies within minutes'}</Text>
+              <View style={[s.onlineDot, isClosed && { backgroundColor: Colors.textLight }]} />
+              <Text style={s.onlineText}>
+                {isClosed ? 'Conversation closed' : 'Online · replies within minutes'}
+              </Text>
             </View>
           </View>
         </View>
@@ -355,16 +380,33 @@ export default function ChatTab() {
             </React.Fragment>
           ))}
 
-          {closed && (
-            <View style={s.closedBanner}>
-              <Icon name="lock-closed-outline" size={14} color={Colors.textMuted} />
-              <Text style={s.closedText}>This conversation has been closed.</Text>
+          {isClosed && (
+            <View style={s.closedBlock}>
+              <View style={s.closedBanner}>
+                <Icon name="lock-closed-outline" size={14} color={Colors.textMuted} />
+                <Text style={s.closedText}>This conversation has been closed.</Text>
+              </View>
+              <TouchableOpacity
+                style={[s.newConvBtn, starting && { opacity: 0.7 }]}
+                onPress={handleStart}
+                disabled={starting}
+                activeOpacity={0.85}
+              >
+                {starting ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <>
+                    <Icon name="chatbubble-ellipses-outline" size={18} color={Colors.white} />
+                    <Text style={s.newConvBtnText}>Start new conversation</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
 
         {/* Input bar */}
-        {!closed && (
+        {!isClosed && (
           <View style={s.inputBar}>
             <TextInput
               style={s.input}
@@ -427,15 +469,29 @@ const s = StyleSheet.create({
   welcomeTitle: { fontSize: 15, fontWeight: '800', color: Colors.primary, marginBottom: 4 },
   welcomeSub:   { fontSize: 13, color: Colors.primary, lineHeight: 19, opacity: 0.8 },
 
+  closedBlock: {
+    marginTop: 20,
+    gap: 14,
+    alignItems: 'stretch',
+    paddingHorizontal: 4,
+  },
   closedBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, marginTop: 16,
+    gap: 6,
     backgroundColor: Colors.bg,
     borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14,
     borderWidth: 1, borderColor: Colors.border,
     alignSelf: 'center',
   },
   closedText: { fontSize: 12, color: Colors.textMuted },
+  newConvBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  newConvBtnText: { fontSize: 15, fontWeight: '800', color: Colors.white },
 
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10,

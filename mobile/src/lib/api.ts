@@ -525,6 +525,9 @@ export const chatApi = {
   getConversations: () =>
     request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
 
+  getConversation: (id: string) =>
+    request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
+
   getOrCreate: (subject?: string) =>
     request<{ conversation: Conversation }>('/api/chat/conversations', {
       method: 'POST',

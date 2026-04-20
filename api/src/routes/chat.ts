@@ -70,6 +70,37 @@ router.get('/conversations', authenticate, async (req: Request, res: Response): 
   }
 });
 
+// ── User: get one conversation (status sync for mobile) ─────────────────────
+router.get('/conversations/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+
+    const conversation = await prisma.conversation.findFirst({
+      where: { id, userId },
+      include: {
+        admin: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!conversation) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+
+    res.json({ conversation });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid id' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 // ── User: get messages for a conversation ────────────────────────────────────
 router.get('/conversations/:id/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {

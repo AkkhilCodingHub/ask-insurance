@@ -105,7 +105,8 @@ function policyColor(type: string): string {
   return map[type] ?? '#1580FF';
 }
 
-function statusLabel(s: string): string {
+function capitalize(s: string | null | undefined, fallback = '—'): string {
+  if (s == null || s === '') return fallback;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
@@ -279,22 +280,25 @@ export default function HomeTab() {
                   contentContainerStyle={s.hScroll}
                 >
                   {policies.map((p: ApiPolicy) => {
-                    const color = policyColor(p.type);
+                    const typeStr = p.type ?? '';
+                    const color = policyColor(typeStr);
                     const due   = new Date(p.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                    const providerStr = p.provider ?? '';
+                    const initials = (providerStr.slice(0, 2) || '—').toUpperCase();
                     return (
                       <View key={p.id} style={s.policyCard}>
                         <View style={[s.policyBand, { backgroundColor: color }]}>
                           <View style={s.policyBandInner}>
                             <View style={s.policyAvatarCircle}>
-                              <Text style={s.policyAvatarText}>{p.provider.slice(0, 2).toUpperCase()}</Text>
+                              <Text style={s.policyAvatarText}>{initials}</Text>
                             </View>
                             <View style={{ flex: 1 }}>
                               <Text style={s.policyPlan}>{p.policyNumber}</Text>
-                              <Text style={s.policyInsurer}>{p.provider}</Text>
+                              <Text style={s.policyInsurer}>{providerStr || '—'}</Text>
                             </View>
                             <View style={s.statusPill}>
                               <View style={s.statusDot} />
-                              <Text style={s.statusText}>{statusLabel(p.status)}</Text>
+                              <Text style={s.statusText}>{capitalize(p.status)}</Text>
                             </View>
                           </View>
                         </View>
@@ -312,7 +316,7 @@ export default function HomeTab() {
                           <View style={s.metricDivider} />
                           <View style={[s.metricCol, { alignItems: 'flex-end' }]}>
                             <Text style={s.metricLabel}>TYPE</Text>
-                            <Text style={s.metricValue}>{p.type.charAt(0).toUpperCase() + p.type.slice(1)}</Text>
+                            <Text style={s.metricValue}>{capitalize(typeStr)}</Text>
                           </View>
                         </View>
 
@@ -425,7 +429,7 @@ export default function HomeTab() {
 
                       {/* CTA footer */}
                       <View style={s.recFooter}>
-                        <Text style={s.recTypeChip}>{plan.type.toUpperCase()}</Text>
+                        <Text style={s.recTypeChip}>{(plan.type ?? '').toUpperCase() || 'PLAN'}</Text>
                         <View style={[s.recViewBtn, { backgroundColor: color }]}>
                           <Text style={s.recViewBtnText}>View plan →</Text>
                         </View>
