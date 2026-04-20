@@ -77,7 +77,7 @@ export interface AdminPolicy {
   planId?: string;
   type: string;
   provider: string;
-  status: 'active' | 'expired' | 'cancelled';
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed';
   startDate: string;
   endDate: string;

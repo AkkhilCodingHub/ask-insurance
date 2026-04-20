@@ -591,7 +591,11 @@ export default function QuotesPage() {
             const ar  = q.adminResponse;
             let det: Record<string, unknown> = {};
             try { det = JSON.parse(q.details); } catch {}
-            const cover = det.sumInsured ?? det.idv ?? det.assetValue;
+            const coverRaw = det.sumInsured ?? det.idv ?? det.assetValue;
+            const coverNum = Number(coverRaw);
+            const hasCover = coverRaw != null && coverRaw !== "" && Number.isFinite(coverNum);
+            const ageRaw = det.age;
+            const hasAge = ageRaw != null && ageRaw !== "";
 
             // CTA label + color per status
             const cta =
@@ -654,16 +658,16 @@ export default function QuotesPage() {
                           <Phone size={10} /> +91 {q.user.phone}
                         </span>
                       )}
-                      {cover && (
+                      {hasCover && (
                         <span style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
                           <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border)", display: "inline-block" }} />
-                          Cover {fmt(Number(cover))}
+                          Cover {fmt(coverNum)}
                         </span>
                       )}
-                      {det.age && (
+                      {hasAge && (
                         <span style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
                           <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border)", display: "inline-block" }} />
-                          Age {String(det.age)} yrs
+                          Age {String(ageRaw)} yrs
                         </span>
                       )}
                       <span style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 3 }}>

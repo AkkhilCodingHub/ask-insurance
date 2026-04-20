@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, Download, RefreshCw, X, Save } from "lucide-react";
 import { adminApi, type AdminPolicy } from "@/lib/api";
 
-const STATUS_OPTS = ["All", "active", "expired", "cancelled"];
+const STATUS_OPTS = ["All", "pending", "active", "expired", "cancelled"];
 const TYPE_OPTS = ["All", "life", "health", "motor", "travel", "home", "business"];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -14,6 +14,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string }> = {
+    pending:   { bg: "#FFFBEB", color: "#D97706" },
     active:    { bg: "#ECFDF5", color: "#059669" },
     expired:   { bg: "#FEF2F2", color: "#DC2626" },
     cancelled: { bg: "var(--bg)", color: "var(--text-muted)" },
