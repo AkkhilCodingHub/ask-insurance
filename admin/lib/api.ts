@@ -83,6 +83,8 @@ export interface AdminPolicy {
   endDate: string;
   sumInsured: number;
   premium: number;
+  documentUrl?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
   user?: { id: string; name: string; phone: string };
@@ -218,6 +220,32 @@ export interface ConversationsResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+// ── File Storage Types ─────────────────────────────────────────────────────
+export interface AdminFile {
+  id:        string;
+  name:      string;
+  key:       string;
+  url:       string;
+  size:      number; // bytes
+  mimeType:  string;
+  createdAt: string;
+  adminId:   string;
+}
+
+export interface FilesResponse {
+  files:         AdminFile[];
+  total:         number;
+  page:          number;
+  limit:         number;
+  storageUsed:   number; // bytes
+  storageQuota:  number; // bytes
+}
+
+export interface StorageResponse {
+  used:  number; // bytes
+  quota: number; // bytes
 }
 
 // ── Analytics Types ────────────────────────────────────────────────────────
@@ -436,6 +464,52 @@ class AdminApiClient {
   async confirmPayment(policyId: string, payload: { documentUrl?: string; providerRef?: string; notes?: string }): Promise<void> {
     const { data } = await this.instance.post(`/policies/${policyId}/confirm-payment`, payload);
     if (data.error) throw new Error(data.error);
+  }
+
+  // ── File Storage ───────────────────────────────────────────────────────────
+  async getStorage(): Promise<StorageResponse> {
+    const { data } = await this.instance.get('/storage');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async getFiles(page = 1, limit = 50): Promise<FilesResponse> {
+    const { data } = await this.instance.get('/files', { params: { page, limit } });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async uploadFile(file: File): Promise<AdminFile> {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await this.instance.post('/files/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+    if (data.error) throw new Error(data.error);
+    return data.file;
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    const { data } = await this.instance.delete(`/files/${id}`);
+    if (data.error) throw new Error(data.error);
+  }
+
+  async uploadPolicyDocument(
+    policyId: string,
+    payload: { file?: File; policyNumber?: string; issueDate?: string; expiryDate?: string },
+  ): Promise<AdminPolicy> {
+    const form = new FormData();
+    if (payload.file)         form.append('file',         payload.file);
+    if (payload.policyNumber) form.append('policyNumber', payload.policyNumber);
+    if (payload.issueDate)    form.append('issueDate',    payload.issueDate);
+    if (payload.expiryDate)   form.append('expiryDate',   payload.expiryDate);
+    const { data } = await this.instance.post(`/policies/${policyId}/upload-document`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+    if (data.error) throw new Error(data.error);
+    return data.policy;
   }
 
   async generatePaymentLink(policyId: string): Promise<{ paymentUrl: string; amount: number }> {

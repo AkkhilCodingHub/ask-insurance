@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BackButton } from '@/components/BackButton';
+import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 
 function Section({ title, body }: { title: string; body: string }) {
@@ -16,8 +17,6 @@ function Section({ title, body }: { title: string; body: string }) {
 }
 
 export default function PrivacyScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
-  LogOut, Bell, Search, ChevronRight, Menu, X, Headphones,
+  LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -18,6 +18,7 @@ const nav = [
   { label: "Plans",      icon: Package,          href: "/dashboard/plans",     badge: false },
   { label: "Insurers",   icon: Building2,        href: "/dashboard/insurers",  badge: false },
   { label: "Quotes",     icon: MessageSquare,    href: "/dashboard/quotes",    badge: false },
+  { label: "Files",      icon: HardDrive,        href: "/dashboard/files",     badge: false },
   { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",      badge: true  },
   { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics", badge: false },
   { label: "Settings",   icon: Settings,         href: "/dashboard/settings",  badge: false },
@@ -27,6 +28,7 @@ function getTitle(path: string) {
   const match = nav.find((n) => (n.href === "/dashboard" ? path === "/dashboard" : path.startsWith(n.href)));
   return match?.label ?? "Admin";
 }
+
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

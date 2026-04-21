@@ -291,6 +291,8 @@ export interface ApiPolicy {
   startDate:     string;
   endDate:       string;
   paymentStatus: string;
+  documentUrl:   string | null;
+  notes:         string | null;
 }
 
 export interface ApiClaim {

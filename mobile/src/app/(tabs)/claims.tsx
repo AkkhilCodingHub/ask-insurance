@@ -135,6 +135,8 @@ export default function ClaimsTab() {
   const [amount, setAmount]     = useState('');
   const [desc, setDesc]         = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [amountErr, setAmountErr]   = useState('');
+  const [descErr, setDescErr]       = useState('');
 
   const activePolicies = policies.filter(p => p.status === 'active');
   const selectedPolicy = activePolicies.find(p => p.id === policyId) ?? null;
@@ -157,11 +159,24 @@ export default function ClaimsTab() {
 
   useEffect(() => { loadClaims(); }, [loadClaims]);
 
-  const handleSubmit = async () => {
-    if (!amount.trim() || !desc.trim()) {
-      alert({ type: 'warning', title: 'Missing info', message: 'Please fill in all fields.' });
-      return;
+  const validateStep2 = (): boolean => {
+    let ok = true;
+    if (!amount.trim() || Number(amount) <= 0) {
+      setAmountErr('Please enter a valid claim amount.');
+      ok = false;
+    } else {
+      setAmountErr('');
     }
+    if (desc.trim().length < 10) {
+      setDescErr('Description must be at least 10 characters.');
+      ok = false;
+    } else {
+      setDescErr('');
+    }
+    return ok;
+  };
+
+  const handleSubmit = async () => {
     if (!selectedPolicy) {
       alert({ type: 'warning', title: 'No policy selected', message: 'Please select an active policy to file a claim.' });
       return;
@@ -189,6 +204,7 @@ export default function ClaimsTab() {
 
   const openModal = () => {
     setStep(1); setAmount(''); setDesc(''); setPolicyId('');
+    setAmountErr(''); setDescErr('');
     setModalVisible(true);
   };
 
@@ -312,27 +328,32 @@ export default function ClaimsTab() {
                 <Text style={m.stepTitle}>Claim details</Text>
                 <Text style={m.label}>CLAIM AMOUNT (₹)</Text>
                 <TextInput
-                  style={m.input}
+                  style={[m.input, !!amountErr && m.inputError]}
                   placeholder="e.g. 25000"
                   placeholderTextColor={Colors.textLight}
                   value={amount}
-                  onChangeText={t => setAmount(t.replace(/\D/g, ''))}
+                  onChangeText={v => { setAmount(v.replace(/\D/g, '')); setAmountErr(''); }}
                   keyboardType="numeric"
                 />
+                {!!amountErr && <Text style={m.fieldErr}>{amountErr}</Text>}
                 <Text style={m.label}>DESCRIPTION</Text>
                 <TextInput
-                  style={[m.input, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
-                  placeholder="Brief description of the claim..."
+                  style={[m.input, { height: 90, textAlignVertical: 'top', paddingTop: 12 }, !!descErr && m.inputError]}
+                  placeholder="Brief description of the claim (min. 10 characters)..."
                   placeholderTextColor={Colors.textLight}
                   value={desc}
-                  onChangeText={setDesc}
+                  onChangeText={v => { setDesc(v); setDescErr(''); }}
                   multiline
                 />
+                {!!descErr
+                  ? <Text style={m.fieldErr}>{descErr}</Text>
+                  : <Text style={m.fieldHint}>{desc.trim().length}/10 characters minimum</Text>
+                }
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                   <TouchableOpacity style={[m.nextBtn, { flex: 0.4, backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border }]} onPress={() => setStep(1)}>
                     <Text style={[m.nextBtnText, { color: Colors.textMuted }]}>← Back</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[m.nextBtn, { flex: 1 }]} onPress={() => setStep(3)}>
+                  <TouchableOpacity style={[m.nextBtn, { flex: 1 }]} onPress={() => { if (validateStep2()) setStep(3); }}>
                     <Text style={m.nextBtnText}>Next →</Text>
                   </TouchableOpacity>
                 </View>
@@ -450,6 +471,9 @@ const m = StyleSheet.create({
   stepTitle:   { fontSize: 17, fontWeight: '800', color: Colors.text, marginBottom: 12 },
   label:       { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.8, marginTop: 8, marginBottom: 6 },
   input:       { borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.bg },
+  inputError:  { borderColor: Colors.error, backgroundColor: '#FEF2F2' },
+  fieldErr:    { fontSize: 12, color: Colors.error, fontWeight: '600', marginTop: 4 },
+  fieldHint:   { fontSize: 11, color: Colors.textLight, marginTop: 4 },
   typeOption:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, backgroundColor: Colors.bg },
   typeOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   typeText:    { fontSize: 15, color: Colors.text, fontWeight: '500' },

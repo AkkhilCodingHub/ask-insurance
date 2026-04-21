@@ -8,7 +8,8 @@
     "scheme": "ask-insurance",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ask.insurance"
+      "package": "com.ask.insurance",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

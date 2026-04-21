@@ -217,6 +217,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       try {
         const Notifications = await import('expo-notifications');
 
+        // Expo Go (SDK 53+) removed Android remote push APIs; don't crash the app.
+        if (typeof (Notifications as any).setNotificationHandler !== 'function') {
+          console.warn('[NotificationToast] expo-notifications handler not available (likely Expo Go). Use a dev/preview build for remote push.');
+          return;
+        }
+
         Notifications.setNotificationHandler({
           handleNotification: async (notification) => {
             const data = notification.request.content.data as Record<string, unknown> | undefined;
@@ -241,6 +247,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             guessCategory(title, body ?? undefined);
           showToast({ title, body: body ?? undefined, category });
         });
+
+        if (typeof (Notifications as any).addNotificationResponseReceivedListener !== 'function') {
+          return;
+        }
 
         responseSub = Notifications.addNotificationResponseReceivedListener(response => {
           const data = response.notification.request.content.data as Record<string, unknown> | undefined;

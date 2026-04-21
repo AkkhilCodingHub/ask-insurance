@@ -227,20 +227,39 @@ model Notification {
 }
 
 model Admin {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      String   @default("admin") // admin, superadmin
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        String   @default("admin") // admin, superadmin
+  isActive    Boolean  @default(true)
+  storageUsed BigInt   @default(0) // bytes used out of 10 GB quota
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   conversations Conversation[]
+  files         AdminFile[]
 
   @@index([isActive])
   @@index([createdAt])
   @@map("admins")
+}
+
+model AdminFile {
+  id        String   @id @default(cuid())
+  name      String   // original filename shown in UI
+  key       String   // R2 object key
+  url       String   // public CDN URL
+  size      BigInt   // bytes
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([adminId, createdAt])
+  @@map("admin_files")
 }
 
 model Conversation {

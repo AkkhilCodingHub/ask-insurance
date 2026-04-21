@@ -10,7 +10,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "eas:android:preview": "npx eas-cli@latest build --platform android --profile preview",
-    "eas:ios:preview": "npx eas-cli@latest build --platform ios --profile preview"
+    "eas:ios:preview": "npx eas-cli@latest build --platform ios --profile preview",
+    "eas:android:preview:local": "GOOGLE_SERVICES_JSON=\"$(pwd)/google-services.json\" npx eas-cli@latest build --platform android --profile preview --local",
+    "eas:ios:preview:local": "GOOGLE_SERVICES_PLIST=\"$(pwd)/GoogleService-Info.plist\" npx eas-cli@latest build --platform ios --profile preview --local"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.5",

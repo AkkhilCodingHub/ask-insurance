@@ -75,7 +75,6 @@ const QUICK_ACTIONS = [
   { icon: 'document-text-outline', label: 'Compare\nPlans',  route: '/plans'   },
   { icon: 'shield-outline',        label: 'My\nPolicies',    route: '/profile' },
   { icon: 'add-circle-outline',    label: 'File\nClaim',     route: '/claims'  },
-  { icon: 'refresh-outline',       label: 'Renew\nPolicy',   route: '/plans'   },
 ] as const;
 
 function getGreeting() {
@@ -322,9 +321,6 @@ export default function HomeTab() {
 
                         <View style={s.policyFooter}>
                           <Text style={s.policyDue}>Expires {due}</Text>
-                          <TouchableOpacity style={[s.renewBtn, { backgroundColor: color }]}>
-                            <Text style={s.renewBtnText}>Renew →</Text>
-                          </TouchableOpacity>
                         </View>
                       </View>
                     );
@@ -610,8 +606,6 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
   policyDue:     { fontSize: 11, color: Colors.textMuted },
-  renewBtn:      { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  renewBtnText:  { fontSize: 11, fontWeight: '700', color: Colors.white },
 
   // ── Recommended cards ─────────────────────
   recScroll: { gap: 14, paddingRight: 6, paddingBottom: 4 },

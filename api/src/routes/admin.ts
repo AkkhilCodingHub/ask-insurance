@@ -1,9 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken } from '../lib/jwt';
 import { sendPush } from '../lib/push';
+import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib/r2';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per file
+});
+
+const STORAGE_QUOTA_BYTES = BigInt(10) * BigInt(1024) * BigInt(1024) * BigInt(1024); // 10 GB
 
 const router = Router();
 
@@ -1394,5 +1403,207 @@ router.get('/chat/unread', adminAuthenticate, async (_req: Request, res: Respons
     return;
   }
 });
+
+// ── File Storage ──────────────────────────────────────────────────────────────
+
+// GET /admin/storage — quota summary for current admin
+router.get('/storage', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: { storageUsed: true },
+    });
+    if (!admin) { res.status(404).json({ error: 'Admin not found' }); return; }
+    res.json({
+      used:  Number(admin.storageUsed),
+      quota: Number(STORAGE_QUOTA_BYTES),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /admin/files — list files for current admin
+router.get('/files', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const page  = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+    const skip  = (page - 1) * limit;
+
+    const [files, total] = await Promise.all([
+      prisma.adminFile.findMany({
+        where:   { adminId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.adminFile.count({ where: { adminId } }),
+    ]);
+
+    const admin = await prisma.admin.findUnique({ where: { id: adminId }, select: { storageUsed: true } });
+
+    res.json({
+      files: files.map(f => ({ ...f, size: Number(f.size) })),
+      total,
+      page,
+      limit,
+      storageUsed:  Number(admin?.storageUsed ?? 0),
+      storageQuota: Number(STORAGE_QUOTA_BYTES),
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/files/upload — upload a file to admin's storage
+router.post('/files/upload', adminAuthenticate, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) { res.status(400).json({ error: 'No file provided' }); return; }
+
+    const admin = await prisma.admin.findUnique({ where: { id: adminId }, select: { storageUsed: true } });
+    if (!admin) { res.status(404).json({ error: 'Admin not found' }); return; }
+
+    const fileSize = BigInt(file.size);
+    if (admin.storageUsed + fileSize > STORAGE_QUOTA_BYTES) {
+      res.status(400).json({ error: 'Storage quota exceeded (10 GB limit)' });
+      return;
+    }
+
+    const safeName = sanitizeFilename(file.originalname);
+    const key = `admins/${adminId}/${Date.now()}_${safeName}`;
+    const url = await uploadToR2(key, file.buffer, file.mimetype);
+
+    const [adminFile] = await prisma.$transaction([
+      prisma.adminFile.create({
+        data: { name: file.originalname, key, url, size: fileSize, mimeType: file.mimetype, adminId },
+      }),
+      prisma.admin.update({
+        where: { id: adminId },
+        data:  { storageUsed: { increment: fileSize } },
+      }),
+    ]);
+
+    res.status(201).json({ file: { ...adminFile, size: Number(adminFile.size) } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /admin/files/:id — delete a file
+router.delete('/files/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+
+    const file = await prisma.adminFile.findFirst({ where: { id, adminId } });
+    if (!file) { res.status(404).json({ error: 'File not found' }); return; }
+
+    await deleteFromR2(file.key).catch(() => {/* ignore if already gone */});
+    await prisma.$transaction([
+      prisma.adminFile.delete({ where: { id } }),
+      prisma.admin.update({
+        where: { id: adminId },
+        data:  { storageUsed: { decrement: file.size } },
+      }),
+    ]);
+
+    res.json({ success: true });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: 'Invalid ID' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/policies/:id/upload-document — upload policy PDF + update metadata
+router.post(
+  '/policies/:id/upload-document',
+  adminAuthenticate,
+  upload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const adminId = (req as Request & { adminId: string }).adminId;
+      const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+
+      const schema = z.object({
+        policyNumber: z.string().min(1).optional(),
+        issueDate:    z.string().datetime({ offset: true }).optional(),
+        expiryDate:   z.string().datetime({ offset: true }).optional(),
+      });
+      const { policyNumber, issueDate, expiryDate } = schema.parse(req.body);
+
+      const policy = await prisma.policy.findUnique({ where: { id } });
+      if (!policy) { res.status(404).json({ error: 'Policy not found' }); return; }
+
+      let documentUrl = policy.documentUrl;
+
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (file) {
+        const admin = await prisma.admin.findUnique({ where: { id: adminId }, select: { storageUsed: true } });
+        if (!admin) { res.status(404).json({ error: 'Admin not found' }); return; }
+
+        const fileSize = BigInt(file.size);
+        if (admin.storageUsed + fileSize > STORAGE_QUOTA_BYTES) {
+          res.status(400).json({ error: 'Storage quota exceeded (10 GB limit)' });
+          return;
+        }
+
+        // Delete old document from R2 if exists
+        if (policy.documentUrl) {
+          const oldKey = r2KeyFromUrl(policy.documentUrl);
+          if (oldKey) await deleteFromR2(oldKey).catch(() => {});
+        }
+
+        const safeName = sanitizeFilename(file.originalname);
+        const key = `policies/${id}/${Date.now()}_${safeName}`;
+        documentUrl = await uploadToR2(key, file.buffer, file.mimetype);
+
+        // Track storage
+        await prisma.admin.update({
+          where: { id: adminId },
+          data:  { storageUsed: { increment: fileSize } },
+        });
+      }
+
+      const updated = await prisma.policy.update({
+        where: { id },
+        data: {
+          ...(documentUrl  !== undefined && { documentUrl }),
+          ...(policyNumber && { policyNumber }),
+          ...(issueDate    && { startDate: new Date(issueDate) }),
+          ...(expiryDate   && { endDate:   new Date(expiryDate) }),
+        },
+      });
+
+      // Notify user if document was attached
+      if (file) {
+        await prisma.notification.create({
+          data: {
+            userId: policy.userId,
+            type:   'info',
+            title:  'Policy Document Available',
+            body:   `Your ${policy.type} policy document (${updated.policyNumber}) has been uploaded. You can download it from My Policies.`,
+          },
+        }).catch(() => {});
+
+        const policyUser = await prisma.user.findUnique({ where: { id: policy.userId }, select: { pushToken: true } });
+        await sendPush(policyUser?.pushToken, 'Policy Document Ready', 'Your policy document has been uploaded. Tap to view it in My Policies.');
+      }
+
+      res.json({ policy: updated });
+    } catch (e) {
+      if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+      console.error(e);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
 
 export { router as adminRouter };
