@@ -44,6 +44,14 @@
           "color": "#208AEF",
           "sounds": []
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "ndkVersion": "27.0.12077973"
+          }
+        }
       ]
     ],
     "experiments": {
