@@ -30,8 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# Firebase (never commit)
-google-services.json
+# Firebase
+# google-services.json tracked intentionally for EAS Build
 GoogleService-Info.plist
 *firebase-adminsdk*.json
 
