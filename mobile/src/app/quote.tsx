@@ -8,6 +8,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quotesApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
+import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useDialog } from '@/components/Dialog';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
@@ -250,14 +251,16 @@ export default function QuoteScreen() {
             <Text style={s.stepTitle}>Tell us about yourself</Text>
 
             <Text style={s.label}>AGE</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. 28"
-              placeholderTextColor={Colors.textLight}
-              value={age}
-              onChangeText={t => setAge(t.replace(/\D/g, '').slice(0, 2))}
-              keyboardType="numeric"
-            />
+            <View style={[af.inputRow, af.fieldGap]}>
+              <TextInput
+                style={af.input}
+                placeholder="e.g. 28"
+                placeholderTextColor={Colors.textLight}
+                value={age}
+                onChangeText={t => setAge(t.replace(/\D/g, '').slice(0, 2))}
+                keyboardType="numeric"
+              />
+            </View>
 
             <Text style={s.label}>GENDER</Text>
             <View style={s.optionRow}>
@@ -337,26 +340,28 @@ export default function QuoteScreen() {
                 <Text style={s.label}>
                   ENTER AMOUNT{planMinCover > 0 && planMaxCover > 0 ? ` (${fmtCover(planMinCover)} – ${fmtCover(planMaxCover)})` : ''}
                 </Text>
-                <TextInput
-                  style={s.input}
-                  placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
-                  placeholderTextColor={Colors.textLight}
-                  value={customCover}
-                  onChangeText={t => {
-                    const num = t.replace(/[^0-9]/g, '');
-                    setCustomCover(num);
-                    const val = Number(num);
-                    if (val > 0) {
-                      const clamped = planMinCover && planMaxCover
-                        ? Math.min(Math.max(val, planMinCover), planMaxCover)
-                        : val;
-                      setCover({ label: fmtCover(clamped), value: clamped });
-                    } else {
-                      setCover(null);
-                    }
-                  }}
-                  keyboardType="numeric"
-                />
+                <View style={af.inputRow}>
+                  <TextInput
+                    style={af.input}
+                    placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
+                    placeholderTextColor={Colors.textLight}
+                    value={customCover}
+                    onChangeText={t => {
+                      const num = t.replace(/[^0-9]/g, '');
+                      setCustomCover(num);
+                      const val = Number(num);
+                      if (val > 0) {
+                        const clamped = planMinCover && planMaxCover
+                          ? Math.min(Math.max(val, planMinCover), planMaxCover)
+                          : val;
+                        setCover({ label: fmtCover(clamped), value: clamped });
+                      } else {
+                        setCover(null);
+                      }
+                    }}
+                    keyboardType="numeric"
+                  />
+                </View>
                 {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) < planMinCover && (
                   <Text style={s.coverError}>Minimum cover is {fmtCover(planMinCover)}</Text>
                 )}
@@ -486,10 +491,6 @@ const s = StyleSheet.create({
   typeCheckText: { fontSize: 11, color: Colors.white, fontWeight: '800' },
 
   label: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 8, marginTop: 14 },
-  input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.bg, marginBottom: 4,
-  },
   optionRow:        { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   optionPill:       { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.bg },
   optionPillActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },

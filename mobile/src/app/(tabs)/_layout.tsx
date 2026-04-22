@@ -1,10 +1,11 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import React, { useRef } from 'react';
 import { Animated } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
@@ -46,8 +47,12 @@ export function FadeScreen({ children }: { children: React.ReactNode }) {
 }
 
 export default function TabLayout() {
+  const { user, loading } = useAuth();
   const insets = useSafeAreaInsets();
   const tabBarHeight = 52 + insets.bottom;
+
+  if (loading) return null;
+  if (!user) return <Redirect href="/login" />;
 
   return (
     <Tabs

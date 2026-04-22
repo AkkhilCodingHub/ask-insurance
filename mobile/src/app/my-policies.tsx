@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, type ComponentProps } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Modal, Animated, Dimensions, Platform,
@@ -25,12 +25,65 @@ const TYPE_META: Record<string, { color: string; lightBg: string; emoji: string;
   business: { color: '#E11D48', lightBg: '#FFF1F2', emoji: '💼',  label: 'Business Insurance' },
 };
 
-const STATUS_META: Record<string, { color: string; bg: string; label: string }> = {
-  active:    { color: '#059669', bg: '#ECFDF5', label: 'Active'    },
-  pending:   { color: '#D97706', bg: '#FFFBEB', label: 'Pending'   },
-  expired:   { color: '#DC2626', bg: '#FEF2F2', label: 'Expired'   },
-  cancelled: { color: '#64748B', bg: '#F8FAFC', label: 'Cancelled' },
+const TYPE_ICONS: Record<string, string> = {
+  life: 'heart-outline',
+  health: 'medical-outline',
+  motor: 'car-outline',
+  travel: 'airplane-outline',
+  home: 'home-outline',
+  business: 'briefcase-outline',
 };
+
+type IonIcon = ComponentProps<typeof Icon>['name'];
+
+const STATUS_META: Record<string, { color: string; bg: string; label: string; icon: IonIcon }> = {
+  active:    { color: '#059669', bg: '#ECFDF5', label: 'Active',    icon: 'checkmark-circle' },
+  pending:   { color: '#B45309', bg: '#FFFBEB', label: 'Pending',   icon: 'time-outline' },
+  expired:   { color: '#B91C1C', bg: '#FEF2F2', label: 'Expired',   icon: 'alert-circle-outline' },
+  cancelled: { color: '#475569', bg: '#F1F5F9', label: 'Cancelled', icon: 'remove-circle-outline' },
+};
+
+const stTag = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 9,
+    borderWidth: 1,
+    maxWidth: 200,
+  },
+  wrapCompact: {
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+    maxWidth: 130,
+  },
+  text: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  textCompact: { fontSize: 10, letterSpacing: 0.1 },
+});
+
+function StatusTag({ statusKey, compact }: { statusKey: string; compact?: boolean }) {
+  const meta = STATUS_META[statusKey] ?? STATUS_META.cancelled;
+  return (
+    <View
+      style={[
+        stTag.wrap,
+        compact && stTag.wrapCompact,
+        { backgroundColor: meta.bg, borderColor: meta.color + '2A' },
+      ]}
+    >
+      <Icon name={meta.icon} size={compact ? 12 : 15} color={meta.color} />
+      <Text style={[stTag.text, compact && stTag.textCompact, { color: meta.color }]}>{meta.label}</Text>
+    </View>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -115,7 +168,6 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
   if (!policy) return null;
 
   const type   = TYPE_META[policy.type] ?? { color: '#1580FF', lightBg: '#EFF6FF', emoji: '📋', label: policy.type };
-  const status = STATUS_META[policy.status] ?? STATUS_META.cancelled;
   const days   = daysLeft(policy.endDate);
   const pct    = coveragePct(policy.startDate, policy.endDate);
   const expiring = policy.status === 'active' && days > 0 && days <= 30;
@@ -150,13 +202,22 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
           {/* 3-metric strip */}
           <View style={d.metricStrip}>
             {[
-              { label: 'Premium/yr', value: fmtAmount(policy.premium) },
-              { label: 'Sum Insured', value: fmtAmount(policy.sumInsured) },
-              { label: 'Status', value: policy.status.charAt(0).toUpperCase() + policy.status.slice(1) },
+              { kind: 'text' as const, label: 'Premium/yr', value: fmtAmount(policy.premium) },
+              { kind: 'text' as const, label: 'Sum Insured', value: fmtAmount(policy.sumInsured) },
+              { kind: 'status' as const, label: 'Status' },
             ].map((m, i) => (
               <View key={m.label} style={[d.metricItem, i > 0 && d.metricBorder]}>
-                <Text style={d.metricVal}>{m.value}</Text>
-                <Text style={d.metricLbl}>{m.label}</Text>
+                {m.kind === 'status' ? (
+                  <>
+                    <StatusTag statusKey={policy.status} compact />
+                    <Text style={d.metricLbl}>{m.label}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={d.metricVal}>{m.value}</Text>
+                    <Text style={d.metricLbl}>{m.label}</Text>
+                  </>
+                )}
               </View>
             ))}
           </View>
@@ -269,49 +330,47 @@ type Tab = typeof TABS[number];
 
 function PolicyCard({ policy, onPress }: { policy: ApiPolicy; onPress: () => void }) {
   const type   = TYPE_META[policy.type] ?? { color: '#1580FF', lightBg: '#EFF6FF', emoji: '📋', label: policy.type };
-  const status = STATUS_META[policy.status] ?? STATUS_META.cancelled;
   const days   = daysLeft(policy.endDate);
   const pct    = coveragePct(policy.startDate, policy.endDate);
   const expiring = policy.status === 'active' && days > 0 && days <= 30;
+  const iconName = (TYPE_ICONS[policy.type] ?? 'document-text-outline') as React.ComponentProps<typeof Icon>['name'];
 
   return (
-    <TouchableOpacity style={c.card} onPress={onPress} activeOpacity={0.92}>
-      {/* Left color bar */}
-      <View style={[c.colorBar, { backgroundColor: type.color }]} />
-
+    <TouchableOpacity style={c.card} onPress={onPress} activeOpacity={0.88}>
       <View style={c.inner}>
         {/* Top row */}
         <View style={c.topRow}>
-          <View style={[c.emojiWrap, { backgroundColor: type.lightBg }]}>
-            <Text style={c.emoji}>{type.emoji}</Text>
+          <View style={[c.iconRing, { borderColor: type.color + '22' }]}>
+            <View style={[c.iconInner, { backgroundColor: type.lightBg }]}>
+              <Icon name={iconName} size={20} color={type.color} />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={c.provider} numberOfLines={1}>{policy.provider}</Text>
             <Text style={c.policyNum}>{policy.policyNumber}</Text>
           </View>
-          <View style={[c.statusPill, { backgroundColor: status.bg }]}>
-            <View style={[c.statusDot, { backgroundColor: status.color }]} />
-            <Text style={[c.statusText, { color: status.color }]}>{status.label}</Text>
+          <View style={c.statusTagSlot}>
+            <StatusTag statusKey={policy.status} />
           </View>
         </View>
 
         {/* Metrics */}
         <View style={c.metrics}>
           <View style={c.metric}>
-            <Text style={c.metricVal}>{fmtAmount(policy.sumInsured)}</Text>
             <Text style={c.metricLbl}>Cover</Text>
+            <Text style={c.metricVal}>{fmtAmount(policy.sumInsured)}</Text>
           </View>
           <View style={c.metricSep} />
           <View style={c.metric}>
+            <Text style={c.metricLbl}>Premium / yr</Text>
             <Text style={[c.metricVal, { color: type.color }]}>{fmtAmount(policy.premium)}</Text>
-            <Text style={c.metricLbl}>Premium/yr</Text>
           </View>
           <View style={c.metricSep} />
           <View style={c.metric}>
+            <Text style={c.metricLbl}>Payment</Text>
             <Text style={[c.metricVal, { color: policy.paymentStatus === 'paid' ? Colors.success : Colors.warning }]}>
               {policy.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
             </Text>
-            <Text style={c.metricLbl}>Payment</Text>
           </View>
         </View>
 
@@ -328,7 +387,7 @@ function PolicyCard({ policy, onPress }: { policy: ApiPolicy; onPress: () => voi
               <Text style={c.coverDate}>{fmtDate(policy.startDate)}</Text>
               {policy.status === 'active' && days > 0 ? (
                 <Text style={[c.coverDays, expiring && c.coverExpiring]}>
-                  {expiring ? `⚠ ${days}d left` : `${days}d left`}
+                  {expiring ? `Expiring · ${days}d` : `${days}d left`}
                 </Text>
               ) : (
                 <Text style={c.coverDate}>{fmtDate(policy.endDate)}</Text>
@@ -341,20 +400,17 @@ function PolicyCard({ policy, onPress }: { policy: ApiPolicy; onPress: () => voi
         <View style={c.footer}>
           {policy.documentUrl ? (
             <TouchableOpacity
-              style={[c.docChip, { borderColor: type.color + '30', backgroundColor: type.lightBg }]}
-              onPress={e => { WebBrowser.openBrowserAsync(policy.documentUrl!); }}
+              style={[c.docBtn, { borderColor: type.color + '40', backgroundColor: type.lightBg }]}
+              onPress={() => WebBrowser.openBrowserAsync(policy.documentUrl!)}
               activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Icon name="document-text-outline" size={11} color={type.color} />
-              <Text style={[c.docChipText, { color: type.color }]}>View Document</Text>
+              <Icon name="document-text-outline" size={18} color={type.color} />
+              <Text style={[c.docHint, { color: type.color }]}>Open policy PDF</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={c.noDoc}>No document yet</Text>
+            <Text style={c.noDoc}>No document</Text>
           )}
-          <View style={c.arrowWrap}>
-            <Icon name="chevron-forward" size={14} color={Colors.textLight} />
-          </View>
+          <Icon name="chevron-forward" size={16} color={Colors.textLight} />
         </View>
       </View>
     </TouchableOpacity>
@@ -379,7 +435,7 @@ function EmptyState({ tab }: { tab: Tab }) {
       </Text>
       {isAll && (
         <TouchableOpacity style={e.btn} onPress={() => router.push('/(tabs)/plans')} activeOpacity={0.85}>
-          <Icon name="shield-checkmark-outline" size={16} color="#fff" />
+          <Icon name="shield-checkmark-outline" size={20} color="#fff" />
           <Text style={e.btnText}>Browse Plans</Text>
         </TouchableOpacity>
       )}
@@ -439,7 +495,7 @@ export default function MyPoliciesScreen() {
       </View>
 
       {loading && !refreshing ? (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 12, gap: 16 }} showsVerticalScrollIndicator={false}>
           {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
         </ScrollView>
       ) : error ? (
@@ -471,7 +527,7 @@ export default function MyPoliciesScreen() {
               ].map(stat => (
                 <View key={stat.label} style={s.statCard}>
                   <View style={[s.statIconWrap, { backgroundColor: stat.color + '18' }]}>
-                    <Icon name={stat.icon} size={18} color={stat.color} />
+                    <Icon name={stat.icon} size={20} color={stat.color} />
                   </View>
                   <Text style={[s.statValue, { color: stat.color }]}>{stat.value}</Text>
                   <Text style={s.statLabel}>{stat.label}</Text>
@@ -524,82 +580,86 @@ const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 20, paddingVertical: 16,
     backgroundColor: Colors.white,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
   },
   headerCenter: { alignItems: 'center' },
   headerTitle:  { fontSize: 17, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
-  headerSub:    { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+  headerSub:    { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
 
-  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 40 },
   errorTitle:{ fontSize: 16, fontWeight: '800', color: Colors.text, marginTop: 4 },
   errorSub:  { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  retryBtn:  { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 22, paddingVertical: 11, backgroundColor: Colors.primary, borderRadius: 12, marginTop: 8 },
-  retryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  retryBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 28, paddingVertical: 15, backgroundColor: Colors.primary, borderRadius: 14, marginTop: 8, minWidth: 160, justifyContent: 'center' },
+  retryText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
-  content:    { paddingBottom: 40 },
+  content:    { paddingTop: 12, paddingBottom: 56, paddingHorizontal: 20 },
 
-  statsScroll:{ flexGrow: 0, marginTop: 16 },
-  statsRow:   { paddingHorizontal: 16, gap: 10 },
-  statCard:   { alignItems: 'center', backgroundColor: Colors.white, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, gap: 5, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border, minWidth: 88 },
-  statIconWrap:{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  statsScroll:{ flexGrow: 0, marginTop: 4 },
+  statsRow:   { gap: 12, paddingRight: 4 },
+  statCard:   { alignItems: 'center', backgroundColor: Colors.white, borderRadius: 16, paddingVertical: 18, paddingHorizontal: 20, gap: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border, minWidth: 100 },
+  statIconWrap:{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   statValue:  { fontSize: 18, fontWeight: '900', letterSpacing: -0.5 },
   statLabel:  { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
 
-  tabScroll:  { flexGrow: 0, marginTop: 14 },
-  tabRow:     { paddingHorizontal: 16, gap: 8 },
+  tabScroll:  { flexGrow: 0, marginTop: 22 },
+  tabRow:     { gap: 10, paddingRight: 4 },
   tab: {
-    paddingHorizontal: 14, paddingVertical: 7,
+    paddingHorizontal: 18, paddingVertical: 11,
     borderRadius: 100, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.white,
   },
-  tabText:     { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  tabText:     { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
   tabTextActive:{ color: '#fff' },
 
-  list: { paddingHorizontal: 16, gap: 10, marginTop: 14 },
+  list: { gap: 16, marginTop: 20 },
 });
 
 const c = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
-    overflow: 'hidden', flexDirection: 'row',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    overflow: 'hidden',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8 },
-      android: { elevation: 2 },
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
     }),
   },
-  colorBar: { width: 4 },
-  inner:    { flex: 1, padding: 14 },
+  inner:    { padding: 20 },
 
-  topRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  emojiWrap: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  emoji:     { fontSize: 20 },
+  topRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  iconRing:  { borderWidth: 1, borderRadius: 12, padding: 1 },
+  iconInner: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   provider:  { fontSize: 14, fontWeight: '800', color: Colors.text, flex: 1 },
   policyNum: { fontSize: 11, color: Colors.textMuted, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginTop: 1 },
-  statusPill:{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 100 },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
-  statusText:{ fontSize: 10, fontWeight: '700' },
+  statusTagSlot: { flexShrink: 0, marginLeft: 4 },
 
-  metrics:   { flexDirection: 'row', marginBottom: 12, backgroundColor: Colors.bg, borderRadius: 10, padding: 10 },
-  metric:    { flex: 1, alignItems: 'center' },
-  metricSep: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
+  metrics:   {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+  },
+  metric:    { flex: 1, alignItems: 'flex-start', gap: 4 },
+  metricSep: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 8, alignSelf: 'stretch' },
   metricVal: { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
-  metricLbl: { fontSize: 9, color: Colors.textMuted, marginTop: 2, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
+  metricLbl: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
 
-  coverBar:      { marginBottom: 10 },
-  coverTrack:    { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 5 },
+  coverBar:      { marginBottom: 4 },
+  coverTrack:    { height: 3, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 6 },
   coverFill:     { height: '100%', borderRadius: 2 },
   coverMeta:     { flexDirection: 'row', justifyContent: 'space-between' },
   coverDate:     { fontSize: 10, color: Colors.textMuted },
   coverDays:     { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
   coverExpiring: { color: '#D97706' },
 
-  footer:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
-  docChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
-  docChipText: { fontSize: 11, fontWeight: '700' },
-  noDoc:       { fontSize: 11, color: Colors.textLight },
-  arrowWrap:   { padding: 2 },
+  footer:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 2, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border },
+  docBtn:      { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1 },
+  docHint:     { fontSize: 15, fontWeight: '700' },
+  noDoc:       { fontSize: 13, color: Colors.textLight },
 });
 
 const d = StyleSheet.create({
@@ -631,8 +691,8 @@ const d = StyleSheet.create({
   metricVal:   { fontSize: 15, fontWeight: '800', color: '#fff' },
   metricLbl:   { fontSize: 9, color: 'rgba(255,255,255,0.65)', marginTop: 2, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
 
-  body:    { padding: 20, gap: 20 },
-  section: { gap: 10 },
+  body:    { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 8, gap: 24 },
+  section: { gap: 12 },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
 
   progressRow:     { flexDirection: 'row', justifyContent: 'space-between' },
@@ -659,21 +719,21 @@ const d = StyleSheet.create({
 });
 
 const e = StyleSheet.create({
-  wrap:    { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40, gap: 12 },
-  iconWrap:{ width: 90, height: 90, borderRadius: 24, backgroundColor: Colors.bgWarm, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  wrap:    { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 16 },
+  iconWrap:{ width: 90, height: 90, borderRadius: 24, backgroundColor: Colors.bgWarm, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title:   { fontSize: 19, fontWeight: '900', color: Colors.text, textAlign: 'center', letterSpacing: -0.3 },
-  sub:     { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
-  btn:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 13 },
-  btnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  sub:     { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  btn:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 16, minWidth: 200, justifyContent: 'center' },
+  btnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
 });
 
 const sk = StyleSheet.create({
-  card:       { backgroundColor: Colors.white, borderRadius: 16, padding: 16, gap: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border },
+  card:       { backgroundColor: Colors.white, borderRadius: 14, padding: 20, gap: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border },
   topRow:     { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  circle:     { width: 40, height: 40, borderRadius: 11, backgroundColor: Colors.bg },
+  circle:     { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.bg },
   lineWide:   { height: 12, borderRadius: 6, backgroundColor: Colors.bg, width: '70%' },
   lineNarrow: { height: 10, borderRadius: 5, backgroundColor: Colors.bg, width: '45%' },
-  divider:    { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
+  divider:    { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 2 },
   bottomRow:  { flexDirection: 'row', gap: 12 },
   lineShort:  { height: 10, borderRadius: 5, backgroundColor: Colors.bg, flex: 1 },
 });

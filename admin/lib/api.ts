@@ -98,7 +98,7 @@ export interface AdminClaim {
   id: string;
   policyId: string;
   userId?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'paid' | 'settled';
   amount: number;
   incidentDate: string;
   description?: string;
@@ -246,6 +246,17 @@ export interface FilesResponse {
 export interface StorageResponse {
   used:  number; // bytes
   quota: number; // bytes
+}
+
+// ── Agent Types ────────────────────────────────────────────────────────────
+export interface AgentRecord {
+  id:           string;
+  name:         string;
+  email:        string;
+  role:         'admin' | 'superadmin';
+  isActive:     boolean;
+  createdAt:    string;
+  storageUsed?: number;
 }
 
 // ── Analytics Types ────────────────────────────────────────────────────────
@@ -435,7 +446,7 @@ class AdminApiClient {
     return data;
   }
 
-  async updateClaimStatus(id: string, status: 'pending' | 'approved' | 'rejected'): Promise<AdminClaim> {
+  async updateClaimStatus(id: string, status: 'pending' | 'approved' | 'rejected' | 'paid' | 'settled'): Promise<AdminClaim> {
     const { data } = await this.instance.put(`/claims/${id}/status`, { status });
     if (data.error) throw new Error(data.error);
     return data.claim;
@@ -576,6 +587,37 @@ class AdminApiClient {
     const { data } = await this.instance.get('/chat/unread');
     if (data.error) throw new Error(data.error);
     return data.unread;
+  }
+
+  // ── Agent management ────────────────────────────────────────────────────
+  async getAgents(): Promise<AgentRecord[]> {
+    const { data } = await this.instance.get('/agents');
+    if (data.error) throw new Error(data.error);
+    return data.agents;
+  }
+
+  async createAgent(payload: { name: string; email: string; password: string; role: 'admin' | 'superadmin' }): Promise<AgentRecord> {
+    const { data } = await this.instance.post('/agents', payload);
+    if (data.error) throw new Error(data.error);
+    return data.agent;
+  }
+
+  async updateAgent(id: string, payload: Partial<{ name: string; role: 'admin' | 'superadmin'; isActive: boolean; password: string }>): Promise<AgentRecord> {
+    const { data } = await this.instance.patch(`/agents/${id}`, payload);
+    if (data.error) throw new Error(data.error);
+    return data.agent;
+  }
+
+  async deleteAgent(id: string): Promise<void> {
+    const { data } = await this.instance.delete(`/agents/${id}`);
+    if (data.error) throw new Error(data.error);
+  }
+
+  // ── Profile ──────────────────────────────────────────────────────────────
+  async updateProfile(payload: { name?: string; currentPassword?: string; newPassword?: string }): Promise<{ id: string; name: string; email: string; role: string }> {
+    const { data } = await this.instance.put('/me', payload);
+    if (data.error) throw new Error(data.error);
+    return data.admin;
   }
 }
 

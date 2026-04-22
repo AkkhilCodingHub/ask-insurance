@@ -4,26 +4,34 @@ import { useState, useEffect } from "react";
 import { Search, X, FileText, User, Calendar, IndianRupee, RefreshCw } from "lucide-react";
 import { adminApi, type AdminClaim } from "@/lib/api";
 
-const STATUS_OPTS = ["All", "pending", "approved", "rejected"] as const;
-type ApiStatus = "pending" | "approved" | "rejected";
+const STATUS_OPTS = ["All", "pending", "approved", "rejected", "paid", "settled"] as const;
+type ClaimStatus = "pending" | "approved" | "rejected" | "paid" | "settled";
 
-const STATUS_META: Record<ApiStatus, { bg: string; color: string; border: string; label: string }> = {
+const STATUS_META: Record<ClaimStatus, { bg: string; color: string; border: string; label: string }> = {
   pending:  { bg: "#FFFBEB", color: "#D97706", border: "#FDE68A",  label: "Pending" },
   approved: { bg: "#ECFDF5", color: "#059669", border: "#A7F3D0",  label: "Approved" },
   rejected: { bg: "#FEF2F2", color: "#DC2626", border: "#FCA5A5",  label: "Rejected" },
+  paid:     { bg: "#EEF2FF", color: "#4F46E5", border: "#C7D2FE",  label: "Paid" },
+  settled:  { bg: "#F0FDF4", color: "#047857", border: "#6EE7B7",  label: "Settled" },
 };
 
+const STATUS_DRAWER_ORDER: ClaimStatus[] = ["pending", "approved", "rejected", "paid", "settled"];
+
+function isClaimStatus(s: string): s is ClaimStatus {
+  return (STATUS_DRAWER_ORDER as string[]).includes(s);
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_META[status as ApiStatus] ?? { bg: "var(--bg)", color: "var(--text-muted)", label: status };
+  const s = STATUS_META[status as ClaimStatus] ?? { bg: "var(--bg)", color: "var(--text-muted)", label: status };
   return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: s.bg, color: s.color }}>{s.label}</span>;
 }
 
 function ClaimDrawer({ claim, onClose, onUpdate }: {
   claim: AdminClaim;
   onClose: () => void;
-  onUpdate: (id: string, status: ApiStatus) => Promise<void>;
+  onUpdate: (id: string, status: ClaimStatus) => Promise<void>;
 }) {
-  const [status, setStatus] = useState<ApiStatus>(claim.status);
+  const [status, setStatus] = useState<ClaimStatus>(isClaimStatus(claim.status) ? claim.status : "pending");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -104,12 +112,12 @@ function ClaimDrawer({ claim, onClose, onUpdate }: {
         {/* Status update */}
         <div style={{ padding: "20px 24px", flex: 1 }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 16 }}>Update Status</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 24 }}>
-            {(["pending", "approved", "rejected"] as ApiStatus[]).map(s => {
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+            {STATUS_DRAWER_ORDER.map(s => {
               const m = STATUS_META[s];
               return (
                 <button key={s} onClick={() => setStatus(s)}
-                  style={{ padding: "10px 4px", border: status === s ? `2px solid ${m.color}` : "1.5px solid var(--border)", borderRadius: 8, background: status === s ? m.bg : "#fff", color: status === s ? m.color : "var(--text-muted)", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
+                  style={{ flex: "1 1 calc(33.33% - 6px)", minWidth: 120, padding: "10px 4px", border: status === s ? `2px solid ${m.color}` : "1.5px solid var(--border)", borderRadius: 8, background: status === s ? m.bg : "#fff", color: status === s ? m.color : "var(--text-muted)", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}>
                   {m.label}
                 </button>
               );
@@ -151,7 +159,7 @@ export default function ClaimsPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function handleUpdate(id: string, status: ApiStatus) {
+  async function handleUpdate(id: string, status: ClaimStatus) {
     const updated = await adminApi.updateClaimStatus(id, status);
     setClaims(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
     setSelected(prev => prev?.id === id ? { ...prev, ...updated } : prev);
@@ -199,7 +207,7 @@ export default function ClaimsPage() {
           return (
             <button key={s} onClick={() => setStatusF(s)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, border: active ? "none" : "1.5px solid var(--border)", background: active ? "var(--primary)" : "#fff", color: active ? "#fff" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              {s === "All" ? "All" : (STATUS_META[s as ApiStatus]?.label ?? s)}
+              {s === "All" ? "All" : (STATUS_META[s as ClaimStatus]?.label ?? s)}
               <span style={{ fontSize: 10, fontWeight: 800, background: active ? "rgba(255,255,255,0.25)" : "var(--bg)", padding: "1px 6px", borderRadius: 100 }}>{count}</span>
             </button>
           );

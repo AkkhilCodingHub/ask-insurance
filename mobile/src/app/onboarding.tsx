@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
+import { authFieldStyles as af } from '@/constants/authFieldStyles';
 
 function formatDOB(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 8);
@@ -73,12 +74,12 @@ export default function OnboardingScreen() {
 
             {/* Name */}
             <Text style={s.fieldLabel}>YOUR FULL NAME</Text>
-            <View style={s.inputWrap}>
-              <View style={s.inputIcon}>
+            <View style={[af.inputRow, af.fieldGap]}>
+              <View style={af.prefix}>
                 <Icon name="person-outline" size={18} color={Colors.primary} />
               </View>
               <TextInput
-                style={s.input}
+                style={af.input}
                 placeholder="e.g. Priya Sharma"
                 placeholderTextColor={Colors.textLight}
                 value={name}
@@ -91,12 +92,12 @@ export default function OnboardingScreen() {
 
             {/* DOB */}
             <Text style={s.fieldLabel}>DATE OF BIRTH</Text>
-            <View style={s.inputWrap}>
-              <View style={s.inputIcon}>
+            <View style={[af.inputRow, { marginBottom: 22 }]}>
+              <View style={af.prefix}>
                 <Icon name="calendar-outline" size={18} color={Colors.primary} />
               </View>
               <TextInput
-                style={s.input}
+                style={af.input}
                 placeholder="DD / MM / YYYY"
                 placeholderTextColor={Colors.textLight}
                 value={dob}
@@ -199,21 +200,6 @@ const s = StyleSheet.create({
   fieldLabel: {
     fontSize: 10, fontWeight: '800', color: Colors.textMuted,
     letterSpacing: 1.2, marginBottom: 8, marginTop: 4,
-  },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 2, borderColor: Colors.border,
-    borderRadius: 14, backgroundColor: Colors.bg,
-    marginBottom: 22, overflow: 'hidden',
-  },
-  inputIcon: {
-    width: 48, height: 52, alignItems: 'center', justifyContent: 'center',
-    borderRightWidth: 1, borderRightColor: Colors.border,
-    backgroundColor: Colors.primaryLight,
-  },
-  input: {
-    flex: 1, fontSize: 16, fontWeight: '600', color: Colors.text,
-    paddingHorizontal: 14, paddingVertical: 14,
   },
   checkCircle: {
     width: 26, height: 26, borderRadius: 13,

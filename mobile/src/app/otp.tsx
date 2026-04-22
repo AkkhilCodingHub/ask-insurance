@@ -228,7 +228,7 @@ const s = StyleSheet.create({
   otpRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   otpBox: {
     flex: 1, aspectRatio: 1,
-    borderRadius: 14, borderWidth: 2, borderColor: Colors.border,
+    borderRadius: 16, borderWidth: 2, borderColor: Colors.border,
     backgroundColor: Colors.bg,
     textAlign: 'center', fontSize: 24, fontWeight: '800', color: Colors.text,
   },

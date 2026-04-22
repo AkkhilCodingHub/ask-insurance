@@ -135,7 +135,7 @@ model Claim {
   claimNumber   String    @unique
   type          String // medical, accident, theft, etc.
   amount        Float
-  status        String    @default("pending") // pending, approved, rejected, paid
+  status        String    @default("pending") // pending, approved, rejected, paid, settled
   description   String?
   incidentDate  DateTime
   submittedDate DateTime  @default(now())

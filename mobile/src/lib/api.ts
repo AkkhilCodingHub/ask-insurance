@@ -551,3 +551,212 @@ export const chatApi = {
       body:   JSON.stringify({ content })
     }, true)
 };
+
+// ── Agent (admin) token storage ───────────────────────────────────────────────
+
+const AGENT_TOKEN_KEY = 'agent_auth_token';
+
+export async function getAgentToken(): Promise<string | null> {
+  try { return await SecureStore.getItemAsync(AGENT_TOKEN_KEY); } catch { return null; }
+}
+export async function setAgentToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(AGENT_TOKEN_KEY, token);
+}
+export async function clearAgentToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(AGENT_TOKEN_KEY);
+}
+
+// ── Agent request wrapper (uses agent JWT → /api/admin/* routes) ──────────────
+
+async function agentRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = await getAgentToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  let json: unknown;
+  try { json = await res.json(); } catch { json = null; }
+  if (!res.ok) {
+    const body = json as Record<string, unknown> | null;
+    throw new ApiError((body?.error as string) ?? 'Request failed', res.status);
+  }
+  return json as T;
+}
+
+// ── Agent types ───────────────────────────────────────────────────────────────
+
+export interface AgentAdmin {
+  id:    string;
+  name:  string;
+  email: string;
+  role:  string;
+}
+
+export interface AgentQuote {
+  id:              string;
+  type:            string;
+  status:          string;
+  details:         string | Record<string, unknown>;
+  adminResponse:   { insurer: string; planName: string; netPremium: number; gst: number; totalPremium: number; notes?: string } | null;
+  adminResponseAt: string | null;
+  approvedAt:      string | null;
+  createdAt:       string;
+  user:            { id: string; name: string | null; phone: string; email: string | null };
+}
+
+export interface AgentPolicy {
+  id:            string;
+  policyNumber:  string;
+  type:          string;
+  status:        string;
+  paymentStatus: string;
+  provider:      string;
+  premium:       number;
+  sumInsured:    number;
+  startDate:     string;
+  endDate:       string;
+  documentUrl:   string | null;
+  notes:         string | null;
+  createdAt:     string;
+  user:          { id: string; name: string | null; phone: string };
+  _count:        { claims: number };
+}
+
+export interface AgentClaim {
+  id:            string;
+  claimNumber:   string;
+  policyId:      string;
+  type:          string;
+  amount:        number;
+  status:        string;
+  description?:  string | null;
+  notes?:         string | null;
+  incidentDate:  string;
+  createdAt:     string;
+  updatedAt:     string;
+  user?:         { id: string; name: string | null; phone: string };
+  policy?:       { id: string; policyNumber: string; type: string; provider: string };
+}
+
+// ── Agent API ─────────────────────────────────────────────────────────────────
+
+export const agentApi = {
+  login: (email: string, password: string) =>
+    agentRequest<{ token: string; admin: AgentAdmin }>('/api/admin/auth/login', {
+      method: 'POST',
+      body:   JSON.stringify({ email, password }),
+    }),
+
+  getQuotes: (status?: string, page = 1) => {
+    const qs = new URLSearchParams({ page: String(page), limit: '50' });
+    if (status) qs.set('status', status);
+    return agentRequest<{ quotes: AgentQuote[]; total: number }>(`/api/admin/quotes?${qs}`);
+  },
+
+  respondToQuote: (quoteId: string, data: {
+    insurer: string; planName: string; netPremium: number;
+    gst: number; totalPremium: number; notes?: string;
+  }) =>
+    agentRequest<{ quote: AgentQuote }>(`/api/admin/quotes/${quoteId}/respond`, {
+      method: 'POST',
+      body:   JSON.stringify(data),
+    }),
+
+  updateQuoteStatus: (quoteId: string, status: 'pending' | 'responded' | 'approved' | 'expired') =>
+    agentRequest<{ quote: AgentQuote }>(`/api/admin/quotes/${quoteId}/status`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ status }),
+    }),
+
+  generateQuotePaymentLink: (quoteId: string) =>
+    agentRequest<{ paymentUrl: string; paymentLinkId: string; amount: number }>(`/api/admin/quotes/${quoteId}/payment-link`, {
+      method: 'POST',
+    }),
+
+  getPolicies: (status?: string, page = 1) => {
+    const qs = new URLSearchParams({ page: String(page), limit: '50' });
+    if (status) qs.set('status', status);
+    return agentRequest<{ policies: AgentPolicy[]; total: number }>(`/api/admin/policies?${qs}`);
+  },
+
+  getClaims: (status?: string, page = 1) => {
+    const qs = new URLSearchParams({ page: String(page), limit: '100' });
+    if (status) qs.set('status', status);
+    return agentRequest<{ claims: AgentClaim[]; total: number }>(`/api/admin/claims?${qs}`);
+  },
+
+  updateClaimStatus: (id: string, status: 'pending' | 'approved' | 'rejected' | 'paid' | 'settled', notes?: string) =>
+    agentRequest<{ claim: AgentClaim }>(`/api/admin/claims/${id}/status`, {
+      method:  'PUT',
+      body:    JSON.stringify({ status, ...(notes != null && notes !== '' ? { notes } : {}) }),
+    }),
+
+  updatePolicyStatus: (policyId: string, status: string) =>
+    agentRequest<{ policy: AgentPolicy }>(`/api/admin/policies/${policyId}`, {
+      method: 'PUT',
+      body:   JSON.stringify({ status }),
+    }),
+
+  confirmPayment: (policyId: string, utrNumber: string) =>
+    agentRequest<{ policy: AgentPolicy }>(`/api/admin/policies/${policyId}/confirm-payment`, {
+      method: 'POST',
+      body:   JSON.stringify({ utrNumber }),
+    }),
+
+  uploadPolicyDocument: async (policyId: string, data: {
+    file: { uri: string; name: string; type: string };
+    policyNumber: string;
+    issueDate:    string;
+    expiryDate:   string;
+    notes?:       string;
+  }) => {
+    const token = await getAgentToken();
+    const form = new FormData();
+    form.append('document', { uri: data.file.uri, name: data.file.name, type: data.file.type } as any);
+    form.append('policyNumber', data.policyNumber);
+    form.append('issueDate',    data.issueDate);
+    form.append('expiryDate',   data.expiryDate);
+    if (data.notes) form.append('notes', data.notes);
+    const res = await fetch(`${BASE_URL}/api/admin/policies/${policyId}/upload-document`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token ?? ''}` },
+      body:    form,
+    });
+    const json = await res.json();
+    if (!res.ok) throw new ApiError((json as any)?.error ?? 'Upload failed', res.status);
+    return json as { policy: AgentPolicy };
+  },
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  getConversations: (status?: string, page = 1) => {
+    const qs = new URLSearchParams({ page: String(page), limit: '50' });
+    if (status) qs.set('status', status);
+    return agentRequest<{ conversations: Conversation[]; total: number }>(`/api/admin/chat/conversations?${qs}`);
+  },
+
+  getConversation: (id: string) =>
+    agentRequest<{ conversation: Conversation }>(`/api/admin/chat/conversations/${id}`),
+
+  getMessages: (conversationId: string, after?: string) => {
+    const qs = new URLSearchParams({ limit: '100' });
+    if (after) qs.set('after', after);
+    return agentRequest<{ messages: ChatMessage[] }>(`/api/admin/chat/conversations/${conversationId}/messages?${qs}`);
+  },
+
+  sendMessage: (conversationId: string, content: string) =>
+    agentRequest<{ message: ChatMessage }>(`/api/admin/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body:   JSON.stringify({ content }),
+    }),
+
+  setConversationStatus: (id: string, status: 'open' | 'closed' | 'resolved') =>
+    agentRequest<{ conversation: Conversation }>(`/api/admin/chat/conversations/${id}/status`, {
+      method: 'PUT',
+      body:   JSON.stringify({ status }),
+    }),
+
+  getChatUnread: () =>
+    agentRequest<{ unread: number }>('/api/admin/chat/unread').then(r => r.unread),
+};

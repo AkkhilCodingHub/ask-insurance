@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { plansApi, ApiPlan } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { authFieldStyles as af } from '@/constants/authFieldStyles';
 
 const PAGE_SIZE = 10;
 
@@ -57,72 +58,89 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
   const color    = planColor(plan);
   const short    = planShort(plan);
   const features = parsedFeatures(plan);
+  const claimPct = plan.insurer?.claimsRatio ?? 0;
 
   return (
     <View style={pc.card}>
-      {/* Top */}
-      <View style={pc.top}>
-        <View style={[pc.avatar, { backgroundColor: color + '18' }]}>
-          <Text style={[pc.avatarText, { color }]}>{short}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={pc.insurer}>{plan.insurer?.name ?? '—'}</Text>
-            {plan.isFeatured && (
-              <View style={[pc.badge, { backgroundColor: color + '18' }]}>
-                <Text style={[pc.badgeText, { color }]}>Featured</Text>
-              </View>
-            )}
-          </View>
-          <Text style={pc.planName}>{plan.name}</Text>
-        </View>
-        <View style={pc.claimBox}>
-          <Text style={pc.claimLabel}>CLAIM</Text>
-          <Text style={pc.claimValue}>{plan.insurer?.claimsRatio ?? 0}%</Text>
-        </View>
-      </View>
-
-      {/* Meta row */}
-      <View style={pc.metaRow}>
-        <View style={pc.metaItem}>
-          <Text style={pc.metaLabel}>PREMIUM</Text>
-          <Text style={[pc.metaValue, { color }]}>{formatPremium(plan.basePremium)}</Text>
-        </View>
-        <View style={[pc.metaItem, { alignItems: 'center' }]}>
-          <Text style={pc.metaLabel}>COVER</Text>
-          <Text style={pc.metaValue}>{formatCover(plan.maxCover)}</Text>
-        </View>
-        <View style={[pc.metaItem, { alignItems: 'flex-end' }]}>
-          <Text style={pc.metaLabel}>CATEGORY</Text>
-          <Text style={pc.metaValue}>{CATEGORIES.find(c => c.key === plan.type)?.label ?? plan.type}</Text>
-        </View>
-      </View>
-
-      {/* Features */}
-      {expanded && features.length > 0 && (
-        <View style={pc.features}>
-          {features.map((f, i) => (
-            <View key={i} style={pc.featureRow}>
-              <View style={[pc.featureDot, { backgroundColor: color + '18' }]}>
-                <Text style={[pc.featureTick, { color }]}>✓</Text>
-              </View>
-              <Text style={pc.featureText}>{f}</Text>
+      <View style={pc.cardBody}>
+        {/* Top */}
+        <View style={pc.top}>
+          <View style={[pc.avatar, { borderColor: color + '30' }]}>
+            <View style={[pc.avatarInner, { backgroundColor: color + '10' }]}>
+              <Text style={[pc.avatarText, { color }]}>{short}</Text>
             </View>
-          ))}
+          </View>
+          <View style={pc.topMain}>
+            <View style={pc.titleRow}>
+              <Text style={pc.insurer} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
+              {plan.isFeatured && (
+                <View style={[pc.badge, { borderColor: color + '40' }]}>
+                  <Text style={[pc.badgeText, { color }]}>Featured</Text>
+                </View>
+              )}
+            </View>
+            <Text style={pc.planName} numberOfLines={2}>{plan.name}</Text>
+            <View style={pc.metaPills}>
+              <View style={pc.pill}>
+                <Text style={pc.pillText}>{CATEGORIES.find(c => c.key === plan.type)?.label ?? plan.type}</Text>
+              </View>
+              <View style={pc.pill}>
+                <Text style={pc.pillTextMuted}>
+                  {claimPct}% claim settlement
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
-      )}
 
-      {/* Actions */}
-      <View style={pc.actions}>
-        <TouchableOpacity onPress={() => setExpanded(!expanded)} style={pc.detailBtn}>
-          <Text style={pc.detailBtnText}>{expanded ? 'Hide details ↑' : 'View details ↓'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[pc.quoteBtn, { backgroundColor: color }]}
-          onPress={() => router.push(`/plan/${plan.id}`)}
-        >
-          <Text style={pc.quoteBtnText}>Get Quote</Text>
-        </TouchableOpacity>
+        {/* Stats — flat row with hairline dividers */}
+        <View style={pc.statGrid}>
+          <View style={pc.statCell}>
+            <Text style={pc.statLabel}>Premium</Text>
+            <Text style={[pc.statValue, { color }]}>{formatPremium(plan.basePremium)}</Text>
+          </View>
+          <View style={pc.statSep} />
+          <View style={pc.statCell}>
+            <Text style={pc.statLabel}>Cover</Text>
+            <Text style={pc.statValue}>{formatCover(plan.maxCover)}</Text>
+          </View>
+          <View style={pc.statSep} />
+          <View style={pc.statCellLast}>
+            <Text style={pc.statLabel}>Insurer</Text>
+            <Text style={pc.statValue} numberOfLines={1}>
+              {plan.insurer?.shortName ?? (plan.insurer?.name ? plan.insurer.name.split(' ')[0] : '—')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Features */}
+        {expanded && features.length > 0 && (
+          <View style={pc.features}>
+            {features.map((f, i) => (
+              <View key={i} style={pc.featureRow}>
+                <View style={[pc.featureTickWrap, { borderColor: color + '30' }]}>
+                  <Text style={[pc.featureTick, { color }]}>✓</Text>
+                </View>
+                <Text style={pc.featureText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Actions */}
+        <View style={pc.actions}>
+          <TouchableOpacity onPress={() => setExpanded(!expanded)} style={pc.detailBtn} activeOpacity={0.7}>
+            <Text style={pc.detailBtnText}>{expanded ? 'Less' : 'Details'}</Text>
+            <Text style={pc.detailBtnCaret}>{expanded ? '˄' : '˅'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[pc.quoteBtn, { backgroundColor: color }]}
+            onPress={() => router.push(`/plan/${plan.id}`)}
+            activeOpacity={0.85}
+          >
+            <Text style={pc.quoteBtnText}>Get quote</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -249,18 +267,20 @@ export default function PlansTab() {
         <Text style={s.title}>Compare Plans</Text>
         <Text style={s.sub}>Find the best coverage for your needs</Text>
 
-        <View style={s.searchBox}>
-          <Icon name="search-outline" size={16} color={Colors.textLight} />
+        <View style={[af.inputRow, { marginBottom: 12 }]}>
+          <View style={af.prefix}>
+            <Icon name="search-outline" size={20} color={Colors.primary} />
+          </View>
           <TextInput
-            style={s.searchInput}
+            style={af.input}
             placeholder="Search insurers or plans..."
             placeholderTextColor={Colors.textLight}
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Text style={{ fontSize: 16, color: Colors.textMuted, paddingRight: 4 }}>✕</Text>
+            <TouchableOpacity onPress={() => setSearch('')} style={{ paddingRight: 12, paddingVertical: 12 }}>
+              <Text style={{ fontSize: 16, color: Colors.textMuted, fontWeight: '600' }}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -280,7 +300,7 @@ export default function PlansTab() {
               >
                 <Icon
                   name={cat.icon as any}
-                  size={14}
+                  size={17}
                   color={active ? Colors.white : cat.color}
                 />
                 <Text style={[s.chipText, active && s.chipTextActive]}>
@@ -339,33 +359,25 @@ const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: Colors.white },
   header: {
     backgroundColor: Colors.white,
-    paddingHorizontal: 16, paddingTop: 16,
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   title: { fontSize: 22, fontWeight: '900', color: Colors.text, letterSpacing: -0.4 },
-  sub:   { fontSize: 13, color: Colors.textMuted, marginTop: 2, marginBottom: 14 },
+  sub:   { fontSize: 13, color: Colors.textMuted, marginTop: 4, marginBottom: 18 },
 
-  searchBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: Colors.bg, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.border,
-    paddingHorizontal: 12, marginBottom: 12,
-  },
-  searchInput: { flex: 1, paddingVertical: 11, fontSize: 14, color: Colors.text },
-
-  filterList: { gap: 8, paddingBottom: 12 },
+  filterList: { gap: 10, paddingBottom: 16 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 13, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.border, backgroundColor: Colors.white,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 11,
+    borderRadius: 24, borderWidth: 1,
+    borderColor: Colors.border, backgroundColor: Colors.bgWarm,
   },
   chipActive:     {},
-  chipText:       { fontSize: 13, fontWeight: '600', color: Colors.textMuted },
+  chipText:       { fontSize: 14, fontWeight: '600', color: Colors.textMuted },
   chipTextActive: { color: Colors.white },
 
-  listContent: { padding: 16, paddingBottom: BottomTabInset + 24 },
-  count:       { fontSize: 11, color: Colors.textLight, fontWeight: '500', marginBottom: 12, letterSpacing: 0.2 },
+  listContent: { padding: 20, paddingBottom: BottomTabInset + 32 },
+  count:       { fontSize: 11, color: Colors.textLight, fontWeight: '500', marginBottom: 16, marginTop: 4, letterSpacing: 0.2 },
 
   centred:    { flex: 1, paddingTop: 80, alignItems: 'center' },
   empty:      { alignItems: 'center', paddingTop: 60, gap: 8 },
@@ -389,57 +401,68 @@ const s = StyleSheet.create({
 const pc = StyleSheet.create({
   card: {
     backgroundColor: Colors.white,
-    borderRadius: 16, marginBottom: 14,
+    borderRadius: 14, marginBottom: 16,
     borderWidth: 1, borderColor: Colors.border,
+    overflow: 'hidden',
   },
-  badge:     { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  badgeText: { fontSize: 9, fontWeight: '700' },
+  cardBody:{},
+
+  badge:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, backgroundColor: Colors.white },
+  badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
 
   top: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 12, padding: 14, paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'flex-start',
+    gap: 14, paddingHorizontal: 18, paddingTop: 18, paddingBottom: 14,
   },
   avatar: {
-    width: 46, height: 46, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 12,
+    borderWidth: 1, padding: 2,
   },
-  avatarText: { fontSize: 14, fontWeight: '800' },
-  insurer:    { fontSize: 13, fontWeight: '700', color: Colors.text },
-  planName:   { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  claimBox:   { alignItems: 'flex-end' },
-  claimLabel: { fontSize: 9, color: Colors.textLight, fontWeight: '600', letterSpacing: 0.3 },
-  claimValue: { fontSize: 14, fontWeight: '700', color: Colors.success },
+  avatarInner: {
+    flex: 1, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+  topMain:   { flex: 1, minWidth: 0, gap: 4 },
+  titleRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  insurer:   { fontSize: 12, fontWeight: '800', color: Colors.text, letterSpacing: -0.2, textTransform: 'uppercase' },
+  planName:  { fontSize: 15, fontWeight: '700', color: Colors.text, lineHeight: 20, letterSpacing: -0.2 },
+  metaPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  pill:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: Colors.bg },
+  pillText:  { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
+  pillTextMuted: { fontSize: 11, fontWeight: '500', color: Colors.textLight },
 
-  metaRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 12,
-    backgroundColor: Colors.bg,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+  statGrid: {
+    flexDirection: 'row', alignItems: 'stretch',
+    marginHorizontal: 18, marginBottom: 6,
+    borderRadius: 10,
+    borderWidth: 1, borderColor: '#E8EEF4',
+    backgroundColor: '#FAFBFD',
   },
-  metaItem:  { flex: 1 },
-  metaLabel: { fontSize: 9, color: Colors.textLight, fontWeight: '600', letterSpacing: 0.3, marginBottom: 3 },
-  metaValue: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  statCell:     { flex: 1, paddingVertical: 14, paddingHorizontal: 12 },
+  statCellLast: { flex: 1, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'flex-end' },
+  statSep:      { width: 1, backgroundColor: '#E8EEF4' },
+  statLabel:    { fontSize: 9, color: Colors.textLight, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
+  statValue:    { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
 
   features: {
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, gap: 9,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    paddingHorizontal: 18, paddingTop: 14, paddingBottom: 6, gap: 10,
   },
-  featureRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureDot:  { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  featureTick: { fontSize: 11, fontWeight: '800' },
-  featureText: { fontSize: 13, color: Colors.textMuted, flex: 1 },
+  featureRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  featureTickWrap: { width: 20, height: 20, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  featureTick: { fontSize: 10, fontWeight: '800' },
+  featureText: { fontSize: 13, color: Colors.textMuted, flex: 1, lineHeight: 19 },
 
   actions: {
     flexDirection: 'row', gap: 10,
-    padding: 14, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    padding: 16, paddingTop: 14,
   },
   detailBtn: {
-    flex: 1, paddingVertical: 9, borderRadius: 10,
-    borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center',
+    flex: 1, minHeight: 48, paddingVertical: 14, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6,
     backgroundColor: Colors.white,
   },
-  detailBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
-  quoteBtn:      { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center' },
-  quoteBtnText:  { fontSize: 12, fontWeight: '700', color: Colors.white },
+  detailBtnText: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  detailBtnCaret:{ fontSize: 13, color: Colors.textLight, fontWeight: '400' },
+  quoteBtn:      { flex: 1, minHeight: 48, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  quoteBtnText:  { fontSize: 15, fontWeight: '800', color: Colors.white, letterSpacing: 0.2 },
 });

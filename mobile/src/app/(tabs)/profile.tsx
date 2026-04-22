@@ -9,6 +9,7 @@ import { useAuth } from '@/context/auth';
 import { policiesApi, claimsApi, paymentsApi, ApiPolicy, ApiClaim, ApiPayment } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useDialog } from '@/components/Dialog';
 
 import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +77,7 @@ function MenuRow({ icon, label, sub, onPress, badge, badgeColor }: MenuRowProps)
 export default function ProfileTab() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { confirm } = useDialog();
 
   const [policies,   setPolicies]   = useState<ApiPolicy[]>([]);
   const [claims,     setClaims]     = useState<ApiClaim[]>([]);
@@ -105,8 +107,17 @@ export default function ProfileTab() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/welcome');
+    const yes = await confirm({
+      title:       'Log out',
+      message:     'Are you sure you want to log out of your account?',
+      confirmText: 'Log out',
+      cancelText:  'Cancel',
+      destructive: true,
+    });
+    if (yes) {
+      await logout();
+      router.replace('/welcome');
+    }
   };
 
   const initials = (user?.name ?? 'U')
@@ -190,11 +201,6 @@ export default function ProfileTab() {
         ) : (
           <View style={s.statsRow}>
             <View style={s.statBox}>
-              <Text style={s.statNum}>{activePolicies}</Text>
-              <Text style={s.statLbl}>Active{'\n'}Policies</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.statBox}>
               <Text style={s.statNum}>{claims.length}</Text>
               <Text style={s.statLbl}>Total{'\n'}Claims</Text>
             </View>
@@ -208,34 +214,6 @@ export default function ProfileTab() {
               </Text>
               <Text style={s.statLbl}>Total{'\n'}Paid</Text>
             </View>
-          </View>
-        )}
-
-        {/* Active policies preview */}
-        {!loading && activePolicies > 0 && (
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>Active Policies</Text>
-              <TouchableOpacity onPress={() => router.push('/my-policies')}>
-                <Text style={s.seeAll}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            {policies.filter(p => p.status === 'active').slice(0, 2).map(p => {
-              const color = policyColor(p.type);
-              const due   = new Date(p.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-              return (
-                <View key={p.id} style={[s.policyRow, { borderLeftColor: color }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.policyPlan}>{p.provider}</Text>
-                    <Text style={s.policyMeta}>{p.type} · {p.policyNumber}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[s.policyPremium, { color }]}>{formatPremium(p.premium)}</Text>
-                    <Text style={s.policyDue}>Until {due}</Text>
-                  </View>
-                </View>
-              );
-            })}
           </View>
         )}
 

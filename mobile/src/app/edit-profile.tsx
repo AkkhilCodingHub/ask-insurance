@@ -12,6 +12,7 @@ import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { useDialog } from '@/components/Dialog';
 import { Colors } from '@/constants/theme';
+import { authFieldStyles as af } from '@/constants/authFieldStyles';
 
 // ── Indian states & UTs ───────────────────────────────────────────────────────
 
@@ -60,18 +61,30 @@ function Field({
   return (
     <View style={f.wrap}>
       <Text style={f.label}>{label}</Text>
-      <TextInput
-        style={[f.input, multiline && f.inputMulti, !!error && f.inputError]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.textLight}
-        keyboardType={keyboardType ?? 'default'}
-        maxLength={maxLength}
-        multiline={multiline}
-        autoCapitalize={autoCapitalize ?? 'sentences'}
-        autoCorrect={false}
-      />
+      <View
+        style={[
+          af.inputRow,
+          multiline && af.inputRowTopAlign,
+          !!error && af.inputRowError,
+        ]}
+      >
+        <TextInput
+          style={[
+            af.input,
+            multiline && af.inputMultiline,
+            multiline && { minHeight: 88 },
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.textLight}
+          keyboardType={keyboardType ?? 'default'}
+          maxLength={maxLength}
+          multiline={multiline}
+          autoCapitalize={autoCapitalize ?? 'sentences'}
+          autoCorrect={false}
+        />
+      </View>
       {!!error && <Text style={f.errorText}>{error}</Text>}
     </View>
   );
@@ -261,13 +274,22 @@ export default function EditProfileScreen() {
             <View style={f.wrap}>
               <Text style={f.label}>State / UT</Text>
               <TouchableOpacity
-                style={[f.input, s.stateBtn]}
+                style={[af.inputRow, s.stateBtn]}
                 onPress={() => { setStateSearch(''); setStateModalOpen(true); }}
+                activeOpacity={0.85}
               >
-                <Text style={state ? s.stateBtnText : s.stateBtnPlaceholder}>
+                <Text
+                  style={[
+                    { flex: 1, paddingHorizontal: 14, paddingVertical: 16, fontSize: 15, fontWeight: '600' },
+                    state ? s.stateBtnText : s.stateBtnPlaceholder,
+                  ]}
+                  numberOfLines={1}
+                >
                   {state || 'Select state or UT'}
                 </Text>
-                <Icon name="chevron-down-outline" size={16} color={Colors.textMuted} />
+                <View style={{ marginRight: 12 }}>
+                  <Icon name="chevron-down-outline" size={20} color={Colors.textMuted} />
+                </View>
               </TouchableOpacity>
             </View>
             <View style={s.divider} />
@@ -325,10 +347,12 @@ export default function EditProfileScreen() {
               <Text style={sm.close}>✕</Text>
             </TouchableOpacity>
           </View>
-          <View style={sm.searchRow}>
-            <Icon name="search-outline" size={16} color={Colors.textMuted} />
+          <View style={[af.inputRow, { margin: 12 }]}>
+            <View style={af.prefix}>
+              <Icon name="search-outline" size={20} color={Colors.primary} />
+            </View>
             <TextInput
-              style={sm.searchInput}
+              style={af.input}
               value={stateSearch}
               onChangeText={setStateSearch}
               placeholder="Search..."
@@ -438,13 +462,6 @@ const s = StyleSheet.create({
 const f = StyleSheet.create({
   wrap:       { paddingHorizontal: 16, paddingVertical: 14 },
   label:      { fontSize: 10, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.8, marginBottom: 8 },
-  input: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 15, color: Colors.text, backgroundColor: Colors.bg,
-  },
-  inputMulti: { minHeight: 72, textAlignVertical: 'top', paddingTop: 11 },
-  inputError: { borderColor: Colors.error },
   errorText:  { fontSize: 11, color: Colors.error, marginTop: 5 },
 });
 
@@ -457,13 +474,6 @@ const sm = StyleSheet.create({
   },
   title:  { fontSize: 17, fontWeight: '800', color: Colors.text },
   close:  { fontSize: 20, color: Colors.textMuted, padding: 4 },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    margin: 12, paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: Colors.bg, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: Colors.text },
   row:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
   rowActive:   { backgroundColor: Colors.primaryLight },
   rowText:     { fontSize: 15, color: Colors.text },

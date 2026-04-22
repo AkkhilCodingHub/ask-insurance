@@ -11,6 +11,7 @@ import { useAuth } from '@/context/auth';
 import { ApiError, chatApi, ChatMessage, Conversation } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supportChatFocusedRef } from '@/lib/supportChatFocused';
 import { useDialog } from '@/components/Dialog';
@@ -483,16 +484,18 @@ export default function ChatTab() {
         {/* Input bar */}
         {!isClosed && (
           <View style={s.inputBar}>
-            <TextInput
-              style={s.input}
-              value={text}
-              onChangeText={setText}
-              placeholder="Type a message..."
-              placeholderTextColor={Colors.textLight}
-              multiline
-              maxLength={2000}
-              returnKeyType="default"
-            />
+            <View style={[af.inputRow, s.inputFieldWrap, af.inputRowTopAlign]}>
+              <TextInput
+                style={[af.input, af.inputComposer, af.inputMultiline, s.inputText]}
+                value={text}
+                onChangeText={setText}
+                placeholder="Type a message..."
+                placeholderTextColor={Colors.textLight}
+                multiline
+                maxLength={2000}
+                returnKeyType="default"
+              />
+            </View>
             <TouchableOpacity
               style={[s.sendBtn, (!text.trim() || sending) && s.sendBtnDisabled]}
               onPress={handleSend}
@@ -575,15 +578,8 @@ const s = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
-  input: {
-    flex: 1,
-    minHeight: 44, maxHeight: 120,
-    borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 22, paddingHorizontal: 16, paddingVertical: 11,
-    fontSize: 15, color: Colors.text,
-    backgroundColor: Colors.bg,
-    lineHeight: 20,
-  },
+  inputFieldWrap: { flex: 1, minHeight: 48, maxHeight: 120 },
+  inputText: { maxHeight: 120, minHeight: 44, paddingTop: 12 },
   sendBtn: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.primary,

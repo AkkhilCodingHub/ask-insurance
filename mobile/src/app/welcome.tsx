@@ -5,8 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
+
+const SEEN_KEY = 'seen_welcome_v1';
 
 const { width: W } = Dimensions.get('window');
 
@@ -44,15 +47,20 @@ export default function WelcomeScreen() {
     setActiveIndex(idx);
   };
 
+  const finish = () => {
+    SecureStore.setItemAsync(SEEN_KEY, '1');
+    router.replace('/login');
+  };
+
   const goNext = () => {
     if (activeIndex < SLIDES.length - 1) {
       scrollRef.current?.scrollTo({ x: (activeIndex + 1) * W, animated: true });
     } else {
-      router.push('/login');
+      finish();
     }
   };
 
-  const skip = () => router.push('/login');
+  const skip = () => finish();
 
   const slide = SLIDES[activeIndex];
 

@@ -1,16 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Animated, Dimensions,
+  RefreshControl, ActivityIndicator, Animated, Platform,
 } from 'react-native';
+import type { ComponentProps } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { paymentsApi, ApiPayment } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
-
-const { width: W } = Dimensions.get('window');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,17 +51,17 @@ const TYPE_COLOR: Record<string, string> = {
   business: '#E11D48',
 };
 
-const TYPE_EMOJI: Record<string, string> = {
-  life: '❤️', health: '🏥', motor: '🚗', travel: '✈️',
-  home: '🏠', business: '💼', fire: '🔥', marine: '⚓',
-  engineering: '⚙️', liability: '⚖️',
+const TYPE_ICONS: Record<string, string> = {
+  life: 'heart-outline', health: 'medical-outline', motor: 'car-outline', travel: 'airplane-outline',
+  home: 'home-outline', business: 'briefcase-outline', fire: 'flame-outline', marine: 'boat-outline',
+  engineering: 'construct-outline', liability: 'scale-outline',
 };
 
-const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  success:  { label: 'Paid',     color: '#059669', bg: '#D1FAE5', icon: 'checkmark-circle' },
-  pending:  { label: 'Pending',  color: '#D97706', bg: '#FEF3C7', icon: 'time'             },
-  failed:   { label: 'Failed',   color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle'     },
-  refunded: { label: 'Refunded', color: '#6B7280', bg: '#F3F4F6', icon: 'refresh-circle'   },
+const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: ComponentProps<typeof Icon>['name'] }> = {
+  success:  { label: 'Paid',     color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle' },
+  pending:  { label: 'Pending',  color: '#B45309', bg: '#FFFBEB', icon: 'time-outline' },
+  failed:   { label: 'Failed',   color: '#B91C1C', bg: '#FEF2F2', icon: 'close-circle' },
+  refunded: { label: 'Refunded', color: '#475569', bg: '#F1F5F9', icon: 'refresh-circle' },
 };
 
 // ── Shimmer skeleton ──────────────────────────────────────────────────────────
@@ -90,23 +89,24 @@ function Shimmer({ width, height, radius = 8, style }: {
 function PaymentCardSkeleton() {
   return (
     <View style={sk.card}>
-      <View style={sk.band} />
-      <View style={sk.body}>
-        <View style={sk.row}>
-          <Shimmer width={42} height={42} radius={13} />
-          <View style={{ flex: 1, gap: 7 }}>
-            <Shimmer width="55%" height={14} />
-            <Shimmer width="35%" height={11} />
-          </View>
-          <View style={{ alignItems: 'flex-end', gap: 7 }}>
-            <Shimmer width={60} height={16} />
-            <Shimmer width={44} height={20} radius={10} />
-          </View>
+      <View style={sk.row}>
+        <Shimmer width={40} height={40} radius={10} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Shimmer width="60%" height={14} />
+          <Shimmer width="40%" height={10} />
         </View>
-        <View style={sk.footer}>
-          <Shimmer width={120} height={11} />
-          <Shimmer width={80}  height={11} />
-        </View>
+        <Shimmer width={72} height={28} radius={8} />
+      </View>
+      <View style={sk.divider} />
+      <View style={sk.metrics}>
+        <Shimmer width="28%" height={12} />
+        <Shimmer width="28%" height={12} />
+        <Shimmer width="28%" height={12} />
+      </View>
+      <View style={sk.divider} />
+      <View style={sk.footerRow}>
+        <Shimmer width={100} height={10} />
+        <Shimmer width={80} height={10} />
       </View>
     </View>
   );
@@ -157,49 +157,60 @@ function HeroStats({ payments }: { payments: ApiPayment[] }) {
 function PaymentCard({ item }: { item: ApiPayment }) {
   const st      = STATUS_CFG[item.status] ?? STATUS_CFG.pending;
   const color   = TYPE_COLOR[item.policy?.type ?? ''] ?? Colors.primary;
-  const emoji   = TYPE_EMOJI[item.policy?.type ?? ''] ?? '📋';
-  const typeStr = item.policy?.type ?? '';
-  const typeCap = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
+  const typeKey = item.policy?.type ?? '';
+  const typeCap = typeKey ? typeKey.charAt(0).toUpperCase() + typeKey.slice(1) : 'Policy';
+  const iconName = (TYPE_ICONS[typeKey] ?? 'document-text-outline') as ComponentProps<typeof Icon>['name'];
 
   return (
     <View style={pc.card}>
-      {/* Left colour band */}
-      <View style={[pc.band, { backgroundColor: color }]} />
-
-      <View style={pc.body}>
-        {/* Top row */}
-        <View style={pc.top}>
-          <View style={[pc.avatar, { backgroundColor: color + '18' }]}>
-            <Text style={pc.emoji}>{emoji}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={pc.provider} numberOfLines={1}>{item.policy?.provider ?? 'Insurance'}</Text>
-            <Text style={pc.meta}>{typeCap} · {item.policy?.policyNumber ?? '—'}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', gap: 5 }}>
-            <Text style={[pc.amount, { color }]}>{formatAmount(item.amount)}</Text>
-            <View style={[pc.badge, { backgroundColor: st.bg }]}>
-              <Icon name={st.icon as any} size={10} color={st.color} />
-              <Text style={[pc.badgeText, { color: st.color }]}>{st.label}</Text>
+      <View style={pc.inner}>
+        <View style={pc.topRow}>
+          <View style={[pc.iconRing, { borderColor: color + '22' }]}>
+            <View style={[pc.iconInner, { backgroundColor: color + '12' }]}>
+              <Icon name={iconName} size={20} color={color} />
             </View>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={pc.provider} numberOfLines={1}>{item.policy?.provider ?? 'Insurance'}</Text>
+            <Text style={pc.meta} numberOfLines={1}>{typeCap} · {item.policy?.policyNumber ?? '—'}</Text>
+          </View>
+          <View
+            style={[
+              pc.statusTag,
+              { backgroundColor: st.bg, borderColor: st.color + '2A' },
+            ]}
+          >
+            <Icon name={st.icon} size={12} color={st.color} />
+            <Text style={[pc.statusText, { color: st.color }]}>{st.label}</Text>
           </View>
         </View>
 
-        {/* Footer row */}
+        <View style={pc.metrics}>
+          <View style={pc.metric}>
+            <Text style={pc.metricLbl}>Amount</Text>
+            <Text style={[pc.metricVal, { color }]}>{formatAmountFull(item.amount)}</Text>
+          </View>
+          <View style={pc.metricSep} />
+          <View style={[pc.metric, { flex: 1.2 }]}>
+            <Text style={pc.metricLbl}>Plan type</Text>
+            <Text style={pc.metricVal} numberOfLines={1}>{typeCap}</Text>
+          </View>
+        </View>
+
         <View style={pc.footer}>
-          <View style={pc.footerLeft}>
-            <Icon name="calendar-outline" size={11} color={Colors.textLight} />
+          <View style={pc.footerItem}>
+            <Icon name="calendar-outline" size={14} color={Colors.textLight} />
             <Text style={pc.footerText}>{formatDate(item.createdAt)}</Text>
           </View>
-          <View style={pc.footerLeft}>
-            <Icon name="time-outline" size={11} color={Colors.textLight} />
+          <View style={pc.footerItem}>
+            <Icon name="time-outline" size={14} color={Colors.textLight} />
             <Text style={pc.footerText}>{formatTime(item.createdAt)}</Text>
           </View>
-          {item.providerRef && (
+          {item.providerRef ? (
             <Text style={pc.ref} numberOfLines={1}>
-              Ref: {item.providerRef.slice(-8).toUpperCase()}
+              Ref · {item.providerRef.slice(-8).toUpperCase()}
             </Text>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
@@ -266,7 +277,7 @@ export default function PaymentsScreen() {
       </View>
 
       {loading ? (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           {[0, 1, 2, 3].map(i => <PaymentCardSkeleton key={i} />)}
         </ScrollView>
       ) : error ? (
@@ -370,7 +381,7 @@ const s = StyleSheet.create({
   tabBadgeText:       { fontSize: 10, fontWeight: '700', color: Colors.textMuted },
   tabBadgeTextActive: { color: Colors.white },
 
-  listWrap: { padding: 16, gap: 12 },
+  listWrap: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8, gap: 16 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   errorCircle: {
@@ -420,56 +431,59 @@ const h = StyleSheet.create({
   chipLabel: { fontSize: 12, fontWeight: '600', color: Colors.white },
 });
 
-// Payment card
+// Payment card (flat, aligned with My Policies)
 const pc = StyleSheet.create({
   card: {
-    flexDirection: 'row',
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    ...Platform.select({
+      ios:     { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
-  band: { width: 4 },
-  body: { flex: 1, padding: 14 },
-  top: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10,
+  inner:    { padding: 20 },
+  topRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  iconRing: { borderWidth: 1, borderRadius: 12, padding: 1 },
+  iconInner:{ width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  provider: { fontSize: 15, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
+  meta:     { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  statusTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, borderWidth: 1, flexShrink: 0, maxWidth: 108,
   },
-  avatar: {
-    width: 44, height: 44, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  emoji:    { fontSize: 22 },
-  provider: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  meta:     { fontSize: 11, color: Colors.textMuted },
-  amount:   { fontSize: 16, fontWeight: '900', letterSpacing: -0.3 },
-  badge:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  badgeText:{ fontSize: 10, fontWeight: '700' },
+  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.15 },
 
-  footer: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderTopWidth: 1, borderTopColor: Colors.bg,
-    paddingTop: 10,
+  metrics:  {
+    flexDirection: 'row', paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
-  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerText: { fontSize: 11, color: Colors.textLight },
-  ref:        { flex: 1, fontSize: 10, color: Colors.textLight, textAlign: 'right', fontFamily: 'monospace' },
+  metric:   { flex: 1, alignItems: 'flex-start', gap: 4 },
+  metricSep:{ width: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 4, alignSelf: 'stretch' },
+  metricLbl: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
+  metricVal: { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
+
+  footer:   {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+    marginTop: 4, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    justifyContent: 'space-between',
+  },
+  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  footerText:  { fontSize: 12, color: Colors.textLight },
+  ref:         { fontSize: 11, color: Colors.textLight, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 });
 
 // Skeleton
 const sk = StyleSheet.create({
   card: {
-    flexDirection: 'row', backgroundColor: Colors.white,
-    borderRadius: 16, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    backgroundColor: Colors.white, borderRadius: 14, padding: 20, gap: 12,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
-  band:   { width: 4, backgroundColor: Colors.border },
-  body:   { flex: 1, padding: 14, gap: 12 },
   row:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.bg, paddingTop: 10 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
+  metrics: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
 });
 
 // Empty

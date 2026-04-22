@@ -181,7 +181,7 @@ router.put('/claims/:id/status', adminAuthenticate, async (req: Request, res: Re
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const { status, notes } = z
       .object({
-        status: z.enum(['pending', 'approved', 'rejected', 'paid']),
+        status: z.enum(['pending', 'approved', 'rejected', 'paid', 'settled']),
         notes: z.string().optional()
       })
       .parse(req.body);
@@ -199,7 +199,7 @@ router.put('/claims/:id/status', adminAuthenticate, async (req: Request, res: Re
         status,
         ...(notes !== undefined ? { notes } : {}),
         ...(status === 'approved' ? { approvedDate: now } : {}),
-        ...(status === 'paid' ? { paidDate: now } : {})
+        ...(status === 'paid' || status === 'settled' ? { paidDate: now } : {})
       }
     });
 
@@ -925,14 +925,40 @@ router.post('/quotes/:id/payment-link', adminAuthenticate, async (req: Request, 
       where: { id },
       include: {
         user: { select: { name: true, phone: true } },
-        policies: { where: { paymentStatus: 'pending' }, take: 1, select: { id: true, policyNumber: true, premium: true, type: true, provider: true } }
+        // look for any non-paid policy (pending or otherwise) linked to this quote
+        policies: { where: { paymentStatus: { not: 'paid' } }, take: 1 }
       }
     });
     if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
-    if (quote.status !== 'approved') { res.status(400).json({ error: 'Quote must be approved before payment link can be generated' }); return; }
+    if (quote.status !== 'approved') { res.status(400).json({ error: 'Quote must be approved before a payment link can be generated' }); return; }
+    if (!quote.adminResponse) { res.status(400).json({ error: 'No quote response found — send a quote first' }); return; }
 
-    const policy = quote.policies[0];
-    if (!policy) { res.status(404).json({ error: 'No pending policy found for this quote' }); return; }
+    let adminResp: { insurer: string; planName: string; netPremium: number; gst: number; totalPremium: number; notes?: string };
+    try { adminResp = JSON.parse(quote.adminResponse as string); } catch { res.status(400).json({ error: 'Invalid quote response data' }); return; }
+
+    // Use existing unpaid policy, or create one if the agent approved the quote manually
+    let policy = quote.policies[0];
+    if (!policy) {
+      let details: Record<string, unknown> = {};
+      try { details = JSON.parse(quote.details as string); } catch {}
+      const now = new Date();
+      policy = await prisma.policy.create({
+        data: {
+          policyNumber:  `APP${Date.now()}`,
+          type:          quote.type,
+          provider:      adminResp.insurer,
+          sumInsured:    (details.sumInsured as number) ?? 0,
+          premium:       adminResp.totalPremium,
+          startDate:     now,
+          endDate:       new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+          status:        'pending',
+          paymentStatus: 'pending',
+          notes:         adminResp.notes ?? null,
+          userId:        quote.userId,
+          quoteId:       quote.id,
+        },
+      });
+    }
 
     const { createPaymentLink } = await import('../lib/razorpay');
     const link = await createPaymentLink({
@@ -941,7 +967,7 @@ router.post('/quotes/:id/payment-link', adminAuthenticate, async (req: Request, 
       policyNumber:  policy.policyNumber,
       customerName:  quote.user?.name ?? 'Customer',
       customerPhone: quote.user?.phone ?? '',
-      description:   `${policy.type} Insurance Premium — ${policy.provider}`,
+      description:   `${policy.type} Insurance Premium — ${adminResp.insurer}`,
     });
 
     res.json({ paymentUrl: link.short_url, paymentLinkId: link.id, amount: policy.premium });
@@ -1534,10 +1560,11 @@ router.post(
 
       const schema = z.object({
         policyNumber: z.string().min(1).optional(),
-        issueDate:    z.string().datetime({ offset: true }).optional(),
-        expiryDate:   z.string().datetime({ offset: true }).optional(),
+        issueDate:    z.string().optional(),
+        expiryDate:   z.string().optional(),
+        notes:        z.string().optional(),
       });
-      const { policyNumber, issueDate, expiryDate } = schema.parse(req.body);
+      const { policyNumber, issueDate, expiryDate, notes } = schema.parse(req.body);
 
       const policy = await prisma.policy.findUnique({ where: { id } });
       if (!policy) { res.status(404).json({ error: 'Policy not found' }); return; }
@@ -1572,14 +1599,17 @@ router.post(
         });
       }
 
+      const parseDate = (s?: string) => { if (!s) return undefined; const d = new Date(s); return isNaN(d.getTime()) ? undefined : d; };
       const updated = await prisma.policy.update({
         where: { id },
         data: {
           ...(documentUrl  !== undefined && { documentUrl }),
           ...(policyNumber && { policyNumber }),
-          ...(issueDate    && { startDate: new Date(issueDate) }),
-          ...(expiryDate   && { endDate:   new Date(expiryDate) }),
+          ...(parseDate(issueDate)  && { startDate: parseDate(issueDate) }),
+          ...(parseDate(expiryDate) && { endDate:   parseDate(expiryDate) }),
+          ...(notes !== undefined   && { notes }),
         },
+        include: { user: { select: { id: true, name: true, phone: true } } },
       });
 
       // Notify user if document was attached
@@ -1605,5 +1635,139 @@ router.post(
     }
   }
 );
+
+// ── Agent management (superadmin only) ───────────────────────────────────────
+
+const superadminOnly = (req: Request, res: Response, next: () => void): void => {
+  const role = (req as Request & { adminRole: string }).adminRole;
+  if (role !== 'superadmin') {
+    res.status(403).json({ error: 'Superadmin access required' });
+    return;
+  }
+  next();
+};
+
+// GET /admin/agents — list all agents
+router.get('/agents', adminAuthenticate, superadminOnly, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const agents = await prisma.admin.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true },
+    });
+    res.json({ agents: agents.map(a => ({ ...a, storageUsed: Number(a.storageUsed) })) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/agents — create a new agent
+router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, role } = z.object({
+      name:     z.string().min(2),
+      email:    z.string().email(),
+      password: z.string().min(8, 'Password must be at least 8 characters'),
+      role:     z.enum(['admin', 'superadmin']).default('admin'),
+    }).parse(req.body);
+
+    const existing = await prisma.admin.findUnique({ where: { email } });
+    if (existing) { res.status(409).json({ error: 'An agent with this email already exists' }); return; }
+
+    const hashed = await bcrypt.hash(password, 12);
+    const agent  = await prisma.admin.create({
+      data: { name, email, password: hashed, role },
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+    });
+    res.status(201).json({ agent });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /admin/agents/:id — update name / role / isActive / reset password
+router.patch('/agents/:id', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const body = z.object({
+      name:     z.string().min(2).optional(),
+      role:     z.enum(['admin', 'superadmin']).optional(),
+      isActive: z.boolean().optional(),
+      password: z.string().min(8).optional(),
+    }).parse(req.body);
+
+    const data: Record<string, unknown> = {};
+    if (body.name     !== undefined) data.name     = body.name;
+    if (body.role     !== undefined) data.role     = body.role;
+    if (body.isActive !== undefined) data.isActive = body.isActive;
+    if (body.password !== undefined) data.password = await bcrypt.hash(body.password, 12);
+
+    const agent = await prisma.admin.update({
+      where: { id },
+      data,
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+    });
+    res.json({ agent });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /admin/agents/:id
+router.delete('/agents/:id', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const selfId = (req as Request & { adminId: string }).adminId;
+    if (id === selfId) { res.status(400).json({ error: 'You cannot delete your own account' }); return; }
+    await prisma.admin.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /admin/me — update own profile / password
+router.put('/me', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const body = z.object({
+      name:        z.string().min(2).optional(),
+      currentPassword: z.string().optional(),
+      newPassword: z.string().min(8).optional(),
+    }).parse(req.body);
+
+    const data: Record<string, unknown> = {};
+    if (body.name !== undefined) data.name = body.name;
+
+    if (body.newPassword) {
+      if (!body.currentPassword) {
+        res.status(400).json({ error: 'Current password is required to set a new password' });
+        return;
+      }
+      const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+      if (!admin) { res.status(404).json({ error: 'Admin not found' }); return; }
+      const valid = await bcrypt.compare(body.currentPassword, admin.password);
+      if (!valid) { res.status(401).json({ error: 'Current password is incorrect' }); return; }
+      data.password = await bcrypt.hash(body.newPassword, 12);
+    }
+
+    const updated = await prisma.admin.update({
+      where: { id: adminId },
+      data,
+      select: { id: true, name: true, email: true, role: true },
+    });
+    res.json({ admin: updated });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 export { router as adminRouter };

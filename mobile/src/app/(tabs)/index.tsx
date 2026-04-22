@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Dimensions, RefreshControl, Animated,
+  StyleSheet, Dimensions, RefreshControl, Animated, Platform,
 } from 'react-native';
+import type { ComponentProps } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
@@ -11,6 +12,23 @@ import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 
 const { width: W } = Dimensions.get('window');
+
+const TYPE_ICONS: Record<string, string> = {
+  life: 'heart-outline', health: 'medical-outline', motor: 'car-outline', travel: 'airplane-outline',
+  home: 'home-outline', business: 'briefcase-outline',
+};
+
+const POLICY_STATUS_META: Record<string, { label: string; color: string; bg: string; icon: ComponentProps<typeof Icon>['name'] }> = {
+  active:    { label: 'Active',    color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle' },
+  pending:   { label: 'Pending',   color: '#B45309', bg: '#FFFBEB', icon: 'time-outline' },
+  expired:   { label: 'Expired',   color: '#B91C1C', bg: '#FEF2F2', icon: 'alert-circle-outline' },
+  cancelled: { label: 'Cancelled', color: '#475569', bg: '#F1F5F9', icon: 'remove-circle-outline' },
+};
+
+const CATEGORIES: { key: string; label: string }[] = [
+  { key: 'life', label: 'Life' }, { key: 'health', label: 'Health' }, { key: 'motor', label: 'Motor' },
+  { key: 'travel', label: 'Travel' }, { key: 'home', label: 'Home' }, { key: 'business', label: 'Business' },
+];
 
 // ── Shimmer ───────────────────────────────────────────────────────────────────
 
@@ -37,35 +55,26 @@ function Shimmer({ width, height, borderRadius = 8, style }: {
 function RecommendedCardSkeleton() {
   return (
     <View style={sk.card}>
-      <View style={sk.header}>
-        <View style={sk.headerTop}>
-          <Shimmer width={38} height={38} borderRadius={19} />
-          <Shimmer width={70} height={14} borderRadius={6} style={{ marginLeft: 8 }} />
+      <View style={sk.top}>
+        <Shimmer width={48} height={48} borderRadius={12} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <Shimmer width="50%" height={12} borderRadius={5} />
+          <Shimmer width="90%" height={16} borderRadius={5} />
+          <Shimmer width="40%" height={10} borderRadius={4} />
         </View>
-        <Shimmer width="80%" height={16} borderRadius={6} style={{ marginTop: 12 }} />
-        <Shimmer width="55%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
       </View>
-      <View style={sk.metrics}>
-        <View style={sk.metricBox}>
-          <Shimmer width={36} height={9}  borderRadius={4} />
-          <Shimmer width={52} height={14} borderRadius={5} style={{ marginTop: 4 }} />
-        </View>
-        <View style={[sk.metricBox, { alignItems: 'center' }]}>
-          <Shimmer width={48} height={9}  borderRadius={4} />
-          <Shimmer width={40} height={14} borderRadius={5} style={{ marginTop: 4 }} />
-        </View>
-        <View style={[sk.metricBox, { alignItems: 'flex-end' }]}>
-          <Shimmer width={36} height={9}  borderRadius={4} />
-          <Shimmer width={44} height={14} borderRadius={5} style={{ marginTop: 4 }} />
-        </View>
+      <View style={sk.statGrid}>
+        <Shimmer width="28%" height={24} borderRadius={4} />
+        <Shimmer width="28%" height={24} borderRadius={4} />
+        <Shimmer width="28%" height={24} borderRadius={4} />
       </View>
       <View style={sk.features}>
-        <Shimmer width="90%" height={11} borderRadius={5} />
-        <Shimmer width="70%" height={11} borderRadius={5} style={{ marginTop: 6 }} />
+        <Shimmer width="92%" height={10} borderRadius={4} />
+        <Shimmer width="75%" height={10} borderRadius={4} />
       </View>
       <View style={sk.footer}>
-        <Shimmer width={52} height={20} borderRadius={10} />
-        <Shimmer width={90} height={30} borderRadius={8} />
+        <Shimmer width={56} height={18} borderRadius={6} />
+        <Shimmer width={100} height={32} borderRadius={10} />
       </View>
     </View>
   );
@@ -283,46 +292,53 @@ export default function HomeTab() {
                     const color = policyColor(typeStr);
                     const due   = new Date(p.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                     const providerStr = p.provider ?? '';
-                    const initials = (providerStr.slice(0, 2) || '—').toUpperCase();
+                    const st = POLICY_STATUS_META[p.status] ?? POLICY_STATUS_META.pending;
+                    const iconName = (TYPE_ICONS[typeStr] ?? 'document-text-outline') as ComponentProps<typeof Icon>['name'];
                     return (
-                      <View key={p.id} style={s.policyCard}>
-                        <View style={[s.policyBand, { backgroundColor: color }]}>
-                          <View style={s.policyBandInner}>
-                            <View style={s.policyAvatarCircle}>
-                              <Text style={s.policyAvatarText}>{initials}</Text>
+                      <TouchableOpacity
+                        key={p.id}
+                        style={s.policyCard}
+                        activeOpacity={0.88}
+                        onPress={() => router.push('/my-policies')}
+                      >
+                        <View style={s.policyInner}>
+                          <View style={s.policyTop}>
+                            <View style={[s.policyIconRing, { borderColor: color + '22' }]}>
+                              <View style={[s.policyIconInner, { backgroundColor: color + '12' }]}>
+                                <Icon name={iconName} size={20} color={color} />
+                              </View>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={s.policyPlan}>{p.policyNumber}</Text>
-                              <Text style={s.policyInsurer}>{providerStr || '—'}</Text>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={s.policyNum} numberOfLines={1}>{p.policyNumber}</Text>
+                              <Text style={s.policyProvider} numberOfLines={1}>{providerStr || '—'}</Text>
                             </View>
-                            <View style={s.statusPill}>
-                              <View style={s.statusDot} />
-                              <Text style={s.statusText}>{capitalize(p.status)}</Text>
+                            <View style={[s.policyStatusTag, { backgroundColor: st.bg, borderColor: st.color + '2A' }]}>
+                              <Icon name={st.icon} size={12} color={st.color} />
+                              <Text style={[s.policyStatusText, { color: st.color }]}>{st.label}</Text>
                             </View>
+                          </View>
+                          <View style={s.policyStatGrid}>
+                            <View style={s.policyStatCell}>
+                              <Text style={s.policyStatLbl}>Cover</Text>
+                              <Text style={s.policyStatVal}>{formatCover(p.sumInsured)}</Text>
+                            </View>
+                            <View style={s.policyStatSep} />
+                            <View style={s.policyStatCell}>
+                              <Text style={s.policyStatLbl}>Premium</Text>
+                              <Text style={[s.policyStatVal, { color }]}>{formatPremium(p.premium)}</Text>
+                            </View>
+                            <View style={s.policyStatSep} />
+                            <View style={[s.policyStatCell, s.policyStatCellLast]}>
+                              <Text style={s.policyStatLbl}>Type</Text>
+                              <Text style={s.policyStatVal} numberOfLines={1}>{capitalize(typeStr)}</Text>
+                            </View>
+                          </View>
+                          <View style={s.policyFooter}>
+                            <Icon name="calendar-outline" size={14} color={Colors.textLight} />
+                            <Text style={s.policyDue}>Renews / ends {due}</Text>
                           </View>
                         </View>
-
-                        <View style={s.policyMetrics}>
-                          <View style={s.metricCol}>
-                            <Text style={s.metricLabel}>COVER</Text>
-                            <Text style={s.metricValue}>{formatCover(p.sumInsured)}</Text>
-                          </View>
-                          <View style={s.metricDivider} />
-                          <View style={[s.metricCol, { alignItems: 'center' }]}>
-                            <Text style={s.metricLabel}>PREMIUM</Text>
-                            <Text style={[s.metricValue, { color }]}>{formatPremium(p.premium)}</Text>
-                          </View>
-                          <View style={s.metricDivider} />
-                          <View style={[s.metricCol, { alignItems: 'flex-end' }]}>
-                            <Text style={s.metricLabel}>TYPE</Text>
-                            <Text style={s.metricValue}>{capitalize(typeStr)}</Text>
-                          </View>
-                        </View>
-
-                        <View style={s.policyFooter}>
-                          <Text style={s.policyDue}>Expires {due}</Text>
-                        </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
@@ -363,8 +379,8 @@ export default function HomeTab() {
                     : `₹${plan.maxCover}`;
                   let features: string[] = [];
                   try { features = JSON.parse(plan.features ?? '[]'); } catch { features = []; }
-                  const rating = plan.insurer?.rating ?? 4.5;
-                  const stars  = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+                  const claimPct = plan.insurer?.claimsRatio ?? 0;
+                  const typeLabel  = CATEGORIES.find(c => c.key === plan.type)?.label ?? capitalize(plan.type);
 
                   return (
                     <TouchableOpacity
@@ -373,61 +389,72 @@ export default function HomeTab() {
                       activeOpacity={0.88}
                       onPress={() => router.push(`/plan/${plan.id}`)}
                     >
-                      {/* Coloured header */}
-                      <View style={[s.recHeader, { backgroundColor: color }]}>
-                        <View style={s.recHeaderBg1} />
-                        <View style={s.recHeaderBg2} />
-
-                        <View style={s.recHeaderTop}>
-                          <View style={s.recInsurerCircle}>
-                            <Text style={s.recInsurerText}>{short}</Text>
+                      <View style={s.recBody}>
+                        <View style={s.recTop}>
+                          <View style={[s.recAvatar, { borderColor: color + '30' }]}>
+                            <View style={[s.recAvatarInner, { backgroundColor: color + '10' }]}>
+                              <Text style={[s.recAvatarText, { color }]}>{short}</Text>
+                            </View>
                           </View>
-                          {plan.isFeatured && (
-                            <View style={s.recFeaturedBadge}>
-                              <Text style={s.recFeaturedText}>★ TOP PICK</Text>
+                          <View style={s.recTopMain}>
+                            <View style={s.recTitleRow}>
+                              <Text style={s.recInsurerLab} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
+                              {plan.isFeatured && (
+                                <View style={[s.recBadge, { borderColor: color + '40' }]}>
+                                  <Text style={[s.recBadgeText, { color }]}>Featured</Text>
+                                </View>
+                              )}
                             </View>
-                          )}
-                        </View>
-
-                        <Text style={s.recPlanName} numberOfLines={2}>{plan.name}</Text>
-                        <Text style={s.recInsurerName}>{plan.insurer?.name}</Text>
-                      </View>
-
-                      {/* Metrics strip */}
-                      <View style={s.recMetrics}>
-                        <View style={s.recMetricBox}>
-                          <Text style={s.recMetricLabel}>PREMIUM</Text>
-                          <Text style={[s.recMetricValue, { color }]}>{premium}</Text>
-                        </View>
-                        <View style={s.recMetricDivider} />
-                        <View style={[s.recMetricBox, { alignItems: 'center' }]}>
-                          <Text style={s.recMetricLabel}>MAX COVER</Text>
-                          <Text style={s.recMetricValue}>{cover}</Text>
-                        </View>
-                        <View style={s.recMetricDivider} />
-                        <View style={[s.recMetricBox, { alignItems: 'flex-end' }]}>
-                          <Text style={s.recMetricLabel}>RATING</Text>
-                          <Text style={[s.recMetricValue, { color: '#D97706', fontSize: 11 }]}>{stars}</Text>
-                        </View>
-                      </View>
-
-                      {/* Feature bullets */}
-                      {features.length > 0 && (
-                        <View style={s.recFeatures}>
-                          {features.slice(0, 2).map((f, fi) => (
-                            <View key={fi} style={s.recFeatureRow}>
-                              <View style={[s.recFeatureDot, { backgroundColor: color }]} />
-                              <Text style={s.recFeatureText} numberOfLines={1}>{f}</Text>
+                            <Text style={s.recPlanTitle} numberOfLines={2}>{plan.name}</Text>
+                            <View style={s.recPills}>
+                              <View style={s.recPill}>
+                                <Text style={s.recPillText}>{typeLabel}</Text>
+                              </View>
+                              <View style={s.recPill}>
+                                <Text style={s.recPillMuted}>{claimPct ? `${claimPct}% claims` : 'Top insurer'}</Text>
+                              </View>
                             </View>
-                          ))}
+                          </View>
                         </View>
-                      )}
 
-                      {/* CTA footer */}
-                      <View style={s.recFooter}>
-                        <Text style={s.recTypeChip}>{(plan.type ?? '').toUpperCase() || 'PLAN'}</Text>
-                        <View style={[s.recViewBtn, { backgroundColor: color }]}>
-                          <Text style={s.recViewBtnText}>View plan →</Text>
+                        <View style={s.recStatGrid}>
+                          <View style={s.recStatCell}>
+                            <Text style={s.recStatLbl}>Premium</Text>
+                            <Text style={[s.recStatVal, { color }]}>{premium}</Text>
+                          </View>
+                          <View style={s.recStatSep} />
+                          <View style={s.recStatCell}>
+                            <Text style={s.recStatLbl}>Cover</Text>
+                            <Text style={s.recStatVal}>{cover}</Text>
+                          </View>
+                          <View style={s.recStatSep} />
+                          <View style={[s.recStatCell, s.recStatCellEnd]}>
+                            <Text style={s.recStatLbl}>Insurer</Text>
+                            <Text style={s.recStatVal} numberOfLines={1}>
+                              {plan.insurer?.shortName ?? (plan.insurer?.name ? plan.insurer.name.split(' ')[0] : '—')}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {features.length > 0 && (
+                          <View style={s.recFeatureBlock}>
+                            {features.slice(0, 2).map((f, fi) => (
+                              <View key={fi} style={s.recFeatRow}>
+                                <View style={[s.recFeatTick, { borderColor: color + '30' }]}>
+                                  <Text style={[s.recFeatTickMark, { color }]}>✓</Text>
+                                </View>
+                                <Text style={s.recFeatTxt} numberOfLines={2}>{f}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        <View style={s.recCardFooter}>
+                          <Text style={s.recTypeTxt}>{(plan.type ?? 'plan').toUpperCase()}</Text>
+                          <View style={[s.recViewCta, { backgroundColor: color }]}>
+                            <Text style={s.recViewCtaText}>View plan</Text>
+                            <Icon name="chevron-forward" size={16} color={Colors.white} />
+                          </View>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -527,7 +554,8 @@ const s = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 10 },
   statChip: {
     flex: 1, backgroundColor: Colors.white,
-    borderRadius: 14, padding: 13,
+    borderRadius: 14, padding: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)',
   },
   statChipMid: {},
   statChipIcon: {
@@ -547,17 +575,21 @@ const s = StyleSheet.create({
     paddingTop: 6,
   },
 
-  section:    { paddingHorizontal: 18, paddingTop: 20, marginBottom: 4 },
+  section:    { paddingHorizontal: 20, paddingTop: 22, marginBottom: 2 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, letterSpacing: -0.3, marginBottom: 14 },
   viewAll:    { fontSize: 13, color: Colors.primary, fontWeight: '600' },
 
-  actionsGrid: { flexDirection: 'row', gap: 10 },
+  actionsGrid: { flexDirection: 'row', gap: 12 },
   actionCard: {
     flex: 1, backgroundColor: Colors.white,
-    borderRadius: 14, padding: 13,
-    alignItems: 'center', gap: 9,
-    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 14, paddingVertical: 16, paddingHorizontal: 10,
+    alignItems: 'center', gap: 10,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    ...Platform.select({
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   actionIconWrap: {
     width: 44, height: 44, borderRadius: 13,
@@ -567,134 +599,119 @@ const s = StyleSheet.create({
   actionIconPrimary: { backgroundColor: Colors.primary },
   actionLabel: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center', lineHeight: 16 },
 
-  hScroll: { gap: 14, paddingRight: 6, paddingBottom: 2 },
+  hScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
+
   policyCard: {
-    width: W * 0.76,
+    width: W * 0.78,
     backgroundColor: Colors.white,
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.border,
+    ...Platform.select({
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
-  policyBand:      { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 14 },
-  policyBandInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  policyAvatarCircle: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center',
+  policyInner:  { padding: 18 },
+  policyTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  policyIconRing: { borderWidth: 1, borderRadius: 12, padding: 1 },
+  policyIconInner: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  policyNum:    { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
+  policyProvider:{ fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  policyStatusTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, borderWidth: 1, flexShrink: 0, maxWidth: 108,
   },
-  policyAvatarText: { fontSize: 13, fontWeight: '900', color: Colors.white },
-  policyPlan:    { fontSize: 14, fontWeight: '800', color: Colors.white, marginBottom: 2 },
-  policyInsurer: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
-  statusPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
-  },
-  statusDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.white },
-  statusText: { fontSize: 10, fontWeight: '700', color: Colors.white },
-  policyMetrics: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  metricCol:     { flex: 1 },
-  metricLabel:   { fontSize: 9, color: Colors.textLight, fontWeight: '700', letterSpacing: 0.5, marginBottom: 3 },
-  metricValue:   { fontSize: 13, fontWeight: '800', color: Colors.text },
-  metricDivider: { width: 1, height: 26, backgroundColor: Colors.border },
-  policyFooter:  {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 14, paddingBottom: 14, paddingTop: 2,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  policyDue:     { fontSize: 11, color: Colors.textMuted },
+  policyStatusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.15 },
 
-  // ── Recommended cards ─────────────────────
-  recScroll: { gap: 14, paddingRight: 6, paddingBottom: 4 },
+  policyStatGrid: {
+    flexDirection: 'row', paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+  },
+  policyStatCell: { flex: 1, alignItems: 'flex-start', gap: 4 },
+  policyStatCellLast: { alignItems: 'flex-end' },
+  policyStatSep: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 6, alignSelf: 'stretch' },
+  policyStatLbl: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
+  policyStatVal: { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
+
+  policyFooter: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 4, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+  },
+  policyDue: { fontSize: 12, color: Colors.textLight, fontWeight: '500' },
+
+  recScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
   recCard: {
-    width: W * 0.72,
+    width: W * 0.78,
     backgroundColor: Colors.white,
-    borderRadius: 18,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 4,
+    marginBottom: 2,
+    ...Platform.select({
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
+  recBody:    { paddingBottom: 4 },
+  recTop:     { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  recAvatar:  { width: 48, height: 48, borderRadius: 12, borderWidth: 1, padding: 2 },
+  recAvatarInner: { flex: 1, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  recAvatarText:{ fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+  recTopMain: { flex: 1, minWidth: 0, gap: 4 },
+  recTitleRow:{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  recInsurerLab: { fontSize: 11, fontWeight: '800', color: Colors.text, letterSpacing: -0.2, textTransform: 'uppercase' },
+  recBadge:   { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, backgroundColor: Colors.white },
+  recBadgeText:{ fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
+  recPlanTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, lineHeight: 20, letterSpacing: -0.2 },
+  recPills:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
+  recPill:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: Colors.bg },
+  recPillText:{ fontSize: 11, fontWeight: '600', color: Colors.textMuted },
+  recPillMuted:{ fontSize: 11, fontWeight: '500', color: Colors.textLight },
 
-  // Header band
-  recHeader: {
-    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 14,
-    overflow: 'hidden',
+  recStatGrid: {
+    flexDirection: 'row', alignItems: 'stretch',
+    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    borderRadius: 10, borderWidth: 1, borderColor: '#E8EEF4', backgroundColor: '#FAFBFD',
   },
-  recHeaderBg1: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.1)', top: -40, right: -30,
-  },
-  recHeaderBg2: {
-    position: 'absolute', width: 70, height: 70, borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.08)', top: 20, right: 55,
-  },
-  recHeaderTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  recInsurerCircle: {
-    width: 42, height: 42, borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
-  },
-  recInsurerText: { fontSize: 14, fontWeight: '900', color: Colors.white },
-  recFeaturedBadge: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
-  },
-  recFeaturedText: { fontSize: 9, fontWeight: '800', color: Colors.white, letterSpacing: 0.5 },
-  recPlanName:   { fontSize: 16, fontWeight: '900', color: Colors.white, letterSpacing: -0.3, lineHeight: 21, marginBottom: 4 },
-  recInsurerName: { fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  recStatCell: { flex: 1, paddingVertical: 12, paddingHorizontal: 8 },
+  recStatCellEnd: { alignItems: 'flex-end' },
+  recStatSep: { width: 1, backgroundColor: '#E8EEF4' },
+  recStatLbl: { fontSize: 9, color: Colors.textLight, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 },
+  recStatVal: { fontSize: 13, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
 
-  // Metrics
-  recMetrics: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.bg,
-  },
-  recMetricBox:     { flex: 1 },
-  recMetricDivider: { width: 1, height: 28, backgroundColor: Colors.border, marginHorizontal: 8 },
-  recMetricLabel:   { fontSize: 9, fontWeight: '700', color: Colors.textLight, letterSpacing: 0.5, marginBottom: 3 },
-  recMetricValue:   { fontSize: 13, fontWeight: '800', color: Colors.text },
+  recFeatureBlock: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+  recFeatRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  recFeatTick: { width: 20, height: 20, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  recFeatTickMark: { fontSize: 9, fontWeight: '800' },
+  recFeatTxt:  { fontSize: 12, color: Colors.textMuted, flex: 1, lineHeight: 17 },
 
-  // Features
-  recFeatures: { paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
-  recFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  recFeatureDot: { width: 6, height: 6, borderRadius: 3 },
-  recFeatureText: { fontSize: 12, color: Colors.textMuted, flex: 1 },
-
-  // Footer
-  recFooter: {
+  recCardFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingBottom: 14, paddingTop: 4,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, gap: 10,
   },
-  recTypeChip: {
-    fontSize: 9, fontWeight: '800', color: Colors.textMuted,
-    letterSpacing: 0.8, backgroundColor: Colors.bg,
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
-    borderWidth: 1, borderColor: Colors.border,
+  recTypeTxt: { fontSize: 10, fontWeight: '800', color: Colors.textMuted, letterSpacing: 0.6 },
+  recViewCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
   },
-  recViewBtn:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  recViewBtnText: { fontSize: 12, fontWeight: '800', color: Colors.white },
+  recViewCtaText: { fontSize: 13, fontWeight: '800', color: Colors.white },
 
   // ── Guest banner ──────────────────────────
   guestBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 1.5, borderColor: Colors.primary + '30',
-    padding: 16, overflow: 'hidden',
+    backgroundColor: Colors.white, borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    padding: 18, overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },
+      android: { elevation: 1 },
+    }),
   },
   guestBannerBg: {
-    position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: Colors.primaryLight, top: -40, right: -20,
+    position: 'absolute', width: 100, height: 100, borderRadius: 50,
+    backgroundColor: Colors.primaryLight, top: -36, right: -24, opacity: 0.5,
   },
   guestBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   guestIconCircle: {
@@ -709,9 +726,13 @@ const s = StyleSheet.create({
   // ── Empty states ──────────────────────────
   emptyCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 1.5, borderColor: Colors.border,
-    borderStyle: 'dashed', padding: 16,
+    backgroundColor: Colors.white, borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    borderStyle: 'dashed', padding: 18,
+    ...Platform.select({
+      ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2 },
+      android: { elevation: 1 },
+    }),
   },
   emptyIconCircle: {
     width: 46, height: 46, borderRadius: 14,
@@ -759,22 +780,12 @@ const s = StyleSheet.create({
 
 const sk = StyleSheet.create({
   card: {
-    width: 220, backgroundColor: Colors.white,
-    borderRadius: 16, marginRight: 14,
-    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    width: W * 0.78, backgroundColor: Colors.white,
+    borderRadius: 14, marginRight: 16, padding: 16, gap: 12,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
-  header:    { padding: 14, backgroundColor: Colors.bg },
-  headerTop: { flexDirection: 'row', alignItems: 'center' },
-  metrics: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  metricBox: { flex: 1 },
-  features:  { paddingHorizontal: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 10, gap: 4 },
-  footer: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
+  top:    { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  statGrid: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  features: { gap: 8, paddingTop: 4 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
 });
