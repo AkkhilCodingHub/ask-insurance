@@ -510,15 +510,26 @@ export interface ChatMessage {
   conversationId: string;
 }
 
+/** User summary included on admin/agent conversation payloads */
+export type ConversationUser = {
+  id:    string;
+  name:  string | null;
+  phone: string | null;
+  email?: string | null;
+};
+
 export interface Conversation {
   id:        string;
   subject:   string | null;
-  status:    'open' | 'closed';
+  /** API may return additional string statuses over time; agent UI filters locally */
+  status:    string;
   createdAt: string;
   updatedAt: string;
   userId:    string;
   adminId:   string | null;
   admin:     { id: string; name: string } | null;
+  /** Populated for customer chat; list endpoints may return only the latest message */
+  user?:     ConversationUser | null;
   messages:  ChatMessage[];
   _count?:   { messages: number };
 }

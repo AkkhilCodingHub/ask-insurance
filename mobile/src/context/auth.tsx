@@ -12,6 +12,16 @@ import {
 
 // ── Push notifications ────────────────────────────────────────────────────────
 
+/** expo-notifications permission result shape varies slightly by SDK; normalize to status string */
+function readNotificationPermissionStatus(result: unknown): 'granted' | 'denied' | 'undetermined' {
+  if (result === 'granted' || result === 'denied' || result === 'undetermined') return result;
+  if (typeof result === 'object' && result !== null && 'status' in result) {
+    const s = (result as { status: string }).status;
+    if (s === 'granted' || s === 'denied' || s === 'undetermined') return s;
+  }
+  return 'undetermined';
+}
+
 // Step 1: request permission on app open (no auth needed).
 export async function requestNotificationPermission(): Promise<boolean> {
   console.log('[push] requestNotificationPermission called');
@@ -33,7 +43,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
+    const existing = readNotificationPermissionStatus(await Notifications.getPermissionsAsync());
     console.log('[push] existing permission status:', existing);
 
     if (existing === 'granted') {
@@ -42,9 +52,9 @@ export async function requestNotificationPermission(): Promise<boolean> {
     }
 
     console.log('[push] requesting permission from user...');
-    const { status } = await Notifications.requestPermissionsAsync();
-    console.log('[push] permission result:', status);
-    return status === 'granted';
+    const next = readNotificationPermissionStatus(await Notifications.requestPermissionsAsync());
+    console.log('[push] permission result:', next);
+    return next === 'granted';
   } catch (e) {
     console.warn('[push] requestNotificationPermission error:', e);
     return false;
@@ -62,7 +72,7 @@ async function savePushToken() {
   try {
     const Notifications = await import('expo-notifications');
 
-    const { status } = await Notifications.getPermissionsAsync();
+    const status = readNotificationPermissionStatus(await Notifications.getPermissionsAsync());
     console.log('[push] permission status before token fetch:', status);
     if (status !== 'granted') {
       console.warn('[push] permission not granted, skipping token save');

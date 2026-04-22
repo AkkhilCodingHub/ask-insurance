@@ -78,7 +78,7 @@ function DateSep({ label }: { label: string }) {
 // ── Conversation row ──────────────────────────────────────────────────────────
 function ConvRow({ conv, onPress }: { conv: Conversation; onPress: () => void }) {
   const dot = STATUS_COLOR[conv.status] ?? Colors.textMuted;
-  const last = conv.lastMessage;
+  const last = conv.messages?.[0];
   return (
     <TouchableOpacity style={cr.row} onPress={onPress} activeOpacity={0.75}>
       <View style={cr.avatarCircle}>

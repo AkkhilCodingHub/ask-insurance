@@ -230,6 +230,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             const onSupportTab = isChat && supportChatFocusedRef.current;
             return {
               shouldShowAlert: false,
+              shouldShowBanner: false,
+              shouldShowList: false,
               shouldPlaySound: !onSupportTab,
               shouldSetBadge: false,
             };
