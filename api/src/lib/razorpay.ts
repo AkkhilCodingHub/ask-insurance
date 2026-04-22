@@ -1,9 +1,18 @@
 import Razorpay from 'razorpay';
 
-export const razorpayClient = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID     ?? '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET ?? '',
-});
+let razorpayClient: Razorpay | null = null;
+
+function getRazorpay(): Razorpay {
+  if (!razorpayClient) {
+    const key_id = process.env.RAZORPAY_KEY_ID ?? '';
+    const key_secret = process.env.RAZORPAY_KEY_SECRET ?? '';
+    if (!key_id || !key_secret) {
+      throw new Error('Razorpay is not configured (set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)');
+    }
+    razorpayClient = new Razorpay({ key_id, key_secret });
+  }
+  return razorpayClient;
+}
 
 export async function createPaymentLink(opts: {
   amount: number;      // in INR (we convert to paise)
@@ -13,7 +22,7 @@ export async function createPaymentLink(opts: {
   customerPhone: string;
   description: string;
 }) {
-  const link = await (razorpayClient.paymentLink as any).create({
+  const link = await (getRazorpay().paymentLink as any).create({
     amount:      Math.round(opts.amount * 100), // paise
     currency:    'INR',
     accept_partial: false,

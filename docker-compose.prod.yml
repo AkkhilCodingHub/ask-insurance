@@ -5,6 +5,7 @@ services:
     image: mysql:8.4
     container_name: ask_ins_db
     restart: unless-stopped
+    env_file: .env.prod
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE:      ${DB_NAME}
@@ -24,6 +25,7 @@ services:
     image: phpmyadmin:latest
     container_name: ask_ins_pma
     restart: unless-stopped
+    env_file: .env.prod
     depends_on:
       db:
         condition: service_healthy
@@ -40,17 +42,13 @@ services:
       dockerfile: Dockerfile.api
     container_name: ask_ins_api
     restart: unless-stopped
+    env_file: .env.prod
     depends_on:
       db:
         condition: service_healthy
     environment:
-      NODE_ENV:             production
-      PORT:                 4000
-      DATABASE_URL:         mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
-      JWT_SECRET:           ${JWT_SECRET}
-      JWT_AUDIENCE:         ${JWT_AUDIENCE}
-      ALLOWED_ORIGINS:      ${ALLOWED_ORIGINS}
-      OTP_FIXED:            ${OTP_FIXED:-}
+      NODE_ENV: production
+      PORT:     4000
     ports:
       - '4002:4000'   # host 4002 (4000 = sharely, 4001 = e-auction on this server)
 

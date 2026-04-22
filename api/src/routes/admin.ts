@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+import { Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken } from '../lib/jwt';
 import { sendPush } from '../lib/push';
@@ -1600,15 +1601,17 @@ router.post(
       }
 
       const parseDate = (s?: string) => { if (!s) return undefined; const d = new Date(s); return isNaN(d.getTime()) ? undefined : d; };
+      const data: Prisma.PolicyUpdateInput = {};
+      if (documentUrl !== undefined) data.documentUrl = documentUrl;
+      if (policyNumber) data.policyNumber = policyNumber;
+      const startD = parseDate(issueDate);
+      if (startD) data.startDate = startD;
+      const endD = parseDate(expiryDate);
+      if (endD) data.endDate = endD;
+      if (notes !== undefined) data.notes = notes;
       const updated = await prisma.policy.update({
         where: { id },
-        data: {
-          ...(documentUrl  !== undefined && { documentUrl }),
-          ...(policyNumber && { policyNumber }),
-          ...(parseDate(issueDate)  && { startDate: parseDate(issueDate) }),
-          ...(parseDate(expiryDate) && { endDate:   parseDate(expiryDate) }),
-          ...(notes !== undefined   && { notes }),
-        },
+        data,
         include: { user: { select: { id: true, name: true, phone: true } } },
       });
 

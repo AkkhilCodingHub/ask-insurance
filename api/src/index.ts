@@ -21,7 +21,8 @@ const PORT = Number(process.env.PORT) || 4000;
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((origin) => origin.trim()) ?? [
   'http://localhost:3000',
-  'http://localhost:3001'
+  'http://localhost:3001',
+  'https://ask-api.bitopayments.com'
 ];
 
 app.disable('x-powered-by');
