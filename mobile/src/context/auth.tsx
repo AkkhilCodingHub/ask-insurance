@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { isDevice } from 'expo-device';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
@@ -117,15 +118,16 @@ export interface AuthUser {
 // ── Context interface ─────────────────────────────────────────────────────────
 
 interface AuthContextValue {
-  user:         AuthUser | null;
-  loading:      boolean;
-  pendingPhone: string | null;
-  sendOTP:      (phone: string) => Promise<void>;
-  verifyOTP:    (otp: string) => Promise<{ isNewUser: boolean }>;
+  user:            AuthUser | null;
+  loading:         boolean;
+  pendingPhone:    string | null;
+  autoVerified:    { isNewUser: boolean } | null;
+  sendOTP:         (phone: string) => Promise<void>;
+  verifyOTP:       (otp: string) => Promise<{ isNewUser: boolean }>;
   completeProfile: (name: string, dob: string) => Promise<void>;
-  updateUser:   (u: AuthUser) => void;
-  refreshUser:  () => Promise<void>;
-  logout:       () => Promise<void>;
+  updateUser:      (u: AuthUser) => void;
+  refreshUser:     () => Promise<void>;
+  logout:          () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -155,6 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
   const [loading, setLoading]         = useState(true);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
+  // Holds the Firebase confirmation result for manual OTP entry
+  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
   // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
@@ -200,26 +205,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Step 1: send OTP ──────────────────────────────────────────────────────
-  const sendOTP = async (phone: string) => {
-    await authApi.sendOTP(phone);
-    setPendingPhone(phone);
-  };
+  // ── Shared: exchange Firebase ID token for ASK JWT ───────────────────────
+  const finishFirebaseLogin = async (firebaseUser: FirebaseAuthTypes.User): Promise<{ isNewUser: boolean }> => {
+    const idToken = await firebaseUser.getIdToken();
+    // Sign out from Firebase — we only need the ID token, ASK issues its own JWT
+    await auth().signOut();
 
-  // ── Step 2: verify OTP & store both tokens ────────────────────────────────
-  const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
-    const phone  = pendingPhone!;
-    const result = await authApi.verifyOTP(phone, otp);
-
+    const result = await authApi.verifyFirebase(idToken);
     await setToken(result.token);
     await setRefreshToken(result.refreshToken);
 
     if (!result.isNewUser && result.user.name) {
       setUser(mapApiUser(result.user));
-      setPendingPhone(null);
     }
+    setPendingPhone(null);
+    confirmationRef.current = null;
 
     return { isNewUser: result.isNewUser || !result.user.name };
+  };
+
+  // ── Auto-verify listener (Android Play Integrity / silent SMS) ────────────
+  // Only active while pendingPhone is set to avoid firing on unrelated auth changes.
+  useEffect(() => {
+    if (!pendingPhone) return;
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+      if (!firebaseUser) return;
+      try {
+        const result = await finishFirebaseLogin(firebaseUser);
+        setAutoVerified(result);
+      } catch (e) {
+        console.warn('[Firebase] auto-verify exchange failed:', e);
+      }
+    });
+    return unsubscribe;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPhone]);
+
+  // ── Step 1: send OTP via Firebase ─────────────────────────────────────────
+  const sendOTP = async (phone: string) => {
+    const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
+    const confirmation = await auth().signInWithPhoneNumber(formatted);
+    confirmationRef.current = confirmation;
+    setPendingPhone(phone);
+    setAutoVerified(null);
+  };
+
+  // ── Step 2: verify OTP entered manually by the user ───────────────────────
+  const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
+    if (!confirmationRef.current) throw new Error('No pending verification — call sendOTP first');
+    const credential = await confirmationRef.current.confirm(otp);
+    if (!credential?.user) throw new Error('Verification failed');
+    return finishFirebaseLogin(credential.user);
   };
 
   // ── Step 3 (new users): save name + DOB ───────────────────────────────────
@@ -250,11 +286,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearAllTokens();
     setUser(null);
     setPendingPhone(null);
+    setAutoVerified(null);
+    confirmationRef.current = null;
   };
 
   return (
     <AuthContext.Provider value={{
-      user, loading, pendingPhone,
+      user, loading, pendingPhone, autoVerified,
       sendOTP, verifyOTP, completeProfile,
       updateUser, refreshUser, logout,
     }}>

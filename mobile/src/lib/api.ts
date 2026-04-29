@@ -373,6 +373,12 @@ export const authApi = {
       { method: 'POST', body: JSON.stringify({ phone, otp }) }
     ),
 
+  verifyFirebase: (idToken: string) =>
+    request<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/verify-firebase',
+      { method: 'POST', body: JSON.stringify({ idToken }) }
+    ),
+
   refresh: (refreshToken: string) =>
     request<{ token: string; refreshToken: string }>('/api/auth/refresh', {
       method: 'POST', body: JSON.stringify({ refreshToken })

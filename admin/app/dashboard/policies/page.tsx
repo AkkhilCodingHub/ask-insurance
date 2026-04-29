@@ -261,7 +261,7 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
     <div style={{ position: "fixed", inset: 0, zIndex: 200, pointerEvents: "auto" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.35)", backdropFilter: "blur(3px)" }} onClick={onClose} />
 
-      <div style={{
+      <div className="side-drawer" style={{
         position: "fixed", right: 0, top: 0, bottom: 0, width: 480,
         background: "#fff", display: "flex", flexDirection: "column",
         boxShadow: "-24px 0 80px rgba(0,0,0,0.12)",
@@ -587,6 +587,7 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
           from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1; }
         }
+        @media (max-width: 768px) { .side-drawer { width: 100% !important; } }
       `}</style>
     </div>
   );

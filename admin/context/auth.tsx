@@ -15,6 +15,7 @@ interface AuthCtx {
   admin: AdminUser | null;
   loading: boolean;
   login(email: string, password: string): Promise<{ ok: boolean; error?: string }>;
+  googleLogin(credential: string): Promise<{ ok: boolean; error?: string }>;
   logout(): void;
 }
 
@@ -54,13 +55,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function googleLogin(credential: string) {
+    try {
+      const response = await adminApi.googleLogin(credential);
+      if (response.token) {
+        const user: AdminUser = {
+          id: response.admin.id,
+          name: response.admin.name,
+          email: response.admin.email,
+          role: response.admin.role as AdminUser["role"],
+          avatar: response.admin.name.substring(0, 2).toUpperCase(),
+        };
+        setAdmin(user);
+        localStorage.setItem("ask_admin", JSON.stringify(user));
+        return { ok: true };
+      }
+      return { ok: false, error: "Login failed" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Google sign-in failed";
+      return { ok: false, error: message };
+    }
+  }
+
   function logout() {
     setAdmin(null);
     localStorage.removeItem("ask_admin");
     localStorage.removeItem("adminToken");
   }
 
-  return <Ctx.Provider value={{ admin, loading, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ admin, loading, login, googleLogin, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search, Send, Plus, X, CheckCheck, Clock,
-  User, ChevronDown, RefreshCw, MessageSquare
+  User, ChevronDown, RefreshCw, MessageSquare, ChevronLeft
 } from "lucide-react";
 import { adminApi, type Conversation, type ChatMessage, type AdminUser } from "@/lib/api";
 
@@ -202,6 +202,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [convLoading, setConvLoading] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -247,6 +248,7 @@ export default function ChatPage() {
   async function openConversation(c: Conversation) {
     if (pollRef.current) clearInterval(pollRef.current);
     setActive(c);
+    setMobileView("chat");
     setConvLoading(true);
     try {
       const full = await adminApi.getConversation(c.id);
@@ -343,10 +345,10 @@ export default function ChatPage() {
   }
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 108px)", background: "var(--bg)", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
+    <div className="chat-layout" style={{ display: "flex", height: "calc(100vh - 108px)", background: "var(--bg)", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
 
       {/* ── Left panel: conversation list ─────────────────────────────── */}
-      <div style={{ width: 300, flexShrink: 0, background: "#fff", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
+      <div className={`chat-list-panel${mobileView === "chat" ? " chat-panel-hidden" : ""}`} style={{ width: 300, flexShrink: 0, background: "#fff", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -439,9 +441,13 @@ export default function ChatPage() {
 
       {/* ── Right panel: chat window ───────────────────────────────────── */}
       {active ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div className={`chat-msg-panel${mobileView === "list" ? " chat-panel-hidden" : ""}`} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {/* Chat header */}
           <div style={{ padding: "14px 20px", background: "#fff", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
+            <button className="chat-back-btn" onClick={() => setMobileView("list")}
+              style={{ display: "none", background: "none", border: "none", cursor: "pointer", color: "var(--text)", padding: "4px 8px 4px 0", flexShrink: 0 }}>
+              <ChevronLeft size={20} />
+            </button>
             <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#E8F2FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ fontSize: 15, fontWeight: 800, color: "#1580FF" }}>{userName(active).charAt(0).toUpperCase()}</span>
             </div>
@@ -453,7 +459,7 @@ export default function ChatPage() {
               </p>
             </div>
             {active.subject && (
-              <span style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 10px", background: "var(--bg)", borderRadius: 100, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span className="chat-subject-tag" style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 10px", background: "var(--bg)", borderRadius: 100, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {active.subject}
               </span>
             )}
@@ -520,7 +526,7 @@ export default function ChatPage() {
         </div>
       ) : (
         /* Empty state */
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", gap: 12 }}>
+        <div className="chat-msg-panel" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", gap: 12 }}>
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#EEF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MessageSquare size={28} color="#1580FF" />
           </div>
@@ -536,6 +542,21 @@ export default function ChatPage() {
       )}
 
       {showNew && <NewConvoModal onClose={() => setShowNew(false)} onCreate={handleCreate} />}
+
+      <style>{`
+        @media (max-width: 768px) {
+          .chat-layout {
+            height: calc(100dvh - 92px) !important;
+            border-radius: 0 !important;
+            margin: -16px !important;
+          }
+          .chat-list-panel { width: 100% !important; border-right: none !important; }
+          .chat-msg-panel  { width: 100% !important; }
+          .chat-panel-hidden { display: none !important; }
+          .chat-back-btn { display: flex !important; }
+          .chat-subject-tag { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

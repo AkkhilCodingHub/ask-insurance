@@ -3,17 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "@/context/auth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+    if (!credentialResponse.credential) { setError("No credential received from Google."); return; }
+    setGoogleLoading(true);
+    setError("");
+    const res = await googleLogin(credentialResponse.credential);
+    setGoogleLoading(false);
+    if (!res.ok) { setError(res.error || "Google sign-in failed."); return; }
+    router.replace("/dashboard");
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -189,6 +201,33 @@ export default function LoginPage() {
               ) : "Sign in to Admin Panel"}
             </button>
           </form>
+
+          {/* Divider */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>or</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
+          {/* Google Sign-In */}
+          {googleLoading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 44, border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, color: "var(--text-muted)" }}>
+              <span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid var(--border)", borderTopColor: "var(--primary)", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
+              Signing in with Google…
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Google sign-in was cancelled or failed.")}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="signin_with"
+                shape="rectangular"
+              />
+            </div>
+          )}
 
           <p style={{ fontSize: 12, color: "var(--text-light)", textAlign: "center", marginTop: 28, lineHeight: 1.6 }}>
             This portal is for authorised ASK Insurance staff only.<br />

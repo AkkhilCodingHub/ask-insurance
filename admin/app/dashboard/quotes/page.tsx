@@ -285,6 +285,7 @@ function Drawer({ quote, onClose, onRefresh }: { quote: AdminQuote; onClose: () 
       {/* Drawer */}
       <div
         ref={drawerRef}
+        className="side-drawer"
         style={{
           position: "fixed", top: 0, right: 0, bottom: 0, width: 500,
           background: "#fff", zIndex: 201, display: "flex", flexDirection: "column",
@@ -426,7 +427,7 @@ function Drawer({ quote, onClose, onRefresh }: { quote: AdminQuote; onClose: () 
         </div>
       </div>
 
-      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } } @media (max-width: 768px) { .side-drawer { width: 100% !important; } }`}</style>
     </>
   );
 }

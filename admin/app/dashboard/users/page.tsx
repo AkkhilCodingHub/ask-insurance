@@ -32,7 +32,7 @@ function ClaimDrawer({ claim, onClose }: { claim: AdminClaim; onClose: () => voi
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex" }}>
       <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-      <div style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
+      <div className="side-drawer" style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Claim Details</h3>
@@ -95,6 +95,7 @@ function ClaimDrawer({ claim, onClose }: { claim: AdminClaim; onClose: () => voi
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
           }
+          @media (max-width: 768px) { .side-drawer { width: 100% !important; } }
         `}</style>
       </div>
     </div>
@@ -147,7 +148,7 @@ function UserDrawer({ user, onClose, onChat }: { user: AdminUser; onClose: () =>
     <>
       <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
         <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-        <div style={{ width: 520, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
+        <div className="side-drawer" style={{ width: 520, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
           {/* Header */}
           <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
             <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>
@@ -165,10 +166,10 @@ function UserDrawer({ user, onClose, onChat }: { user: AdminUser; onClose: () =>
             <div style={{ padding: "22px 24px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
                 <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 800 }}>
-                  {user.name.split(" ").map(n => n[0]).join("").slice(0,2)}
+                  {(user.name ?? user.phone).slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{user.name}</p>
+                  <p style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>{user.name ?? user.phone}</p>
                   <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Member since {new Date(user.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
@@ -360,6 +361,7 @@ function UserDrawer({ user, onClose, onChat }: { user: AdminUser; onClose: () =>
               from { transform: translateX(100%); }
               to { transform: translateX(0); }
             }
+            @media (max-width: 768px) { .side-drawer { width: 100% !important; } }
           `}</style>
         </div>
       </div>
@@ -379,7 +381,7 @@ function PolicyDetailDrawer({ policy, onClose }: { policy: AdminPolicy; onClose:
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 400, display: "flex" }}>
       <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-      <div style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
+      <div className="side-drawer" style={{ width: 480, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)", animation: "slideIn 0.3s ease-out" }}>
         {/* Header */}
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Policy Details</h3>
@@ -471,7 +473,7 @@ export default function UsersPage() {
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return !q || u.name.toLowerCase().includes(q) || u.phone.includes(q) || (u.email && u.email.toLowerCase().includes(q));
+    return !q || (u.name ?? "").toLowerCase().includes(q) || u.phone.includes(q) || (u.email && u.email.toLowerCase().includes(q));
   });
 
   if (loading) {
@@ -530,10 +532,10 @@ export default function UsersPage() {
                 <td style={{ padding: "14px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{u.name.split(" ").map(n => n[0]).join("").slice(0,2)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)" }}>{(u.name ?? u.phone).slice(0, 2).toUpperCase()}</span>
                     </div>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{u.name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{u.name ?? u.phone}</p>
                       <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{u.email}</p>
                     </div>
                   </div>

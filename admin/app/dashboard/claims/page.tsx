@@ -51,7 +51,7 @@ function ClaimDrawer({ claim, onClose, onUpdate }: {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex" }}>
       <div style={{ flex: 1, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(2px)" }} onClick={onClose} />
-      <div style={{ width: 500, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)" }}>
+      <div className="side-drawer" style={{ width: 500, background: "#fff", height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", boxShadow: "-8px 0 32px rgba(0,0,0,0.15)" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 10 }}>
           <div>
             <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 2 }}>Claim ID</p>
@@ -130,6 +130,7 @@ function ClaimDrawer({ claim, onClose, onUpdate }: {
           </button>
         </div>
       </div>
+      <style>{`@media (max-width: 768px) { .side-drawer { width: 100% !important; } }`}</style>
     </div>
   );
 }

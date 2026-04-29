@@ -231,7 +231,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: "24px" }}>
+        <main className="admin-content" style={{ flex: 1, padding: "24px" }}>
           {children}
         </main>
       </div>
@@ -243,6 +243,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .admin-main { margin-left: 0 !important; }
           .admin-mobile-menu { display: flex !important; }
           .admin-search { display: none !important; }
+          .admin-content { padding: 16px !important; }
         }
       `}</style>
     </div>

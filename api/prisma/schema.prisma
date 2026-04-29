@@ -229,7 +229,8 @@ model Notification {
 model Admin {
   id          String   @id @default(cuid())
   email       String   @unique
-  password    String
+  password    String?  // null for Google-only admins
+  googleId    String?  @unique
   name        String
   role        String   @default("admin") // admin, superadmin
   isActive    Boolean  @default(true)

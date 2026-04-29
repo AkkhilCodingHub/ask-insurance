@@ -54,7 +54,9 @@
             "ndkVersion": "27.0.12077973"
           }
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "experiments": {
       "typedRoutes": true,

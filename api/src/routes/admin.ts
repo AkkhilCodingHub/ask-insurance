@@ -2,11 +2,15 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+import { OAuth2Client } from 'google-auth-library';
 import { Prisma } from '../generated/prisma/client';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken } from '../lib/jwt';
 import { sendPush } from '../lib/push';
 import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib/r2';
+
+const OWNER_EMAIL = 'neota.pvt.ltd@gmail.com';
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -54,6 +58,11 @@ router.post('/auth/login', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    if (!admin.password) {
+      res.status(401).json({ error: 'This account uses Google Sign-In. Please use the "Sign in with Google" button.' });
+      return;
+    }
+
     const valid = await bcrypt.compare(password, admin.password);
     if (!valid) {
       res.status(401).json({ error: 'Invalid credentials' });
@@ -75,6 +84,60 @@ router.post('/auth/login', async (req: Request, res: Response): Promise<void> =>
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
     return;
+  }
+});
+
+// ── Google OAuth login ─────────────────────────────────────────────────────────
+router.post('/auth/google', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { credential } = z.object({ credential: z.string().min(1) }).parse(req.body);
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ error: 'Google OAuth is not configured on this server.' });
+      return;
+    }
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
+    if (!ticket) {
+      res.status(401).json({ error: 'Invalid Google token' });
+      return;
+    }
+    const payload = ticket.getPayload();
+    if (!payload?.email) {
+      res.status(401).json({ error: 'Invalid Google token' });
+      return;
+    }
+
+    const { email, name, sub: googleId } = payload;
+
+    let admin = await prisma.admin.findUnique({ where: { email } });
+
+    // Auto-create the owner account on their first sign-in
+    if (!admin && email === OWNER_EMAIL) {
+      admin = await prisma.admin.create({
+        data: { email, name: name ?? 'Neota Admin', role: 'superadmin', googleId },
+      });
+    }
+
+    if (!admin || !admin.isActive) {
+      res.status(403).json({ error: 'Not authorised as an admin. Contact your superadmin to be added.' });
+      return;
+    }
+
+    // Persist googleId on first Google login if not already stored
+    if (googleId && !admin.googleId) {
+      admin = await prisma.admin.update({ where: { id: admin.id }, data: { googleId } });
+    }
+
+    const token = createAuthToken({ userId: admin.id, phone: admin.email });
+    res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role } });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error('Google auth error:', error);
+    res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
   }
 });
 
@@ -1670,14 +1733,14 @@ router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, r
     const { name, email, password, role } = z.object({
       name:     z.string().min(2),
       email:    z.string().email(),
-      password: z.string().min(8, 'Password must be at least 8 characters'),
+      password: z.string().min(8, 'Password must be at least 8 characters').optional(),
       role:     z.enum(['admin', 'superadmin']).default('admin'),
     }).parse(req.body);
 
     const existing = await prisma.admin.findUnique({ where: { email } });
     if (existing) { res.status(409).json({ error: 'An agent with this email already exists' }); return; }
 
-    const hashed = await bcrypt.hash(password, 12);
+    const hashed = password ? await bcrypt.hash(password, 12) : null;
     const agent  = await prisma.admin.create({
       data: { name, email, password: hashed, role },
       select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
@@ -1755,6 +1818,7 @@ router.put('/me', adminAuthenticate, async (req: Request, res: Response): Promis
       }
       const admin = await prisma.admin.findUnique({ where: { id: adminId } });
       if (!admin) { res.status(404).json({ error: 'Admin not found' }); return; }
+      if (!admin.password) { res.status(400).json({ error: 'This account uses Google Sign-In and has no password.' }); return; }
       const valid = await bcrypt.compare(body.currentPassword, admin.password);
       if (!valid) { res.status(401).json({ error: 'Current password is incorrect' }); return; }
       data.password = await bcrypt.hash(body.newPassword, 12);

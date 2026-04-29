@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
+import { getFirebaseAdmin } from '../lib/firebase';
 
 const router = Router();
 
@@ -154,6 +155,50 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
     }
     res.status(401).json({ error: 'Invalid or expired refresh token' });
     return;
+  }
+});
+
+// ── POST /verify-firebase ─────────────────────────────────────────────────────
+// Exchanges a Firebase Phone Auth ID token for an ASK JWT.
+// Called by the mobile app after Firebase verifies the user's phone number.
+
+router.post('/verify-firebase', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken || typeof idToken !== 'string') {
+      res.status(400).json({ error: 'idToken is required' });
+      return;
+    }
+
+    const decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
+    const rawPhone = decoded.phone_number;
+    if (!rawPhone) {
+      res.status(400).json({ error: 'Firebase token does not contain a phone number' });
+      return;
+    }
+
+    // Normalise to 10-digit format (strip +91 country code)
+    const phone = rawPhone.replace(/^\+91/, '');
+
+    let user = await prisma.user.findUnique({ where: { phone } });
+    const isNewUser = !user;
+    if (!user) {
+      user = await prisma.user.create({ data: { phone } });
+    }
+
+    const token        = createAuthToken({ userId: user.id, phone: user.phone });
+    const refreshToken = createRefreshToken({ userId: user.id, phone: user.phone });
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      user: { id: user.id, phone: user.phone, name: user.name, email: user.email },
+      isNewUser: isNewUser || !Boolean(user.name),
+    });
+  } catch (error) {
+    console.error('[verify-firebase]', error);
+    res.status(401).json({ error: 'Invalid or expired Firebase token' });
   }
 });
 

@@ -15,20 +15,31 @@ const OTP_LEN = 6;
 
 export default function OTPScreen() {
   const router              = useRouter();
-  const { pendingPhone, verifyOTP, sendOTP } = useAuth();
+  const { pendingPhone, verifyOTP, sendOTP, autoVerified } = useAuth();
   const { alert }           = useDialog();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]     = useState(false);
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(30);
+  // Show "Checking SIM…" spinner on Android for up to 3s while Firebase tries auto-verify
+  const [autoChecking, setAutoChecking] = useState(Platform.OS === 'android');
   const refs = useRef<Array<TextInput | null>>(Array(OTP_LEN).fill(null));
 
-  // Countdown timer for resend
+  // Hide auto-check spinner after 3s (auto-verify window)
   useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    if (!autoChecking) return;
+    const t = setTimeout(() => setAutoChecking(false), 3000);
     return () => clearTimeout(t);
-  }, [countdown]);
+  }, [autoChecking]);
+
+  // Redirect when Firebase auto-verifies (Android Play Integrity)
+  useEffect(() => {
+    if (!autoVerified) return;
+    if (autoVerified.isNewUser) {
+      router.replace('/onboarding');
+    } else {
+      router.replace('/(tabs)');
+    }
+  }, [autoVerified]);
 
   const phone = pendingPhone ?? '';
   const masked = phone.length === 10
@@ -72,12 +83,12 @@ export default function OTPScreen() {
   };
 
   const handleResend = async () => {
-    if (countdown > 0 || !phone) return;
+    if (!phone) return;
     setResending(true);
     try {
       await sendOTP(phone);
       setDigits(Array(OTP_LEN).fill(''));
-      setCountdown(30);
+      setAutoChecking(Platform.OS === 'android');
       refs.current[0]?.focus();
     } finally {
       setResending(false);
@@ -103,8 +114,10 @@ export default function OTPScreen() {
           </View>
           <Text style={s.heroTitle}>Verify your number</Text>
           <Text style={s.heroSub}>
-            We sent a 6-digit code to{'\n'}
-            <Text style={s.heroPhone}>{masked}</Text>
+            {autoChecking
+              ? 'Checking your SIM automatically…'
+              : <>We sent a 6-digit code to{'\n'}<Text style={s.heroPhone}>{masked}</Text></>
+            }
           </Text>
         </View>
 
@@ -136,11 +149,13 @@ export default function OTPScreen() {
             ))}
           </View>
 
-          {/* Hint */}
-          <View style={s.hintRow}>
-            <Icon name="information-circle-outline" size={14} color={Colors.textLight} />
-            <Text style={s.hintText}>Check the API server console for your OTP</Text>
-          </View>
+          {/* Auto-checking indicator */}
+          {autoChecking && (
+            <View style={[s.hintRow, { marginBottom: 28 }]}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <Text style={[s.hintText, { color: Colors.primary }]}>Checking SIM automatically…</Text>
+            </View>
+          )}
 
           {/* Verify button */}
           <TouchableOpacity
@@ -163,16 +178,12 @@ export default function OTPScreen() {
           {/* Resend */}
           <View style={s.resendRow}>
             <Text style={s.resendLabel}>Didn't receive the code? </Text>
-            {countdown > 0 ? (
-              <Text style={s.resendTimer}>Resend in {countdown}s</Text>
-            ) : (
-              <TouchableOpacity onPress={handleResend} disabled={resending}>
-                {resending
-                  ? <ActivityIndicator size="small" color={Colors.primary} />
-                  : <Text style={s.resendBtn}>Resend OTP</Text>
-                }
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity onPress={handleResend} disabled={resending}>
+              {resending
+                ? <ActivityIndicator size="small" color={Colors.primary} />
+                : <Text style={s.resendBtn}>Resend OTP</Text>
+              }
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -252,6 +263,5 @@ const s = StyleSheet.create({
 
   resendRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   resendLabel:{ fontSize: 13, color: Colors.textMuted },
-  resendTimer:{ fontSize: 13, color: Colors.textLight, fontWeight: '600' },
   resendBtn:  { fontSize: 13, color: Colors.primary, fontWeight: '700' },
 });

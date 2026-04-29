@@ -322,6 +322,14 @@ class AdminApiClient {
     return data;
   }
 
+  async googleLogin(credential: string): Promise<{ token: string; admin: { id: string; name: string; email: string; role: string } }> {
+    const { data } = await this.instance.post('/auth/google', { credential });
+    if (data.error) throw new Error(data.error);
+    if (!data.token) throw new Error('No token received');
+    localStorage.setItem('adminToken', data.token);
+    return data;
+  }
+
   // ── Dashboard ──────────────────────────────────────────────────────────
   async getStats(): Promise<DashboardStats> {
     const { data } = await this.instance.get('/stats');
@@ -596,7 +604,7 @@ class AdminApiClient {
     return data.agents;
   }
 
-  async createAgent(payload: { name: string; email: string; password: string; role: 'admin' | 'superadmin' }): Promise<AgentRecord> {
+  async createAgent(payload: { name: string; email: string; password?: string; role: 'admin' | 'superadmin' }): Promise<AgentRecord> {
     const { data } = await this.instance.post('/agents', payload);
     if (data.error) throw new Error(data.error);
     return data.agent;
