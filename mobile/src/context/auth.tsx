@@ -161,10 +161,6 @@ export function mapApiUser(u: ApiUser): AuthUser {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 const firebaseAuth = getAuth();
-// Bypass Play Integrity check in dev — Play Integrity only works for Play Store-signed builds
-if (__DEV__) {
-  firebaseAuth.settings.appVerificationDisabledForTesting = true;
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);

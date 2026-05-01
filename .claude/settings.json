@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(git commit -m ' *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c ' *)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/singhhardil/Development/bitdecentro/insurance/icons/appstore.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/singhhardil/Development/bitdecentro/insurance/mobile/android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png)",
+      "Bash(sips -z 228 228 --setProperty format png /Users/singhhardil/Development/bitdecentro/insurance/icons/appstore.png --out /Users/singhhardil/Development/bitdecentro/insurance/mobile/assets/images/splash-icon.png)",
+      "Bash(gh repo *)",
+      "Bash(eas credentials *)",
+      "Bash(adb kill-server *)",
+      "Bash(adb start-server *)"
     ]
   }
 }
