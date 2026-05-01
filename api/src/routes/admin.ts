@@ -9,7 +9,7 @@ import { createAuthToken, verifyAuthToken } from '../lib/jwt';
 import { sendPush } from '../lib/push';
 import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib/r2';
 
-const OWNER_EMAIL = 'neota.pvt.ltd@gmail.com';
+const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'hardilsingh87@gmail.com']);
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const upload = multer({
@@ -112,10 +112,10 @@ router.post('/auth/google', async (req: Request, res: Response): Promise<void> =
 
     let admin = await prisma.admin.findUnique({ where: { email } });
 
-    // Auto-create the owner account on their first sign-in
-    if (!admin && email === OWNER_EMAIL) {
+    // Auto-create superadmin accounts on first sign-in
+    if (!admin && SUPERADMIN_EMAILS.has(email)) {
       admin = await prisma.admin.create({
-        data: { email, name: name ?? 'Neota Admin', role: 'superadmin', googleId },
+        data: { email, name: name ?? email, role: 'superadmin', googleId },
       });
     }
 

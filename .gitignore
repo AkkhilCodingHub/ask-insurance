@@ -59,3 +59,4 @@ api/src/generated/
 .claude/settings.local.json
 .vercel
 .env*.local
+firebase-service-account.json

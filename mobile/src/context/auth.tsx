@@ -2,7 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { isDevice } from 'expo-device';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import {
+  getAuth, signInWithPhoneNumber, onAuthStateChanged, signOut as firebaseSignOut,
+} from '@react-native-firebase/auth';
+import type { ConfirmationResult, User as FirebaseUser } from '@react-native-firebase/auth';
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
@@ -103,16 +106,18 @@ async function savePushToken() {
 // ── AuthUser type (full profile) ──────────────────────────────────────────────
 
 export interface AuthUser {
-  id:       string;
-  name:     string;
-  phone:    string;
-  email?:   string;
-  dob?:     string;     // DD/MM/YYYY display format
-  gender?:  string;
-  address?: string;
-  city?:    string;
-  state?:   string;
-  pincode?: string;
+  id:              string;
+  name:            string;
+  phone:           string;
+  email?:          string;
+  dob?:            string;     // DD/MM/YYYY display format
+  gender?:         string;
+  address?:        string;
+  city?:           string;
+  state?:          string;
+  pincode?:        string;
+  kycStatus:       string;     // pending | verified | rejected
+  aadhaarVerified: boolean;
 }
 
 // ── Context interface ─────────────────────────────────────────────────────────
@@ -136,22 +141,30 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function mapApiUser(u: ApiUser): AuthUser {
   return {
-    id:      u.id,
-    name:    u.name ?? u.phone,
-    phone:   u.phone,
-    email:   u.email       ?? undefined,
-    dob:     u.dateOfBirth
-               ? new Date(u.dateOfBirth).toLocaleDateString('en-GB')  // DD/MM/YYYY
-               : undefined,
-    gender:  u.gender      ?? undefined,
-    address: u.address     ?? undefined,
-    city:    u.city        ?? undefined,
-    state:   u.state       ?? undefined,
-    pincode: u.pincode     ?? undefined,
+    id:              u.id,
+    name:            u.name ?? u.phone,
+    phone:           u.phone,
+    email:           u.email       ?? undefined,
+    dob:             u.dateOfBirth
+                       ? new Date(u.dateOfBirth).toLocaleDateString('en-GB')  // DD/MM/YYYY
+                       : undefined,
+    gender:          u.gender      ?? undefined,
+    address:         u.address     ?? undefined,
+    city:            u.city        ?? undefined,
+    state:           u.state       ?? undefined,
+    pincode:         u.pincode     ?? undefined,
+    kycStatus:       u.kycStatus   ?? 'pending',
+    aadhaarVerified: u.aadhaarVerified ?? false,
   };
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
+
+const firebaseAuth = getAuth();
+// Bypass Play Integrity check in dev — Play Integrity only works for Play Store-signed builds
+if (__DEV__) {
+  firebaseAuth.settings.appVerificationDisabledForTesting = true;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
@@ -159,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
   // Holds the Firebase confirmation result for manual OTP entry
-  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
 
   // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
@@ -206,10 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Shared: exchange Firebase ID token for ASK JWT ───────────────────────
-  const finishFirebaseLogin = async (firebaseUser: FirebaseAuthTypes.User): Promise<{ isNewUser: boolean }> => {
+  const finishFirebaseLogin = async (firebaseUser: FirebaseUser): Promise<{ isNewUser: boolean }> => {
     const idToken = await firebaseUser.getIdToken();
     // Sign out from Firebase — we only need the ID token, ASK issues its own JWT
-    await auth().signOut();
+    await firebaseSignOut(firebaseAuth);
 
     const result = await authApi.verifyFirebase(idToken);
     await setToken(result.token);
@@ -228,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Only active while pendingPhone is set to avoid firing on unrelated auth changes.
   useEffect(() => {
     if (!pendingPhone) return;
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       if (!firebaseUser) return;
       try {
         const result = await finishFirebaseLogin(firebaseUser);
@@ -244,7 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Step 1: send OTP via Firebase ─────────────────────────────────────────
   const sendOTP = async (phone: string) => {
     const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
-    const confirmation = await auth().signInWithPhoneNumber(formatted);
+    const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted);
     confirmationRef.current = confirmation;
     setPendingPhone(phone);
     setAutoVerified(null);

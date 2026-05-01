@@ -241,16 +241,19 @@ async function request<T>(
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ApiUser {
-  id:          string;
-  phone:       string;
-  name:        string | null;
-  email:       string | null;
-  dateOfBirth: string | null;
-  gender:      string | null;
-  address:     string | null;
-  city:        string | null;
-  state:       string | null;
-  pincode:     string | null;
+  id:              string;
+  phone:           string;
+  name:            string | null;
+  email:           string | null;
+  dateOfBirth:     string | null;
+  gender:          string | null;
+  address:         string | null;
+  city:            string | null;
+  state:           string | null;
+  pincode:         string | null;
+  kycStatus:       string;          // pending | verified | rejected
+  aadhaarVerified: boolean;
+  kycVerifiedAt:   string | null;
 }
 
 export interface ApiInsurer {
@@ -776,4 +779,23 @@ export const agentApi = {
 
   getChatUnread: () =>
     agentRequest<{ unread: number }>('/api/admin/chat/unread').then(r => r.unread),
+};
+
+// ── KYC ───────────────────────────────────────────────────────────────────────
+
+export const kycApi = {
+  initiate: () =>
+    request<{ url: string; state: string }>('/api/kyc/initiate', {}, true),
+
+  callback: (code: string, state: string) =>
+    request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
+      '/api/kyc/callback',
+      { method: 'POST', body: JSON.stringify({ code, state }) },
+      true,
+    ),
+
+  status: () =>
+    request<{ kycStatus: string; aadhaarVerified: boolean; kycVerifiedAt: string | null; hasPan: boolean }>(
+      '/api/kyc/status', {}, true,
+    ),
 };

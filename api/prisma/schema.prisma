@@ -22,6 +22,15 @@ model User {
   state       String?
   pincode     String?
   pushToken   String?   // Expo push token
+
+  // KYC
+  kycStatus       String    @default("pending") // pending | submitted | verified | rejected
+  digilockerSub   String?   @unique             // DigiLocker unique user ID
+  aadhaarVerified Boolean   @default(false)
+  panNumber       String?
+  kycDocuments    Json?                          // raw DigiLocker issued-files metadata
+  kycVerifiedAt   DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

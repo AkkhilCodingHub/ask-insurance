@@ -120,7 +120,7 @@ function capitalize(s: string | null | undefined, fallback = '—'): string {
 
 export default function HomeTab() {
   const router   = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
@@ -231,6 +231,32 @@ export default function HomeTab() {
                   </View>
                 </View>
                 <Icon name="arrow-forward-outline" size={18} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* KYC banner — shown for logged-in users with pending KYC */}
+          {user && user.kycStatus !== 'verified' && (
+            <View style={s.section}>
+              <TouchableOpacity
+                style={s.kycBanner}
+                activeOpacity={0.85}
+                onPress={() => router.push('/kyc')}
+              >
+                <View style={s.kycBannerBg} />
+                <View style={s.kycBannerLeft}>
+                  <View style={s.kycIconCircle}>
+                    <Icon name="shield-outline" size={20} color="#D97706" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.kycBannerTitle}>Complete your KYC</Text>
+                    <Text style={s.kycBannerSub}>Verify identity via DigiLocker to buy policies</Text>
+                  </View>
+                </View>
+                <View style={s.kycBannerCta}>
+                  <Text style={s.kycBannerCtaText}>Verify</Text>
+                  <Icon name="arrow-forward-outline" size={14} color="#D97706" />
+                </View>
               </TouchableOpacity>
             </View>
           )}
@@ -722,6 +748,33 @@ const s = StyleSheet.create({
   },
   guestBannerTitle: { fontSize: 14, fontWeight: '800', color: Colors.text, marginBottom: 2 },
   guestBannerSub:   { fontSize: 11, color: Colors.textMuted },
+
+  // ── KYC banner ────────────────────────────
+  kycBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14, borderWidth: 1, borderColor: '#FDE68A',
+    padding: 16, overflow: 'hidden',
+  },
+  kycBannerBg: {
+    position: 'absolute', width: 100, height: 100, borderRadius: 50,
+    backgroundColor: '#FEF3C7', top: -36, right: -24, opacity: 0.6,
+  },
+  kycBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  kycIconCircle: {
+    width: 42, height: 42, borderRadius: 13,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  kycBannerTitle: { fontSize: 14, fontWeight: '800', color: '#92400E', marginBottom: 2 },
+  kycBannerSub:   { fontSize: 11, color: '#B45309' },
+  kycBannerCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: '#FEF3C7', borderRadius: 10, borderWidth: 1, borderColor: '#FDE68A',
+    flexShrink: 0,
+  },
+  kycBannerCtaText: { fontSize: 12, fontWeight: '800', color: '#D97706' },
 
   // ── Empty states ──────────────────────────
   emptyCard: {

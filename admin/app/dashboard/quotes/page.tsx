@@ -104,7 +104,7 @@ function RespondForm({ quote, onDone }: { quote: AdminQuote; onDone: () => void 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="qform-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <label style={LBL}>Insurer *</label>
           <input style={INP} value={form.insurer} onChange={e => setForm(f => ({ ...f, insurer: e.target.value }))} placeholder="e.g. HDFC Life" />
@@ -115,7 +115,7 @@ function RespondForm({ quote, onDone }: { quote: AdminQuote; onDone: () => void 
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      <div className="qform-3col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         <div>
           <label style={LBL}>Net Premium (₹) *</label>
           <input style={INP} type="text" inputMode="numeric" value={form.netPremium} onChange={e => handleNet(e.target.value)} placeholder="0" />
@@ -520,7 +520,7 @@ export default function QuotesPage() {
       )}
 
       {/* ── Funnel stat cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+      <div className="quote-funnel-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
         {FUNNEL.map(({ status, label, sub }) => {
           const sm = STATUS_META[status];
           const active = statusFilter === status;
@@ -633,7 +633,7 @@ export default function QuotesPage() {
                 <div style={{ width: 4, background: tc, flexShrink: 0, borderRadius: "0" }} />
 
                 {/* Card body */}
-                <div style={{ flex: 1, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+                <div className="quote-card-body" style={{ flex: 1, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
 
                   {/* Avatar */}
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: tc + "15", border: `1.5px solid ${tc}30`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -643,7 +643,7 @@ export default function QuotesPage() {
                   </div>
 
                   {/* Name + meta row */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="quote-card-meta" style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 5 }}>
                       <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {q.user?.name ?? "Unknown"}
@@ -679,7 +679,7 @@ export default function QuotesPage() {
                   </div>
 
                   {/* Quote amount block */}
-                  <div style={{ textAlign: "right", flexShrink: 0, minWidth: 110 }}>
+                  <div className="quote-card-amount" style={{ textAlign: "right", flexShrink: 0, minWidth: 110 }}>
                     {ar ? (
                       <>
                         <p style={{ fontSize: 16, fontWeight: 900, color: tc, margin: 0, letterSpacing: "-0.03em" }}>
@@ -693,7 +693,7 @@ export default function QuotesPage() {
                   </div>
 
                   {/* Status pill */}
-                  <div style={{ flexShrink: 0, textAlign: "center" }}>
+                  <div className="quote-card-status" style={{ flexShrink: 0, textAlign: "center" }}>
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: 5,
                       fontSize: 11, fontWeight: 700, padding: "5px 11px",
@@ -706,7 +706,7 @@ export default function QuotesPage() {
                   </div>
 
                   {/* CTA button or chevron */}
-                  <div style={{ flexShrink: 0 }}>
+                  <div className="quote-card-cta" style={{ flexShrink: 0 }}>
                     {cta ? (
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
@@ -755,7 +755,22 @@ export default function QuotesPage() {
         />
       )}
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        @media (max-width: 640px) {
+          .quote-funnel-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+          .quote-card-body { flex-wrap: wrap !important; row-gap: 8px !important; align-items: flex-start !important; }
+          .quote-card-meta { width: calc(100% - 60px); flex: unset !important; min-width: 0; }
+          .quote-card-amount { order: 4; min-width: unset !important; text-align: left !important; }
+          .quote-card-status { order: 3; }
+          .quote-card-cta { order: 5; }
+
+          .qform-2col { grid-template-columns: 1fr !important; }
+          .qform-3col { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

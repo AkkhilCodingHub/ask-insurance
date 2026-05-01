@@ -1,20 +1,22 @@
 import admin from 'firebase-admin';
+import path from 'path';
+import fs from 'fs';
 
 let app: admin.app.App | undefined;
 
 export function getFirebaseAdmin(): admin.app.App {
   if (app) return app;
 
-  const projectId   = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey  = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const serviceAccountPath = path.resolve(__dirname, '../../firebase-service-account.json');
 
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error('Firebase Admin SDK is not configured — set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY');
+  if (!fs.existsSync(serviceAccountPath)) {
+    throw new Error(`Firebase service account file not found at ${serviceAccountPath}`);
   }
 
+  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
   app = admin.initializeApp({
-    credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+    credential: admin.credential.cert(serviceAccount),
   });
 
   return app;

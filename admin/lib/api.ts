@@ -308,7 +308,8 @@ class AdminApiClient {
           localStorage.removeItem('adminToken');
           window.location.href = '/login';
         }
-        return Promise.reject(error);
+        const message = error.response?.data?.error || error.response?.data?.message || error.message;
+        return Promise.reject(new Error(message));
       }
     );
   }
