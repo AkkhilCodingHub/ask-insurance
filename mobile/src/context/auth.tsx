@@ -167,10 +167,9 @@ export function mapApiUser(u: ApiUser): AuthUser {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 const firebaseAuth = getAuth();
-// Skip Play Integrity / reCAPTCHA in dev — it still sends real SMS to real numbers
-if (__DEV__) {
-  firebaseAuth.settings.appVerificationDisabledForTesting = true;
-}
+// Disable app verification — bypasses Play Integrity / reCAPTCHA checks.
+// TODO: remove once Firebase App Check / Play Integrity is properly configured.
+firebaseAuth.settings.appVerificationDisabledForTesting = true;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
