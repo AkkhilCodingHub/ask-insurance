@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.ask.insurance",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
