@@ -795,7 +795,31 @@ export const kycApi = {
     ),
 
   status: () =>
-    request<{ kycStatus: string; aadhaarVerified: boolean; kycVerifiedAt: string | null; hasPan: boolean }>(
-      '/api/kyc/status', {}, true,
-    ),
+    request<{
+      kycStatus: string; aadhaarVerified: boolean; kycVerifiedAt: string | null; hasPan: boolean;
+      kycDocType: string | null; kycDocUrl: string | null;
+      kycRejectionReason: string | null; kycSubmittedAt: string | null;
+    }>('/api/kyc/status', {}, true),
+
+  uploadDocument: async (
+    docType: 'aadhaar' | 'driving_license' | 'passport',
+    fileUri: string,
+    mimeType: string,
+    fileName: string,
+  ): Promise<{ success: boolean; kycStatus: string; docUrl: string }> => {
+    const token = await getToken();
+    const form  = new FormData();
+    form.append('docType', docType);
+    form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
+
+    const url = `${BASE_URL}/api/kyc/upload`;
+    const resp = await fetch(url, {
+      method:  'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body:    form,
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
+    return data;
+  },
 };

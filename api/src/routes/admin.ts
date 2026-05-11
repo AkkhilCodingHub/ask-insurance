@@ -1837,4 +1837,86 @@ router.put('/me', adminAuthenticate, async (req: Request, res: Response): Promis
   }
 });
 
+// ── GET /admin/kyc ───────────────────────────────────────────────────────────
+// List users who have submitted KYC documents for review.
+
+router.get('/kyc', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const status = (req.query.status as string) || 'submitted';
+    const users = await prisma.user.findMany({
+      where: { kycStatus: status },
+      select: {
+        id: true, name: true, phone: true, email: true,
+        kycStatus: true, kycDocType: true, kycDocUrl: true,
+        kycSubmittedAt: true, kycRejectionReason: true, kycVerifiedAt: true,
+      },
+      orderBy: { kycSubmittedAt: 'asc' },
+    });
+    res.json({ submissions: users, total: users.length });
+  } catch (e) {
+    console.error('[admin/kyc]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /admin/kyc/:userId/approve ──────────────────────────────────────────
+
+router.post('/kyc/:userId/approve', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = z.object({ userId: z.string() }).parse(req.params);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        kycStatus:          'verified',
+        kycVerifiedAt:      new Date(),
+        kycRejectionReason: null,
+        aadhaarVerified:    user.kycDocType === 'aadhaar',
+      },
+    });
+
+    if (user.pushToken) {
+      sendPush(user.pushToken, 'KYC Approved!', 'Your identity has been verified. You can now access all features.').catch(() => {});
+    }
+
+    res.json({ success: true, kycStatus: 'verified' });
+  } catch (e) {
+    console.error('[admin/kyc/approve]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /admin/kyc/:userId/reject ───────────────────────────────────────────
+
+router.post('/kyc/:userId/reject', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId } = z.object({ userId: z.string() }).parse(req.params);
+    const { reason } = z.object({ reason: z.string().min(1).max(500) }).parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        kycStatus:          'rejected',
+        kycRejectionReason: reason,
+        kycVerifiedAt:      null,
+      },
+    });
+
+    if (user.pushToken) {
+      sendPush(user.pushToken, 'KYC Needs Attention', `Your KYC was not approved: ${reason}`).catch(() => {});
+    }
+
+    res.json({ success: true, kycStatus: 'rejected' });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: 'Rejection reason is required.' }); return; }
+    console.error('[admin/kyc/reject]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export { router as adminRouter };

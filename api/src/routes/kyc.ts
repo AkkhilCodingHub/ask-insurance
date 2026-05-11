@@ -1,13 +1,83 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+import { uploadToR2, r2KeyFromUrl, deleteFromR2 } from '../lib/r2';
 import {
   buildAuthUrl, exchangeCode, fetchIssuedFiles,
   generateState, parseState,
 } from '../lib/digilocker';
 
 const router = Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});
+
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_DOC_TYPES = ['aadhaar', 'driving_license', 'passport'] as const;
+
+// ── POST /kyc/upload ──────────────────────────────────────────────────────────
+// User uploads a document (Aadhaar, Driving Licence, Passport) for manual KYC.
+
+router.post('/upload', authenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId as string;
+    const file   = (req as any).file as Express.Multer.File | undefined;
+
+    if (!file) {
+      res.status(400).json({ error: 'No document file uploaded.' });
+      return;
+    }
+
+    if (!ALLOWED_TYPES.has(file.mimetype)) {
+      res.status(400).json({ error: 'Only JPEG, PNG, WebP, and PDF files are allowed.' });
+      return;
+    }
+
+    const { docType } = z.object({
+      docType: z.enum(ALLOWED_DOC_TYPES),
+    }).parse(req.body);
+
+    const ext = file.mimetype === 'application/pdf' ? 'pdf'
+      : file.mimetype === 'image/png' ? 'png'
+      : file.mimetype === 'image/webp' ? 'webp'
+      : 'jpg';
+
+    const key = `kyc/${userId}/${Date.now()}.${ext}`;
+    const url = await uploadToR2(key, file.buffer, file.mimetype);
+
+    // Delete old document from R2 if replacing
+    const existing = await prisma.user.findUnique({ where: { id: userId }, select: { kycDocUrl: true } });
+    if (existing?.kycDocUrl) {
+      const oldKey = r2KeyFromUrl(existing.kycDocUrl);
+      if (oldKey) deleteFromR2(oldKey).catch(() => {});
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        kycStatus:          'submitted',
+        kycDocType:         docType,
+        kycDocUrl:          url,
+        kycSubmittedAt:     new Date(),
+        kycRejectionReason: null,
+        kycVerifiedAt:      null,
+      },
+    });
+
+    res.json({ success: true, kycStatus: 'submitted', docUrl: url });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'docType must be aadhaar, driving_license, or passport.' });
+      return;
+    }
+    console.error('[kyc/upload]', error);
+    res.status(500).json({ error: 'Failed to upload KYC document. Please try again.' });
+  }
+});
 
 // ── GET /kyc/initiate ─────────────────────────────────────────────────────────
 // Returns the DigiLocker OAuth URL for the authenticated user.
@@ -109,16 +179,23 @@ router.get('/status', authenticate, async (req: Request, res: Response): Promise
     const userId = (req as any).userId as string;
     const user   = await prisma.user.findUnique({
       where:  { id: userId },
-      select: { kycStatus: true, aadhaarVerified: true, kycVerifiedAt: true, panNumber: true },
+      select: {
+        kycStatus: true, aadhaarVerified: true, kycVerifiedAt: true, panNumber: true,
+        kycDocType: true, kycDocUrl: true, kycRejectionReason: true, kycSubmittedAt: true,
+      },
     });
 
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
     res.json({
-      kycStatus:       user.kycStatus,
-      aadhaarVerified: user.aadhaarVerified,
-      kycVerifiedAt:   user.kycVerifiedAt,
-      hasPan:          Boolean(user.panNumber),
+      kycStatus:          user.kycStatus,
+      aadhaarVerified:    user.aadhaarVerified,
+      kycVerifiedAt:      user.kycVerifiedAt,
+      hasPan:             Boolean(user.panNumber),
+      kycDocType:         user.kycDocType,
+      kycDocUrl:          user.kycDocUrl,
+      kycRejectionReason: user.kycRejectionReason,
+      kycSubmittedAt:     user.kycSubmittedAt,
     });
   } catch (error) {
     console.error('[kyc/status]', error);

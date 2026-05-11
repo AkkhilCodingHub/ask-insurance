@@ -24,12 +24,17 @@ model User {
   pushToken   String?   // Expo push token
 
   // KYC
-  kycStatus       String    @default("pending") // pending | submitted | verified | rejected
-  digilockerSub   String?   @unique             // DigiLocker unique user ID
-  aadhaarVerified Boolean   @default(false)
-  panNumber       String?
-  kycDocuments    Json?                          // raw DigiLocker issued-files metadata
-  kycVerifiedAt   DateTime?
+  kycStatus          String    @default("pending") // pending | submitted | verified | rejected
+  digilockerSub      String?   @unique             // DigiLocker unique user ID
+  aadhaarVerified    Boolean   @default(false)
+  panNumber          String?
+  kycDocuments       Json?                          // raw DigiLocker issued-files metadata
+  kycVerifiedAt      DateTime?
+  // Manual KYC upload
+  kycDocType         String?   // aadhaar | driving_license | passport
+  kycDocUrl          String?   // R2 public URL of uploaded document
+  kycRejectionReason String?
+  kycSubmittedAt     DateTime?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

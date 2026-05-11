@@ -116,8 +116,11 @@ export interface AuthUser {
   city?:           string;
   state?:          string;
   pincode?:        string;
-  kycStatus:       string;     // pending | verified | rejected
-  aadhaarVerified: boolean;
+  kycStatus:          string;     // pending | submitted | verified | rejected
+  aadhaarVerified:    boolean;
+  kycDocType?:        string | null;
+  kycRejectionReason?: string | null;
+  kycSubmittedAt?:    string | null;
 }
 
 // ── Context interface ─────────────────────────────────────────────────────────
@@ -153,14 +156,21 @@ export function mapApiUser(u: ApiUser): AuthUser {
     city:            u.city        ?? undefined,
     state:           u.state       ?? undefined,
     pincode:         u.pincode     ?? undefined,
-    kycStatus:       u.kycStatus   ?? 'pending',
-    aadhaarVerified: u.aadhaarVerified ?? false,
+    kycStatus:          u.kycStatus          ?? 'pending',
+    aadhaarVerified:    u.aadhaarVerified    ?? false,
+    kycDocType:         (u as any).kycDocType         ?? null,
+    kycRejectionReason: (u as any).kycRejectionReason ?? null,
+    kycSubmittedAt:     (u as any).kycSubmittedAt     ?? null,
   };
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 const firebaseAuth = getAuth();
+// Skip Play Integrity / reCAPTCHA in dev — it still sends real SMS to real numbers
+if (__DEV__) {
+  firebaseAuth.settings.appVerificationDisabledForTesting = true;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
@@ -169,6 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
   // Holds the Firebase confirmation result for manual OTP entry
   const confirmationRef = useRef<ConfirmationResult | null>(null);
+  // True while verifyOTP is in-flight — prevents onAuthStateChanged from double-processing
+  const manualVerifyInProgressRef = useRef(false);
 
   // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
@@ -239,6 +251,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!pendingPhone) return;
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       if (!firebaseUser) return;
+      // Skip if verifyOTP is already handling this sign-in
+      if (manualVerifyInProgressRef.current) return;
       try {
         const result = await finishFirebaseLogin(firebaseUser);
         setAutoVerified(result);
@@ -262,9 +276,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Step 2: verify OTP entered manually by the user ───────────────────────
   const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
     if (!confirmationRef.current) throw new Error('No pending verification — call sendOTP first');
-    const credential = await confirmationRef.current.confirm(otp);
-    if (!credential?.user) throw new Error('Verification failed');
-    return finishFirebaseLogin(credential.user);
+    manualVerifyInProgressRef.current = true;
+    try {
+      const credential = await confirmationRef.current.confirm(otp);
+      if (!credential?.user) throw new Error('Verification failed');
+      return await finishFirebaseLogin(credential.user);
+    } finally {
+      manualVerifyInProgressRef.current = false;
+    }
   };
 
   // ── Step 3 (new users): save name + DOB ───────────────────────────────────

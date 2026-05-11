@@ -6,13 +6,14 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
-  LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive, UserCog,
+  LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive, UserCog, BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const nav = [
   { label: "Overview",   icon: LayoutDashboard, href: "/dashboard",           badge: false },
   { label: "Users",      icon: Users,            href: "/dashboard/users",     badge: false },
+  { label: "KYC",        icon: BadgeCheck,       href: "/dashboard/kyc",       badge: false },
   { label: "Policies",   icon: FileText,         href: "/dashboard/policies",  badge: false },
   { label: "Claims",     icon: Shield,           href: "/dashboard/claims",    badge: false },
   { label: "Plans",      icon: Package,          href: "/dashboard/plans",     badge: false },

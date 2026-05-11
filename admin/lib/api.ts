@@ -628,6 +628,36 @@ class AdminApiClient {
     if (data.error) throw new Error(data.error);
     return data.admin;
   }
+
+  // ── KYC ──────────────────────────────────────────────────────────────────
+  async getKycSubmissions(status = 'submitted'): Promise<{ submissions: KycSubmission[]; total: number }> {
+    const { data } = await this.instance.get('/kyc', { params: { status } });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async approveKyc(userId: string): Promise<void> {
+    const { data } = await this.instance.post(`/kyc/${userId}/approve`);
+    if (data.error) throw new Error(data.error);
+  }
+
+  async rejectKyc(userId: string, reason: string): Promise<void> {
+    const { data } = await this.instance.post(`/kyc/${userId}/reject`, { reason });
+    if (data.error) throw new Error(data.error);
+  }
+}
+
+export interface KycSubmission {
+  id:                  string;
+  name:                string | null;
+  phone:               string;
+  email:               string | null;
+  kycStatus:           string;
+  kycDocType:          string | null;
+  kycDocUrl:           string | null;
+  kycSubmittedAt:      string | null;
+  kycRejectionReason:  string | null;
+  kycVerifiedAt:       string | null;
 }
 
 export const adminApi = new AdminApiClient();
