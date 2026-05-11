@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireKyc } from '../middleware/auth';
 import { createPaymentLink } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
 
@@ -37,7 +37,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
 // This means the mobile can call it with policy.id after approve, or quoteId
 // if the user re-opens the payment sheet for an already-approved quote.
 
-router.post('/razorpay/create-link', authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
     const body = z.object({

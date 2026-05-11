@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, requireKyc } from '../middleware/auth';
 
 const router = Router();
 
@@ -83,7 +83,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
   }
 });
 
-router.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticate, requireKyc, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
     if (!userId) {
