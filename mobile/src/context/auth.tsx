@@ -167,9 +167,23 @@ export function mapApiUser(u: ApiUser): AuthUser {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 const firebaseAuth = getAuth();
-// Disable app verification — bypasses Play Integrity / reCAPTCHA checks.
-// TODO: remove once Firebase App Check / Play Integrity is properly configured.
-firebaseAuth.settings.appVerificationDisabledForTesting = true;
+
+/**
+ * Android Phone Auth: Firebase verifies the app via Play Integrity (and reCAPTCHA fallback).
+ * If you see "missing a valid app identifier" / Integrity + reCAPTCHA failed:
+ *   1. Firebase Console → Project settings → Your apps → Android (`com.ask.insurance`)
+ *      → Add **SHA-1** and **SHA-256** for every key that signs the APK/AAB you run:
+ *      - Local debug: `cd android && ./gradlew signingReport` (or `keytool` on `~/.android/debug.keystore`)
+ *      - EAS builds: `eas credentials -p android` → Keystore fingerprints
+ *      - Play Store builds: Play Console → Setup → App integrity → **App signing key certificate**
+ *   2. Download a fresh **google-services.json** after saving fingerprints and replace `mobile/google-services.json`.
+ *   3. Google Cloud Console (same project): ensure **Play Integrity API** / device checks are not blocked by API key restrictions.
+ *
+ * `appVerificationDisabledForTesting` only applies in __DEV__; production must use registered certs.
+ */
+if (__DEV__) {
+  firebaseAuth.settings.appVerificationDisabledForTesting = true;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);

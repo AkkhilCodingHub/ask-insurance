@@ -41,6 +41,24 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
       docType: z.enum(ALLOWED_DOC_TYPES),
     }).parse(req.body);
 
+    const userRow = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { kycStatus: true, kycDocUrl: true },
+    });
+    if (!userRow) {
+      res.status(404).json({ error: 'User not found.' });
+      return;
+    }
+    const st = userRow.kycStatus;
+    if (st === 'submitted') {
+      res.status(409).json({ error: 'KYC is already under review. You cannot upload again until the review completes.' });
+      return;
+    }
+    if (st === 'verified') {
+      res.status(409).json({ error: 'KYC is already verified.' });
+      return;
+    }
+
     const ext = file.mimetype === 'application/pdf' ? 'pdf'
       : file.mimetype === 'image/png' ? 'png'
       : file.mimetype === 'image/webp' ? 'webp'
@@ -50,9 +68,8 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
     const url = await uploadToR2(key, file.buffer, file.mimetype);
 
     // Delete old document from R2 if replacing
-    const existing = await prisma.user.findUnique({ where: { id: userId }, select: { kycDocUrl: true } });
-    if (existing?.kycDocUrl) {
-      const oldKey = r2KeyFromUrl(existing.kycDocUrl);
+    if (userRow.kycDocUrl) {
+      const oldKey = r2KeyFromUrl(userRow.kycDocUrl);
       if (oldKey) deleteFromR2(oldKey).catch(() => {});
     }
 

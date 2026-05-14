@@ -107,7 +107,13 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
         address: true,
         city: true,
         state: true,
-        pincode: true
+        pincode: true,
+        kycStatus: true,
+        aadhaarVerified: true,
+        kycVerifiedAt: true,
+        kycDocType: true,
+        kycRejectionReason: true,
+        kycSubmittedAt: true,
       }
     });
 

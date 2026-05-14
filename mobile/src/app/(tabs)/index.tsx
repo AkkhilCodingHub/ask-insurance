@@ -118,6 +118,38 @@ function capitalize(s: string | null | undefined, fallback = '—'): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+type KycHomeBannerVisual = {
+  bg: string; border: string; blob: string; circleBg: string;
+  iconName: ComponentProps<typeof Icon>['name'];
+  iconColor: string; titleColor: string; subColor: string;
+  ctaBg: string; ctaBorder: string; ctaText: string; arrowColor: string;
+};
+
+function getKycHomeBannerVisuals(status: string | undefined): KycHomeBannerVisual {
+  if (status === 'rejected') {
+    return {
+      bg: '#FEF2F2', border: '#FECACA', blob: '#FEE2E2', circleBg: '#FEE2E2',
+      iconName: 'alert-circle-outline', iconColor: '#DC2626',
+      titleColor: '#991B1B', subColor: '#B91C1C',
+      ctaBg: '#FEE2E2', ctaBorder: '#FECACA', ctaText: '#DC2626', arrowColor: '#DC2626',
+    };
+  }
+  if (status === 'submitted') {
+    return {
+      bg: '#EFF6FF', border: '#BFDBFE', blob: '#DBEAFE', circleBg: '#DBEAFE',
+      iconName: 'time-outline', iconColor: Colors.primary,
+      titleColor: '#1E3A8A', subColor: '#1D4ED8',
+      ctaBg: '#DBEAFE', ctaBorder: '#93C5FD', ctaText: Colors.primary, arrowColor: Colors.primary,
+    };
+  }
+  return {
+    bg: '#FFFBEB', border: '#FDE68A', blob: '#FEF3C7', circleBg: '#FEF3C7',
+    iconName: 'shield-outline', iconColor: '#D97706',
+    titleColor: '#92400E', subColor: '#B45309',
+    ctaBg: '#FEF3C7', ctaBorder: '#FDE68A', ctaText: '#D97706', arrowColor: '#D97706',
+  };
+}
+
 export default function HomeTab() {
   const router   = useRouter();
   const { user, refreshUser } = useAuth();
@@ -235,31 +267,50 @@ export default function HomeTab() {
             </View>
           )}
 
-          {/* KYC banner — shown for logged-in users with pending KYC */}
-          {user && user.kycStatus !== 'verified' && (
-            <View style={s.section}>
-              <TouchableOpacity
-                style={s.kycBanner}
-                activeOpacity={0.85}
-                onPress={() => router.push('/kyc')}
-              >
-                <View style={s.kycBannerBg} />
-                <View style={s.kycBannerLeft}>
-                  <View style={s.kycIconCircle}>
-                    <Icon name="shield-outline" size={20} color="#D97706" />
+          {/* KYC banner — pending / submitted / rejected (not verified) */}
+          {user && user.kycStatus !== 'verified' && (() => {
+            const st = user.kycStatus;
+            const v = getKycHomeBannerVisuals(st);
+            const title =
+              st === 'rejected' ? 'KYC needs attention'
+              : st === 'submitted' ? 'KYC submitted'
+              : 'Complete your KYC';
+            const sub =
+              st === 'rejected'
+                ? (user.kycRejectionReason
+                    ? (user.kycRejectionReason.length > 90
+                        ? `${user.kycRejectionReason.slice(0, 90)}…`
+                        : user.kycRejectionReason)
+                    : 'Your document could not be verified. Please upload a valid ID again.')
+                : st === 'submitted'
+                ? 'Please wait for review.'
+                : 'Upload a government-issued ID to buy policies and complete onboarding.';
+            const ctaLabel = st === 'rejected' ? 'Resubmit' : st === 'submitted' ? 'View' : 'Verify';
+            return (
+              <View style={s.section}>
+                <TouchableOpacity
+                  style={[s.kycBanner, { backgroundColor: v.bg, borderColor: v.border }]}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/kyc')}
+                >
+                  <View style={[s.kycBannerBg, { backgroundColor: v.blob }]} />
+                  <View style={s.kycBannerLeft}>
+                    <View style={[s.kycIconCircle, { backgroundColor: v.circleBg }]}>
+                      <Icon name={v.iconName} size={20} color={v.iconColor} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.kycBannerTitle, { color: v.titleColor }]}>{title}</Text>
+                      <Text style={[s.kycBannerSub, { color: v.subColor }]}>{sub}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.kycBannerTitle}>Complete your KYC</Text>
-                    <Text style={s.kycBannerSub}>Verify identity via DigiLocker to buy policies</Text>
+                  <View style={[s.kycBannerCta, { backgroundColor: v.ctaBg, borderColor: v.ctaBorder }]}>
+                    <Text style={[s.kycBannerCtaText, { color: v.ctaText }]}>{ctaLabel}</Text>
+                    <Icon name="arrow-forward-outline" size={14} color={v.arrowColor} />
                   </View>
-                </View>
-                <View style={s.kycBannerCta}>
-                  <Text style={s.kycBannerCtaText}>Verify</Text>
-                  <Icon name="arrow-forward-outline" size={14} color="#D97706" />
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
 
           {/* Quick actions */}
           <View style={s.section}>

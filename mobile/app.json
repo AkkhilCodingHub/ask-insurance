@@ -56,7 +56,8 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "expo-adi-registration"
     ],
     "experiments": {
       "typedRoutes": true,

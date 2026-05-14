@@ -47,7 +47,20 @@
       "WebFetch(domain:www.prisma.io)",
       "WebSearch",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('prisma:', d['devDependencies'].get\\('prisma',''\\)\\); print\\('@prisma/client:', d['dependencies'].get\\('@prisma/client',''\\)\\)\")",
-      "Bash(npx prisma:*)"
+      "Bash(npx prisma:*)",
+      "Bash(awk 'NR>=1865 && NR<=1875' /Users/singhhardil/Development/bitdecentro/insurance/api/src/routes/admin.ts)",
+      "Bash(mysql -u root -prootpassword -e \"SELECT 1;\")",
+      "Bash(docker compose *)",
+      "Bash(docker exec ask_db *)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(echo \"All done, exit: $?\")",
+      "Bash(git commit *)",
+      "Bash(python3 *)",
+      "Bash(eas build:list --platform android --limit 3 --json)",
+      "Bash(eas build:list --platform android --limit 3)",
+      "Bash(eas credentials:view --platform android)",
+      "Bash(eas build:version:get --platform android)",
+      "Bash(eas --help)"
     ]
   }
 }

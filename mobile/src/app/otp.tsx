@@ -23,6 +23,7 @@ export default function OTPScreen() {
   // Show "Checking SIM…" spinner on Android for up to 3s while Firebase tries auto-verify
   const [autoChecking, setAutoChecking] = useState(Platform.OS === 'android');
   const refs = useRef<Array<TextInput | null>>(Array(OTP_LEN).fill(null));
+  const autoVerifiedRef = useRef(false);
 
   // Hide auto-check spinner after 3s (auto-verify window)
   useEffect(() => {
@@ -31,9 +32,10 @@ export default function OTPScreen() {
     return () => clearTimeout(t);
   }, [autoChecking]);
 
-  // Redirect when Firebase auto-verifies (Android Play Integrity)
+  // Redirect when Firebase auto-verifies (Android Play Integrity / silent SMS)
   useEffect(() => {
     if (!autoVerified) return;
+    autoVerifiedRef.current = true;
     if (autoVerified.isNewUser) {
       router.replace('/onboarding');
     } else {
@@ -74,6 +76,7 @@ export default function OTPScreen() {
         router.replace('/(tabs)');
       }
     } catch {
+      if (autoVerifiedRef.current) return;
       alert({ type: 'error', title: 'Invalid OTP', message: 'The code you entered is incorrect. Please try again.' });
       setDigits(Array(OTP_LEN).fill(''));
       refs.current[0]?.focus();

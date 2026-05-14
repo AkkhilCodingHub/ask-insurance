@@ -34,9 +34,17 @@ export default function KycScreen() {
 
   const isImage = mimeType.startsWith('image/');
 
+  // Keep UI in sync: submitted/verified must stay on success (reset() alone does not
+  // change kycStatus, so we also depend on `step` so we recover after an illegal idle).
   useEffect(() => {
-    if (user?.kycStatus === 'verified') setStep('success');
-  }, [user?.kycStatus]);
+    const st = user?.kycStatus;
+    if (!st) return;
+    if (st === 'verified' || st === 'submitted') {
+      setStep('success');
+      return;
+    }
+    setStep((cur) => (cur === 'success' ? 'idle' : cur));
+  }, [user?.kycStatus, step]);
 
   const pickDocument = async () => {
     try {
@@ -57,6 +65,19 @@ export default function KycScreen() {
 
   const submitDocument = async () => {
     if (!docType || !fileUri) return;
+    const st = user?.kycStatus;
+    if (st === 'submitted' || st === 'verified') {
+      alert({
+        type: 'info',
+        title: 'Already submitted',
+        message:
+          st === 'verified'
+            ? 'Your KYC is already verified.'
+            : 'Your document is under review. You cannot submit again until the review is complete.',
+      });
+      setStep('success');
+      return;
+    }
     setStep('uploading');
     try {
       await kycApi.uploadDocument(docType, fileUri, mimeType, fileName);
@@ -68,7 +89,8 @@ export default function KycScreen() {
     }
   };
 
-  const reset = () => {
+  const resetForResubmit = () => {
+    if (user?.kycStatus !== 'rejected') return;
     setDocType(null);
     setFileUri(null);
     setFileName('');
@@ -95,18 +117,23 @@ export default function KycScreen() {
               color={isVerified ? '#059669' : Colors.primary}
             />
           </View>
-          <Text style={s.successTitle}>{isVerified ? 'KYC Verified!' : 'Document Submitted!'}</Text>
+          <Text style={s.successTitle}>{isVerified ? 'KYC Verified!' : 'KYC submitted'}</Text>
           <Text style={s.successSub}>
             {isVerified
               ? 'Your identity has been verified. You can now access all features.'
-              : 'Your document is under review. We\'ll notify you once it\'s verified, usually within 24 hours.'}
+              : 'Please wait for review.'}
           </Text>
-          <TouchableOpacity style={s.ctaBtn} onPress={() => router.back()}>
-            <Text style={s.ctaBtnText}>Back to Home</Text>
+          <TouchableOpacity
+            style={s.successHomeBtn}
+            onPress={() => router.replace('/(tabs)')}
+            activeOpacity={0.88}
+          >
+            <Icon name="home-outline" size={22} color={Colors.white} />
+            <Text style={s.successHomeBtnText}>Back to Home</Text>
           </TouchableOpacity>
-          {!isVerified && (
-            <TouchableOpacity style={s.linkBtn} onPress={reset}>
-              <Text style={s.linkBtnText}>Upload a different document</Text>
+          {user?.kycStatus === 'rejected' && (
+            <TouchableOpacity style={s.linkBtn} onPress={resetForResubmit}>
+              <Text style={s.linkBtnText}>Upload a new document</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -352,6 +379,24 @@ const s = StyleSheet.create({
   },
   successTitle: { fontSize: 26, fontWeight: '900', color: Colors.text, letterSpacing: -0.5 },
   successSub:   { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  successHomeBtn: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    marginTop: 8,
+    minHeight: 54,
+    ...Platform.select({
+      ios:     { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 10 },
+      android: { elevation: 5 },
+    }),
+  },
+  successHomeBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white, letterSpacing: -0.3 },
   linkBtn: { marginTop: 4 },
   linkBtnText: { fontSize: 13, color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
 });
