@@ -135,7 +135,45 @@ router.get('/callback', (req: Request, res: Response): void => {
     const v = req.query[key];
     if (typeof v === 'string' && v) params.set(key, v);
   }
-  res.redirect(302, `${appRedirect}?${params.toString()}`);
+  const target = `${appRedirect}?${params.toString()}`;
+
+  // NOTE: we deliberately do NOT use a 302 redirect here. Android Chrome Custom Tabs
+  // (used by expo-web-browser) drops a `Location:` header pointing at a custom scheme,
+  // leaving the user stuck on DigiLocker's "redirecting back to requester" page.
+  // A JS-initiated navigation to the deep link IS honoured, with a tap fallback.
+  const targetJs   = JSON.stringify(target);
+  const targetAttr = target
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  res.type('html').send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Returning to app…</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:flex;align-items:center;justify-content:center;
+    font-family:-apple-system,Segoe UI,Roboto,system-ui,sans-serif;background:#f8fafc;color:#0f172a}
+  .card{text-align:center;padding:32px 24px;max-width:320px}
+  .spin{width:42px;height:42px;margin:0 auto 20px;border:4px solid #e2e8f0;
+    border-top-color:#2563eb;border-radius:50%;animation:r .9s linear infinite}
+  @keyframes r{to{transform:rotate(360deg)}}
+  p{font-size:15px;line-height:1.5;margin:0 0 24px}
+  a.btn{display:inline-block;background:#2563eb;color:#fff;text-decoration:none;
+    font-weight:700;padding:14px 22px;border-radius:12px;font-size:15px}
+</style></head>
+<body><div class="card">
+  <div class="spin"></div>
+  <p>Verification complete.<br>Returning to the app…</p>
+  <a class="btn" id="cta" href="${targetAttr}">Open app</a>
+</div>
+<script>
+  var t = ${targetJs};
+  try { window.location.replace(t); } catch (e) {}
+  setTimeout(function(){ window.location.href = t; }, 700);
+</script>
+</body></html>`);
 });
 
 // ── POST /kyc/callback ────────────────────────────────────────────────────────
