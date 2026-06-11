@@ -6,17 +6,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import * as SecureStore from 'expo-secure-store';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { kycApi } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
+import { DL_STATE_KEY, DL_VERIFIER_KEY } from './kyc-callback';
 
 type Step = 'idle' | 'success';
-
-// Must match DIGILOCKER_REDIRECT_URI registered on the API and DigiLocker partner portal.
-const DIGILOCKER_REDIRECT = 'askinsurance://kyc/callback';
 
 const BENEFITS: { icon: string; text: string }[] = [
   { icon: 'flash-outline',          text: 'Verified in seconds — no waiting for review' },
@@ -51,36 +49,18 @@ export default function KycScreen() {
     }
     setDlBusy(true);
     try {
-      const { url, codeVerifier } = await kycApi.initiate();
+      const { url, state, codeVerifier } = await kycApi.initiate();
 
-      const result = await WebBrowser.openAuthSessionAsync(url, DIGILOCKER_REDIRECT);
-      if (result.type !== 'success' || !result.url) {
-        // User cancelled or dismissed the browser — silently return to the screen.
-        setDlBusy(false);
-        return;
-      }
+      // Stash state + verifier so the kyc-callback route can complete the PKCE
+      // exchange after DigiLocker redirects back into the app via the HTTPS bridge.
+      await SecureStore.setItemAsync(DL_STATE_KEY, state);
+      await SecureStore.setItemAsync(DL_VERIFIER_KEY, codeVerifier);
 
-      const { queryParams } = Linking.parse(result.url);
-      const code  = queryParams?.code  as string | undefined;
-      const state = queryParams?.state as string | undefined;
-      const err   = queryParams?.error as string | undefined;
-
-      if (err) {
-        alert({ type: 'error', title: 'DigiLocker declined', message: 'You did not grant access. Please try again.' });
-        setDlBusy(false);
-        return;
-      }
-      if (!code || !state) {
-        alert({ type: 'error', title: 'Verification failed', message: 'DigiLocker did not return a valid response. Please try again.' });
-        setDlBusy(false);
-        return;
-      }
-
-      await kycApi.callback(code, state, codeVerifier);
-      await refreshUser();
-      setStep('success');
+      // Plain browser open — the deep link return is handled by /kyc-callback,
+      // not by intercepting the browser session (which the manual "Open app" tap bypasses).
+      await WebBrowser.openBrowserAsync(url);
     } catch (e: any) {
-      alert({ type: 'error', title: 'Verification failed', message: e?.message ?? 'Could not verify with DigiLocker. Please try again.' });
+      alert({ type: 'error', title: 'Verification failed', message: e?.message ?? 'Could not start DigiLocker verification. Please try again.' });
     } finally {
       setDlBusy(false);
     }

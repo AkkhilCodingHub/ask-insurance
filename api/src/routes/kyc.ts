@@ -129,7 +129,7 @@ router.get('/initiate', authenticate, async (req: Request, res: Response): Promi
 // code is useless without the app's JWT-bound token exchange.
 
 router.get('/callback', (req: Request, res: Response): void => {
-  const appRedirect = process.env.DIGILOCKER_APP_REDIRECT || 'askinsurance://kyc/callback';
+  const appRedirect = process.env.DIGILOCKER_APP_REDIRECT || 'askinsurance://kyc-callback';
   const params = new URLSearchParams();
   for (const key of ['code', 'state', 'error', 'error_description'] as const) {
     const v = req.query[key];
@@ -245,7 +245,9 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
       return;
     }
     console.error('[kyc/callback]', error);
-    res.status(500).json({ error: 'KYC verification failed. Please try again.' });
+    // Surface the underlying DigiLocker error to the client for diagnosis.
+    const detail = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `KYC verification failed: ${detail}` });
   }
 });
 

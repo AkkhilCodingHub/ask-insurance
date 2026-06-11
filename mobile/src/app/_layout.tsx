@@ -33,6 +33,7 @@ export default function RootLayout() {
         <Stack.Screen name="my-quotes"    options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="payments"     options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="kyc"          options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="kyc-callback" options={{ animation: 'none' }} />
 
         {/* Agent portal */}
         <Stack.Screen name="agent-login"  options={{ animation: 'slide_from_bottom', gestureEnabled: true, gestureDirection: 'vertical' }} />
