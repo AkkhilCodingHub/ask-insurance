@@ -4,7 +4,9 @@ import crypto from 'crypto';
 const BASE_V1   = 'https://digilocker.meripehchaan.gov.in/public/oauth2/1';
 const BASE_V2   = 'https://digilocker.meripehchaan.gov.in/public/oauth2/2';
 const CLIENT_ID     = process.env.DIGILOCKER_CLIENT_ID!;
-const CLIENT_SECRET = process.env.DIGILOCKER_CLIENT_SECRET!;
+// Optional — modern DigiLocker apps are PKCE public clients with no secret.
+// Only sent at token exchange when configured (confidential client).
+const CLIENT_SECRET = process.env.DIGILOCKER_CLIENT_SECRET || '';
 const REDIRECT_URI  = process.env.DIGILOCKER_REDIRECT_URI!;
 
 // openid → receive id_token; files.issueddocs → access issued document list
@@ -40,29 +42,51 @@ export interface DigiLockerFilesResponse {
   items: DigiLockerFile[];
 }
 
+// ── PKCE helpers ──────────────────────────────────────────────────────────────
+// DigiLocker (oauth-consent.dl6.in) registers apps as PKCE public clients: no
+// client_secret is issued; the code_verifier proves the token request comes from
+// the same client that started the flow. Method is always S256.
+
+function base64url(buf: Buffer): string {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export function generateCodeVerifier(): string {
+  // 32 random bytes → 43-char base64url string (within the spec's 43–128 range).
+  return base64url(crypto.randomBytes(32));
+}
+
+export function deriveCodeChallenge(verifier: string): string {
+  return base64url(crypto.createHash('sha256').update(verifier).digest());
+}
+
 // ── Generate auth URL ─────────────────────────────────────────────────────────
 
-export function buildAuthUrl(state: string): string {
+export function buildAuthUrl(state: string, codeChallenge: string): string {
   const params = new URLSearchParams({
-    response_type: 'code',
-    client_id:     CLIENT_ID,
-    redirect_uri:  REDIRECT_URI,
+    response_type:         'code',
+    client_id:             CLIENT_ID,
+    redirect_uri:          REDIRECT_URI,
     state,
-    scope:         SCOPE,
+    scope:                 SCOPE,
+    code_challenge:        codeChallenge,
+    code_challenge_method: 'S256',
   });
   return `${BASE_V1}/authorize?${params.toString()}`;
 }
 
 // ── Exchange code for tokens ──────────────────────────────────────────────────
 
-export async function exchangeCode(code: string): Promise<DigiLockerTokens> {
+export async function exchangeCode(code: string, codeVerifier: string): Promise<DigiLockerTokens> {
   const body = new URLSearchParams({
     code,
     grant_type:    'authorization_code',
     client_id:     CLIENT_ID,
-    client_secret: CLIENT_SECRET,
     redirect_uri:  REDIRECT_URI,
+    code_verifier: codeVerifier,
   });
+  // Confidential clients (if a secret was issued) also send it; PKCE clients don't.
+  if (CLIENT_SECRET) body.set('client_secret', CLIENT_SECRET);
 
   const res = await fetch(`${BASE_V1}/token`, {
     method:  'POST',

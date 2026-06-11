@@ -1,41 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Image, Platform, ScrollView,
+  ActivityIndicator, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { kycApi } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
 
-type DocType = 'aadhaar' | 'driving_license' | 'passport';
-type Step = 'idle' | 'picked' | 'uploading' | 'success' | 'error';
+type Step = 'idle' | 'success';
 
-const DOC_OPTIONS: { type: DocType; label: string; icon: string; hint: string }[] = [
-  { type: 'aadhaar',         label: 'Aadhaar Card',      icon: 'card-outline',            hint: 'Front side of Aadhaar card' },
-  { type: 'driving_license', label: 'Driving Licence',   icon: 'car-outline',             hint: 'Both sides or full document' },
-  { type: 'passport',        label: 'Passport',          icon: 'airplane-outline',        hint: 'First two pages (biodata)' },
+// Must match DIGILOCKER_REDIRECT_URI registered on the API and DigiLocker partner portal.
+const DIGILOCKER_REDIRECT = 'askinsurance://kyc/callback';
+
+const BENEFITS: { icon: string; text: string }[] = [
+  { icon: 'flash-outline',          text: 'Verified in seconds — no waiting for review' },
+  { icon: 'shield-checkmark-outline', text: 'Government-backed identity via DigiLocker' },
+  { icon: 'lock-closed-outline',    text: 'We never see your password — only the result' },
 ];
 
 export default function KycScreen() {
-  const router          = useRouter();
+  const router                = useRouter();
   const { refreshUser, user } = useAuth();
-  const { alert }       = useDialog();
+  const { alert }             = useDialog();
 
-  const [docType,  setDocType]  = useState<DocType | null>(null);
-  const [fileUri,  setFileUri]  = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
-  const [mimeType, setMimeType] = useState<string>('');
-  const [step,     setStep]     = useState<Step>('idle');
+  const [step,   setStep]   = useState<Step>('idle');
+  const [dlBusy, setDlBusy] = useState(false);
 
-  const isImage = mimeType.startsWith('image/');
-
-  // Keep UI in sync: submitted/verified must stay on success (reset() alone does not
-  // change kycStatus, so we also depend on `step` so we recover after an illegal idle).
+  // Keep UI in sync with server-side KYC status.
   useEffect(() => {
     const st = user?.kycStatus;
     if (!st) return;
@@ -44,58 +41,49 @@ export default function KycScreen() {
       return;
     }
     setStep((cur) => (cur === 'success' ? 'idle' : cur));
-  }, [user?.kycStatus, step]);
+  }, [user?.kycStatus]);
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      setFileUri(asset.uri);
-      setFileName(asset.name);
-      setMimeType(asset.mimeType ?? 'application/octet-stream');
-      setStep('picked');
-    } catch {
-      alert({ type: 'error', title: 'Failed to pick file', message: 'Please try again.' });
-    }
-  };
-
-  const submitDocument = async () => {
-    if (!docType || !fileUri) return;
+  const verifyWithDigiLocker = async () => {
     const st = user?.kycStatus;
     if (st === 'submitted' || st === 'verified') {
-      alert({
-        type: 'info',
-        title: 'Already submitted',
-        message:
-          st === 'verified'
-            ? 'Your KYC is already verified.'
-            : 'Your document is under review. You cannot submit again until the review is complete.',
-      });
       setStep('success');
       return;
     }
-    setStep('uploading');
+    setDlBusy(true);
     try {
-      await kycApi.uploadDocument(docType, fileUri, mimeType, fileName);
+      const { url, codeVerifier } = await kycApi.initiate();
+
+      const result = await WebBrowser.openAuthSessionAsync(url, DIGILOCKER_REDIRECT);
+      if (result.type !== 'success' || !result.url) {
+        // User cancelled or dismissed the browser — silently return to the screen.
+        setDlBusy(false);
+        return;
+      }
+
+      const { queryParams } = Linking.parse(result.url);
+      const code  = queryParams?.code  as string | undefined;
+      const state = queryParams?.state as string | undefined;
+      const err   = queryParams?.error as string | undefined;
+
+      if (err) {
+        alert({ type: 'error', title: 'DigiLocker declined', message: 'You did not grant access. Please try again.' });
+        setDlBusy(false);
+        return;
+      }
+      if (!code || !state) {
+        alert({ type: 'error', title: 'Verification failed', message: 'DigiLocker did not return a valid response. Please try again.' });
+        setDlBusy(false);
+        return;
+      }
+
+      await kycApi.callback(code, state, codeVerifier);
       await refreshUser();
       setStep('success');
     } catch (e: any) {
-      alert({ type: 'error', title: 'Upload Failed', message: e?.message ?? 'Please try again.' });
-      setStep('picked');
+      alert({ type: 'error', title: 'Verification failed', message: e?.message ?? 'Could not verify with DigiLocker. Please try again.' });
+    } finally {
+      setDlBusy(false);
     }
-  };
-
-  const resetForResubmit = () => {
-    if (user?.kycStatus !== 'rejected') return;
-    setDocType(null);
-    setFileUri(null);
-    setFileName('');
-    setMimeType('');
-    setStep('idle');
   };
 
   if (step === 'success') {
@@ -117,11 +105,11 @@ export default function KycScreen() {
               color={isVerified ? '#059669' : Colors.primary}
             />
           </View>
-          <Text style={s.successTitle}>{isVerified ? 'KYC Verified!' : 'KYC submitted'}</Text>
+          <Text style={s.successTitle}>{isVerified ? 'KYC Verified!' : 'KYC in progress'}</Text>
           <Text style={s.successSub}>
             {isVerified
               ? 'Your identity has been verified. You can now access all features.'
-              : 'Please wait for review.'}
+              : 'Your verification is being processed.'}
           </Text>
           <TouchableOpacity
             style={s.successHomeBtn}
@@ -131,11 +119,6 @@ export default function KycScreen() {
             <Icon name="home-outline" size={22} color={Colors.white} />
             <Text style={s.successHomeBtnText}>Back to Home</Text>
           </TouchableOpacity>
-          {user?.kycStatus === 'rejected' && (
-            <TouchableOpacity style={s.linkBtn} onPress={resetForResubmit}>
-              <Text style={s.linkBtnText}>Upload a new document</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </SafeAreaView>
     );
@@ -155,12 +138,12 @@ export default function KycScreen() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
 
-        {/* Rejection banner */}
+        {/* Rejection / retry banner */}
         {rejectionReason && (
           <View style={s.rejectBanner}>
             <Icon name="alert-circle-outline" size={18} color="#B91C1C" />
             <View style={{ flex: 1 }}>
-              <Text style={s.rejectTitle}>Previous submission rejected</Text>
+              <Text style={s.rejectTitle}>Previous verification could not be completed</Text>
               <Text style={s.rejectReason}>{rejectionReason}</Text>
             </View>
           </View>
@@ -174,86 +157,44 @@ export default function KycScreen() {
           </View>
           <Text style={s.heroTitle}>Verify your identity</Text>
           <Text style={s.heroSub}>
-            Upload a government-issued ID to complete KYC and unlock all features.
+            Complete KYC instantly with DigiLocker to unlock payments, policies and claims.
           </Text>
         </View>
 
-        {/* Step 1 — choose document type */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>Step 1 — Select document type</Text>
-          {DOC_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.type}
-              style={[s.docOption, docType === opt.type && s.docOptionSelected]}
-              onPress={() => setDocType(opt.type)}
-              activeOpacity={0.8}
-            >
-              <View style={[s.docOptionIcon, docType === opt.type && s.docOptionIconSelected]}>
-                <Icon name={opt.icon as any} size={20} color={docType === opt.type ? Colors.white : Colors.primary} />
+        {/* Benefits */}
+        <View style={s.benefits}>
+          {BENEFITS.map(b => (
+            <View key={b.text} style={s.benefitRow}>
+              <View style={s.benefitIcon}>
+                <Icon name={b.icon as any} size={18} color={Colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.docOptionLabel, docType === opt.type && s.docOptionLabelSelected]}>{opt.label}</Text>
-                <Text style={s.docOptionHint}>{opt.hint}</Text>
-              </View>
-              {docType === opt.type && <Icon name="checkmark-circle" size={20} color={Colors.primary} />}
-            </TouchableOpacity>
+              <Text style={s.benefitText}>{b.text}</Text>
+            </View>
           ))}
         </View>
 
-        {/* Step 2 — pick file */}
-        {docType && (
-          <View style={s.section}>
-            <Text style={s.sectionLabel}>Step 2 — Upload document</Text>
-
-            {fileUri ? (
-              <View style={s.previewCard}>
-                {isImage ? (
-                  <Image source={{ uri: fileUri }} style={s.previewImage} resizeMode="contain" />
-                ) : (
-                  <View style={s.pdfPreview}>
-                    <Icon name="document-text-outline" size={40} color={Colors.primary} />
-                    <Text style={s.pdfName} numberOfLines={2}>{fileName}</Text>
-                  </View>
-                )}
-                <TouchableOpacity style={s.changeFileBtn} onPress={pickDocument}>
-                  <Icon name="refresh-outline" size={14} color={Colors.primary} />
-                  <Text style={s.changeFileBtnText}>Change file</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={s.uploadArea} onPress={pickDocument} activeOpacity={0.8}>
-                <Icon name="cloud-upload-outline" size={36} color={Colors.primary} />
-                <Text style={s.uploadAreaTitle}>Tap to choose file</Text>
-                <Text style={s.uploadAreaSub}>JPEG, PNG, WebP or PDF · Max 10 MB</Text>
-              </TouchableOpacity>
-            )}
+        {/* Primary — DigiLocker verification */}
+        <TouchableOpacity
+          style={[s.dlCard, dlBusy && s.dlCardDisabled]}
+          onPress={verifyWithDigiLocker}
+          disabled={dlBusy}
+          activeOpacity={0.88}
+        >
+          <View style={s.dlIcon}>
+            {dlBusy
+              ? <ActivityIndicator color={Colors.white} />
+              : <Icon name="shield-checkmark" size={24} color={Colors.white} />}
           </View>
-        )}
-
-        {/* Submit */}
-        {step === 'picked' && (
-          <TouchableOpacity
-            style={[s.ctaBtn, step !== 'picked' && s.ctaBtnDisabled]}
-            activeOpacity={0.85}
-            onPress={submitDocument}
-            disabled={step !== 'picked'}
-          >
-            <>
-              <Icon name="cloud-upload-outline" size={20} color={Colors.white} />
-              <Text style={s.ctaBtnText}>Submit for Review</Text>
-            </>
-          </TouchableOpacity>
-        )}
-
-        {step === 'uploading' && (
-          <View style={s.uploadingRow}>
-            <ActivityIndicator color={Colors.primary} />
-            <Text style={s.uploadingText}>Uploading document securely…</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.dlTitle}>{dlBusy ? 'Connecting to DigiLocker…' : 'Verify with DigiLocker'}</Text>
+            <Text style={s.dlSub}>Government-backed · verified in seconds</Text>
           </View>
-        )}
+          {!dlBusy && <Icon name="chevron-forward" size={20} color={Colors.white} />}
+        </TouchableOpacity>
 
         <Text style={s.disclaimer}>
-          Your document is encrypted and stored securely. It will only be reviewed by our KYC team.
+          You'll be redirected to DigiLocker to grant access to your issued documents.
+          We only receive the verification result — never your DigiLocker credentials.
         </Text>
 
       </ScrollView>
@@ -311,61 +252,31 @@ const s = StyleSheet.create({
   heroTitle: { fontSize: 20, fontWeight: '900', color: Colors.text, letterSpacing: -0.4 },
   heroSub:   { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
 
-  section: { gap: 10 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: Colors.textLight, letterSpacing: 0.5, textTransform: 'uppercase' },
-
-  docOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.white, borderRadius: 14, padding: 14,
-    borderWidth: 1.5, borderColor: Colors.border,
-  },
-  docOptionSelected: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
-  docOptionIcon: {
-    width: 40, height: 40, borderRadius: 11,
+  benefits: { gap: 12, paddingHorizontal: 4 },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  benefitIcon: {
+    width: 34, height: 34, borderRadius: 10,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  docOptionIconSelected: { backgroundColor: Colors.primary },
-  docOptionLabel: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  docOptionLabelSelected: { color: Colors.primary },
-  docOptionHint: { fontSize: 11, color: Colors.textMuted },
+  benefitText: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '600', lineHeight: 18 },
 
-  uploadArea: {
-    backgroundColor: Colors.white, borderRadius: 16, padding: 32,
-    alignItems: 'center', gap: 8,
-    borderWidth: 2, borderColor: Colors.border, borderStyle: 'dashed',
+  dlCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.primary, borderRadius: 16, padding: 16,
+    ...Platform.select({
+      ios:     { shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10 },
+      android: { elevation: 4 },
+    }),
   },
-  uploadAreaTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  uploadAreaSub:   { fontSize: 12, color: Colors.textMuted },
-
-  previewCard: {
-    backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+  dlCardDisabled: { opacity: 0.6 },
+  dlIcon: {
+    width: 44, height: 44, borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  previewImage: { width: '100%', height: 220, backgroundColor: Colors.bg },
-  pdfPreview: {
-    height: 140, alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: Colors.bg,
-  },
-  pdfName: { fontSize: 12, color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 20 },
-  changeFileBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border,
-  },
-  changeFileBtnText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
-
-  ctaBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 16,
-  },
-  ctaBtnDisabled: { opacity: 0.6 },
-  ctaBtnText: { fontSize: 15, fontWeight: '800', color: Colors.white },
-
-  uploadingRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    padding: 14, backgroundColor: Colors.primaryLight, borderRadius: 12,
-  },
-  uploadingText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+  dlTitle: { fontSize: 15, fontWeight: '800', color: Colors.white, marginBottom: 3 },
+  dlSub:   { fontSize: 11, color: 'rgba(255,255,255,0.85)', lineHeight: 15 },
 
   disclaimer: {
     fontSize: 11, color: Colors.textLight, textAlign: 'center', lineHeight: 16, paddingHorizontal: 8,
@@ -397,6 +308,4 @@ const s = StyleSheet.create({
     }),
   },
   successHomeBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white, letterSpacing: -0.3 },
-  linkBtn: { marginTop: 4 },
-  linkBtnText: { fontSize: 13, color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
 });

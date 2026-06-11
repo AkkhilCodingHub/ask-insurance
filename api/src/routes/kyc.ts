@@ -6,7 +6,7 @@ import { prisma } from '../lib/prisma';
 import { uploadToR2, r2KeyFromUrl, deleteFromR2 } from '../lib/r2';
 import {
   buildAuthUrl, exchangeCode, fetchIssuedFiles,
-  generateState, parseState,
+  generateState, parseState, generateCodeVerifier, deriveCodeChallenge,
 } from '../lib/digilocker';
 
 const router = Router();
@@ -101,20 +101,41 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
 
 router.get('/initiate', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!process.env.DIGILOCKER_CLIENT_ID || !process.env.DIGILOCKER_CLIENT_SECRET) {
+    if (!process.env.DIGILOCKER_CLIENT_ID) {
       res.status(503).json({ error: 'DigiLocker integration is not configured on this server.' });
       return;
     }
 
-    const userId = (req as any).userId as string;
-    const state  = generateState(userId);
-    const url    = buildAuthUrl(state);
+    const userId        = (req as any).userId as string;
+    const state         = generateState(userId);
+    const codeVerifier  = generateCodeVerifier();
+    const codeChallenge = deriveCodeChallenge(codeVerifier);
+    const url           = buildAuthUrl(state, codeChallenge);
 
-    res.json({ url, state });
+    // The verifier is held by the app and sent back on /callback (no server store).
+    res.json({ url, state, codeVerifier });
   } catch (error) {
     console.error('[kyc/initiate]', error);
     res.status(500).json({ error: 'Failed to initiate DigiLocker KYC' });
   }
+});
+
+// ── GET /kyc/callback ─────────────────────────────────────────────────────────
+// HTTPS bridge. The DigiLocker partner portal requires an HTTPS redirect URL, so
+// DigiLocker sends the browser here with ?code=&state= (or ?error=). We forward
+// those params to the app's custom-scheme deep link, which the mobile app catches
+// and then completes verification via the authenticated POST /callback below.
+// This endpoint is intentionally public — it carries no secrets and the one-time
+// code is useless without the app's JWT-bound token exchange.
+
+router.get('/callback', (req: Request, res: Response): void => {
+  const appRedirect = process.env.DIGILOCKER_APP_REDIRECT || 'askinsurance://kyc/callback';
+  const params = new URLSearchParams();
+  for (const key of ['code', 'state', 'error', 'error_description'] as const) {
+    const v = req.query[key];
+    if (typeof v === 'string' && v) params.set(key, v);
+  }
+  res.redirect(302, `${appRedirect}?${params.toString()}`);
 });
 
 // ── POST /kyc/callback ────────────────────────────────────────────────────────
@@ -123,9 +144,10 @@ router.get('/initiate', authenticate, async (req: Request, res: Response): Promi
 
 router.post('/callback', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, state } = z.object({
-      code:  z.string().min(1),
-      state: z.string().min(1),
+    const { code, state, codeVerifier } = z.object({
+      code:         z.string().min(1),
+      state:        z.string().min(1),
+      codeVerifier: z.string().min(43).max(128),
     }).parse(req.body);
 
     const userId = (req as any).userId as string;
@@ -137,8 +159,8 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
       return;
     }
 
-    // Exchange code for DigiLocker tokens
-    const tokens = await exchangeCode(code);
+    // Exchange code for DigiLocker tokens (PKCE — proves same client started the flow)
+    const tokens = await exchangeCode(code, codeVerifier);
 
     // Fetch issued documents (Aadhaar, PAN, etc.)
     const files = await fetchIssuedFiles(tokens.access_token);
@@ -181,7 +203,7 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'code and state are required' });
+      res.status(400).json({ error: 'code, state and codeVerifier are required' });
       return;
     }
     console.error('[kyc/callback]', error);

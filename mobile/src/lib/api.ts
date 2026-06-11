@@ -785,12 +785,12 @@ export const agentApi = {
 
 export const kycApi = {
   initiate: () =>
-    request<{ url: string; state: string }>('/api/kyc/initiate', {}, true),
+    request<{ url: string; state: string; codeVerifier: string }>('/api/kyc/initiate', {}, true),
 
-  callback: (code: string, state: string) =>
+  callback: (code: string, state: string, codeVerifier: string) =>
     request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
       '/api/kyc/callback',
-      { method: 'POST', body: JSON.stringify({ code, state }) },
+      { method: 'POST', body: JSON.stringify({ code, state, codeVerifier }) },
       true,
     ),
 
