@@ -13,11 +13,13 @@
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
+      "versionCode": 2,
       "icon": "./assets/images/playstore.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/playstore.png",
         "backgroundColor": "#E6F4FE"
       },
+      "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "package": "com.ask.insurance",
       "googleServicesFile": "./google-services.json"
