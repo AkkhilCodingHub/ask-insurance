@@ -8,6 +8,8 @@ node_modules/
 out/
 dist/
 build/
+*.aab
+*.apk
 
 # Environment variables
 .env
