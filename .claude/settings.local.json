@@ -63,7 +63,20 @@
       "Bash(eas --help)",
       "WebFetch(domain:directory.apisetu.gov.in)",
       "WebFetch(domain:apisetu.gov.in)",
-      "WebFetch(domain:meripehchaan.gov.in)"
+      "WebFetch(domain:meripehchaan.gov.in)",
+      "Bash(curl -s -o /dev/null -w \"status=%{http_code}\\\\nredirect=%{redirect_url}\\\\n\" \"https://ask-api.bitopayments.com/api/kyc/callback?code=TESTCODE&state=TESTSTATE\")",
+      "Bash(curl -sI \"https://ask-api.bitopayments.com/api/kyc/callback?code=TESTCODE&state=TESTSTATE\")",
+      "Bash(adb shell *)",
+      "Bash(adb exec-out *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"metro status=%{http_code}\\\\n\" \"http://localhost:8081/status\")",
+      "Bash(curl -s \"http://localhost:8081/status\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://192.168.29.77:8081/status\")",
+      "Bash(adb logcat *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"tsx watch\")",
+      "Bash(curl -s -o /dev/null -w \"metro=%{http_code}\\\\n\" \"http://localhost:8081/status\")",
+      "Bash(adb reverse *)"
     ]
   }
 }
