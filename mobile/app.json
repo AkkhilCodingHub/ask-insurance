@@ -10,7 +10,10 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.ask.insurance",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "versionCode": 2,
@@ -52,6 +55,9 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static"
+          },
           "android": {
             "ndkVersion": "27.0.12077973",
             "enableMinifyInReleaseBuilds": true,
@@ -62,7 +68,8 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-adi-registration"
+      "expo-adi-registration",
+      "./plugins/withFirebaseNonModularHeaders"
     ],
     "experiments": {
       "typedRoutes": true,
