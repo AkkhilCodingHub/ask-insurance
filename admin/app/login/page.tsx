@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, googleLogin } = useAuth();
+  const { login, googleLogin, admin, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,6 +16,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!authLoading && admin) {
+      router.replace("/dashboard");
+    }
+  }, [admin, authLoading, router]);
 
   const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) { setError("No credential received from Google."); return; }
