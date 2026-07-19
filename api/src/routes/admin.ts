@@ -293,6 +293,72 @@ router.put('/claims/:id/status', adminAuthenticate, async (req: Request, res: Re
   }
 });
 
+// ── Notifications ────────────────────────────────────────────────────────────────
+router.get('/notifications', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const [pendingClaims, pendingQuotes, openConversations] = await Promise.all([
+      prisma.claim.findMany({
+        where: { status: 'pending' },
+        include: { user: { select: { name: true, phone: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }),
+      prisma.quote.findMany({
+        where: { status: 'pending' },
+        include: { user: { select: { name: true, phone: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }),
+      prisma.conversation.findMany({
+        where: { status: 'open' },
+        include: { user: { select: { name: true, phone: true } } },
+        orderBy: { updatedAt: 'desc' },
+        take: 10
+      })
+    ]);
+
+    const notifications = [
+      ...pendingClaims.map(c => ({
+        id: `claim-${c.id}`,
+        type: 'claim',
+        title: 'New Claim Pending Review',
+        body: `${c.user?.name || c.user?.phone || 'A user'} submitted a claim of ₹${c.amount}.`,
+        link: `/dashboard/claims`,
+        createdAt: c.createdAt
+      })),
+      ...pendingQuotes.map(q => ({
+        id: `quote-${q.id}`,
+        type: 'quote',
+        title: 'New Quote Request',
+        body: `${q.user?.name || q.user?.phone || 'A user'} requested a ${q.type} quote response.`,
+        link: `/dashboard/quotes`,
+        createdAt: q.createdAt
+      })),
+      ...openConversations.map(conv => ({
+        id: `chat-${conv.id}`,
+        type: 'chat',
+        title: 'Open Chat Conversation',
+        body: `Support chat requires response from: ${conv.user?.name || conv.user?.phone}.`,
+        link: `/dashboard/chat`,
+        createdAt: conv.updatedAt
+      }))
+    ];
+
+    // Sort by most recent
+    notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json({
+      notifications: notifications.slice(0, 15),
+      unreadCount: notifications.length
+    });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 // ── Stats ──────────────────────────────────────────────────────────────────────
 router.get('/stats', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {

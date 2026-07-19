@@ -4,8 +4,8 @@ import Constants from 'expo-constants';
 import { isDevice } from 'expo-device';
 import {
   getAuth, signInWithPhoneNumber, onAuthStateChanged, signOut as firebaseSignOut,
+  FirebaseAuthTypes,
 } from '@react-native-firebase/auth';
-import type { ConfirmationResult, User as FirebaseUser } from '@react-native-firebase/auth';
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
@@ -191,9 +191,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
   // Holds the Firebase confirmation result for manual OTP entry
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   // True while verifyOTP is in-flight — prevents onAuthStateChanged from double-processing
   const manualVerifyInProgressRef = useRef(false);
+  const isLocalOtpRef = useRef(false);
 
   // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
@@ -240,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Shared: exchange Firebase ID token for ASK JWT ───────────────────────
-  const finishFirebaseLogin = async (firebaseUser: FirebaseUser): Promise<{ isNewUser: boolean }> => {
+  const finishFirebaseLogin = async (firebaseUser: FirebaseAuthTypes.User): Promise<{ isNewUser: boolean }> => {
     const idToken = await firebaseUser.getIdToken();
     // Sign out from Firebase — we only need the ID token, ASK issues its own JWT
     await firebaseSignOut(firebaseAuth);
@@ -279,15 +280,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Step 1: send OTP via Firebase ─────────────────────────────────────────
   const sendOTP = async (phone: string) => {
-    const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
-    const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted);
-    confirmationRef.current = confirmation;
-    setPendingPhone(phone);
-    setAutoVerified(null);
+    isLocalOtpRef.current = false;
+    try {
+      const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
+      const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted);
+      confirmationRef.current = confirmation;
+      setPendingPhone(phone);
+      setAutoVerified(null);
+    } catch (firebaseErr) {
+      console.warn('[Auth] Firebase sendOTP failed, falling back to local API:', firebaseErr);
+      try {
+        const res = await authApi.sendOTP(phone);
+        if (res.success) {
+          isLocalOtpRef.current = true;
+          setPendingPhone(phone);
+          setAutoVerified(null);
+          return;
+        }
+      } catch (localErr) {
+        console.error('[Auth] Local API fallback also failed:', localErr);
+      }
+      throw firebaseErr;
+    }
   };
 
   // ── Step 2: verify OTP entered manually by the user ───────────────────────
   const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
+    if (isLocalOtpRef.current) {
+      manualVerifyInProgressRef.current = true;
+      try {
+        const result = await authApi.verifyOTP(pendingPhone!, otp);
+        await setToken(result.token);
+        await setRefreshToken(result.refreshToken);
+        if (!result.isNewUser && result.user.name) {
+          setUser(mapApiUser(result.user));
+        }
+        setPendingPhone(null);
+        return { isNewUser: result.isNewUser || !result.user.name };
+      } finally {
+        manualVerifyInProgressRef.current = false;
+      }
+    }
+
     if (!confirmationRef.current) throw new Error('No pending verification — call sendOTP first');
     manualVerifyInProgressRef.current = true;
     try {
