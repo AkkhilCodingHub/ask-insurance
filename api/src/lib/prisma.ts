@@ -10,9 +10,12 @@ const adapter = new PrismaMariaDb({
   user: url.username,
   password: url.password,
   database: url.pathname.replace(/^\//, ''),
-  connectionLimit: 10,
-  allowPublicKeyRetrieval: true
-});
+  connectionLimit: 4, // Keeps pool size small for Aiven free tier limits
+  allowPublicKeyRetrieval: true,
+  connectTimeout: 5000, // Timeout after 5 seconds instead of hanging
+  enableKeepAlive: true, // Prevent cloud firewalls from dropping idle sockets
+  keepAliveInitialDelay: 10000 // Send keep-alive packets every 10 seconds
+} as any);
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
