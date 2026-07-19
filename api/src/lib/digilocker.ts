@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 // Production URLs per Meri Pehchaan API spec v2.3
-const BASE_V1   = 'https://digilocker.meripehchaan.gov.in/public/oauth2/1';
+const BASE_V1   = 'https://digilocker.meripehchaan.gov.in/public/oauth2/2';
 const BASE_V2   = 'https://digilocker.meripehchaan.gov.in/public/oauth2/2';
 const CLIENT_ID     = process.env.DIGILOCKER_CLIENT_ID!;
 // Optional — modern DigiLocker apps are PKCE public clients with no secret.
@@ -9,8 +9,15 @@ const CLIENT_ID     = process.env.DIGILOCKER_CLIENT_ID!;
 const CLIENT_SECRET = process.env.DIGILOCKER_CLIENT_SECRET || '';
 const REDIRECT_URI  = process.env.DIGILOCKER_REDIRECT_URI!;
 
-// openid → receive id_token; files.issueddocs → access issued document list
-const SCOPE = 'openid files.issueddocs';
+console.log('[DigiLocker Config] Loaded values:', {
+  CLIENT_ID,
+  CLIENT_SECRET: CLIENT_SECRET ? '***' : '(empty)',
+  REDIRECT_URI
+});
+
+// files.issueddocs → access issued document list
+// Note: openid scope is not compatible with client_credentials token auth method
+const SCOPE = 'files.issueddocs';
 
 export interface DigiLockerTokens {
   access_token:  string;
@@ -88,6 +95,8 @@ export async function exchangeCode(code: string, codeVerifier: string): Promise<
   // Confidential clients (if a secret was issued) also send it; PKCE clients don't.
   if (CLIENT_SECRET) body.set('client_secret', CLIENT_SECRET);
 
+  console.log('[DigiLocker Token Exchange] Request body:', body.toString());
+
   const res = await fetch(`${BASE_V1}/token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -96,6 +105,7 @@ export async function exchangeCode(code: string, codeVerifier: string): Promise<
 
   if (!res.ok) {
     const text = await res.text();
+    console.error('[DigiLocker Token Exchange] FAILED — HTTP', res.status, 'body:', text);
     throw new Error(`DigiLocker token exchange failed: ${text}`);
   }
 

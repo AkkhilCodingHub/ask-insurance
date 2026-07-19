@@ -25,7 +25,7 @@ const ALLOWED_DOC_TYPES = ['aadhaar', 'driving_license', 'passport'] as const;
 router.post('/upload', authenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId as string;
-    const file   = (req as any).file as Express.Multer.File | undefined;
+    const file = (req as any).file as Express.Multer.File | undefined;
 
     if (!file) {
       res.status(400).json({ error: 'No document file uploaded.' });
@@ -61,8 +61,8 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
 
     const ext = file.mimetype === 'application/pdf' ? 'pdf'
       : file.mimetype === 'image/png' ? 'png'
-      : file.mimetype === 'image/webp' ? 'webp'
-      : 'jpg';
+        : file.mimetype === 'image/webp' ? 'webp'
+          : 'jpg';
 
     const key = `kyc/${userId}/${Date.now()}.${ext}`;
     const url = await uploadToR2(key, file.buffer, file.mimetype);
@@ -70,18 +70,18 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
     // Delete old document from R2 if replacing
     if (userRow.kycDocUrl) {
       const oldKey = r2KeyFromUrl(userRow.kycDocUrl);
-      if (oldKey) deleteFromR2(oldKey).catch(() => {});
+      if (oldKey) deleteFromR2(oldKey).catch(() => { });
     }
 
     await prisma.user.update({
       where: { id: userId },
       data: {
-        kycStatus:          'submitted',
-        kycDocType:         docType,
-        kycDocUrl:          url,
-        kycSubmittedAt:     new Date(),
+        kycStatus: 'submitted',
+        kycDocType: docType,
+        kycDocUrl: url,
+        kycSubmittedAt: new Date(),
         kycRejectionReason: null,
-        kycVerifiedAt:      null,
+        kycVerifiedAt: null,
       },
     });
 
@@ -106,11 +106,11 @@ router.get('/initiate', authenticate, async (req: Request, res: Response): Promi
       return;
     }
 
-    const userId        = (req as any).userId as string;
-    const state         = generateState(userId);
-    const codeVerifier  = generateCodeVerifier();
+    const userId = (req as any).userId as string;
+    const state = generateState(userId);
+    const codeVerifier = generateCodeVerifier();
     const codeChallenge = deriveCodeChallenge(codeVerifier);
-    const url           = buildAuthUrl(state, codeChallenge);
+    const url = buildAuthUrl(state, codeChallenge);
 
     // The verifier is held by the app and sent back on /callback (no server store).
     res.json({ url, state, codeVerifier });
@@ -141,7 +141,7 @@ router.get('/callback', (req: Request, res: Response): void => {
   // (used by expo-web-browser) drops a `Location:` header pointing at a custom scheme,
   // leaving the user stuck on DigiLocker's "redirecting back to requester" page.
   // A JS-initiated navigation to the deep link IS honoured, with a tap fallback.
-  const targetJs   = JSON.stringify(target);
+  const targetJs = JSON.stringify(target);
   const targetAttr = target
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -183,8 +183,8 @@ router.get('/callback', (req: Request, res: Response): void => {
 router.post('/callback', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, state, codeVerifier } = z.object({
-      code:         z.string().min(1),
-      state:        z.string().min(1),
+      code: z.string().min(1),
+      state: z.string().min(1),
       codeVerifier: z.string().min(43).max(128),
     }).parse(req.body);
 
@@ -218,15 +218,15 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
     // Update user KYC fields
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data:  {
-        kycStatus:       'verified',
-        digilockerSub:   tokens.digilockerid,
+      data: {
+        kycStatus: 'verified',
+        digilockerSub: tokens.digilockerid,
         aadhaarVerified: hasAadhaar,
-        panNumber:       panFile?.uri ?? null,
-        kycDocuments:    files as any,
-        kycVerifiedAt:   new Date(),
+        panNumber: panFile?.uri ?? null,
+        kycDocuments: files as any,
+        kycVerifiedAt: new Date(),
         // Pre-fill profile fields from DigiLocker if not already set
-        ...(tokens.name   && !( await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name
+        ...(tokens.name && !(await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name
           ? { name: tokens.name } : {}),
         ...(tokens.dob ? (() => { const d = parseDigiLockerDob(tokens.dob!); return d ? { dateOfBirth: d } : {}; })() : {}),
         ...(tokens.gender ? { gender: tokens.gender } : {}),
@@ -234,10 +234,10 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
     });
 
     res.json({
-      success:  true,
+      success: true,
       kycStatus: updatedUser.kycStatus,
       aadhaarVerified: updatedUser.aadhaarVerified,
-      documentsCount:  files.length,
+      documentsCount: files.length,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -256,8 +256,8 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
 router.get('/status', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId as string;
-    const user   = await prisma.user.findUnique({
-      where:  { id: userId },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       select: {
         kycStatus: true, aadhaarVerified: true, kycVerifiedAt: true, panNumber: true,
         kycDocType: true, kycDocUrl: true, kycRejectionReason: true, kycSubmittedAt: true,
@@ -267,14 +267,14 @@ router.get('/status', authenticate, async (req: Request, res: Response): Promise
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
     res.json({
-      kycStatus:          user.kycStatus,
-      aadhaarVerified:    user.aadhaarVerified,
-      kycVerifiedAt:      user.kycVerifiedAt,
-      hasPan:             Boolean(user.panNumber),
-      kycDocType:         user.kycDocType,
-      kycDocUrl:          user.kycDocUrl,
+      kycStatus: user.kycStatus,
+      aadhaarVerified: user.aadhaarVerified,
+      kycVerifiedAt: user.kycVerifiedAt,
+      hasPan: Boolean(user.panNumber),
+      kycDocType: user.kycDocType,
+      kycDocUrl: user.kycDocUrl,
       kycRejectionReason: user.kycRejectionReason,
-      kycSubmittedAt:     user.kycSubmittedAt,
+      kycSubmittedAt: user.kycSubmittedAt,
     });
   } catch (error) {
     console.error('[kyc/status]', error);
