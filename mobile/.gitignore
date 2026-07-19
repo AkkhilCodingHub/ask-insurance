@@ -31,8 +31,7 @@ yarn-error.*
 *.pem
 
 # Firebase
-# google-services.json tracked intentionally for EAS Build
-GoogleService-Info.plist
+# google-services.json & GoogleService-Info.plist tracked intentionally for EAS Build
 *firebase-adminsdk*.json
 
 # local env files
