@@ -21,6 +21,16 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ask-insurance.onrender.com",
+        "EAS_NO_CI": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    },
     "production": {
       "env": {
         "EXPO_PUBLIC_API_URL": "https://ask-insurance.onrender.com",
