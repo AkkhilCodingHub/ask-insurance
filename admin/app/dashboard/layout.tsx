@@ -40,6 +40,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
 
+  // YouTube-style notification state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+
   useEffect(() => {
     if (!admin) return;
     const poll = async () => {
@@ -55,8 +60,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [admin]);
 
   useEffect(() => {
+    if (!admin) return;
+    const loadNotifications = async () => {
+      try {
+        const { adminApi } = await import("@/lib/api");
+        const data = await adminApi.getNotifications();
+        setNotifications(data.notifications);
+        if (!notifOpen) {
+          setUnreadCount(data.unreadCount);
+        }
+      } catch { /* silent */ }
+    };
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 20000); // Poll every 20s
+    return () => clearInterval(interval);
+  }, [admin, notifOpen]);
+
+  useEffect(() => {
     if (!loading && !admin) router.replace("/login");
   }, [loading, admin, router]);
+
+  function formatTimeAgo(dateStr: string) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
 
   if (loading || !admin) {
     return (
@@ -217,13 +252,110 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             {/* Notifications */}
-            <button style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "var(--text-muted)" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
-            >
-              <Bell size={18} />
-              <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: "#EF4444", border: "2px solid #fff" }} />
-            </button>
+            <div style={{ position: "relative" }}>
+              <button 
+                onClick={() => {
+                  setNotifOpen(!notifOpen);
+                  if (!notifOpen) setUnreadCount(0);
+                }}
+                style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: "#EF4444", border: "2px solid #fff" }} />
+                )}
+              </button>
+
+              {notifOpen && (
+                <>
+                  <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setNotifOpen(false)} />
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    marginTop: 8,
+                    width: 360,
+                    background: "#fff",
+                    border: "1px solid var(--border)",
+                    borderRadius: 14,
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+                    zIndex: 1000,
+                    overflow: "hidden"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>Notifications</span>
+                      <button 
+                        onClick={() => { setNotifications([]); setUnreadCount(0); }}
+                        style={{ background: "none", border: "none", color: "var(--primary)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0 }}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+
+                    <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                      {notifications.length > 0 ? (
+                        notifications.map((n) => {
+                          let IconComponent = FileText;
+                          let iconColor = "#1580FF";
+                          let iconBg = "#E8F2FF";
+                          if (n.type === 'claim') {
+                            IconComponent = Shield;
+                            iconColor = "#D97706";
+                            iconBg = "#FFFBEB";
+                          } else if (n.type === 'chat') {
+                            IconComponent = MessageSquare;
+                            iconColor = "#059669";
+                            iconBg = "#ECFDF5";
+                          }
+
+                          return (
+                            <Link 
+                              key={n.id} 
+                              href={n.link}
+                              onClick={() => setNotifOpen(false)}
+                              style={{ 
+                                display: "flex", 
+                                gap: 12, 
+                                padding: "12px 16px", 
+                                borderBottom: "1px solid var(--border)",
+                                textDecoration: "none",
+                                transition: "background 0.15s"
+                              }}
+                              className="notif-item"
+                            >
+                              <div style={{ 
+                                width: 36, 
+                                height: 36, 
+                                borderRadius: "50%", 
+                                background: iconBg, 
+                                display: "flex", 
+                                alignItems: "center", 
+                                justifyContent: "center",
+                                flexShrink: 0
+                              }}>
+                                <IconComponent size={16} color={iconColor} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: 12, fontWeight: 800, color: "var(--text)", margin: 0, lineHeight: 1.3 }}>{n.title}</p>
+                                <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "2px 0 4px", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.body}</p>
+                                <span style={{ fontSize: 9, color: "var(--text-light)", fontWeight: 600 }}>{formatTimeAgo(n.createdAt)}</span>
+                              </div>
+                            </Link>
+                          );
+                        })
+                      ) : (
+                        <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          <Bell size={22} color="var(--text-light)" />
+                          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>No new notifications</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Avatar */}
             <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
@@ -239,6 +371,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        .notif-item:hover {
+          background: var(--bg) !important;
+        }
         @media (max-width: 768px) {
           .admin-sidebar-desktop { display: none !important; }
           .admin-main { margin-left: 0 !important; }

@@ -1,13 +1,37 @@
 import { Stack } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { FloatingSupportChat } from '@/components/FloatingSupportChat';
 import { AuthProvider } from '@/context/auth';
 import { AgentProvider } from '@/context/agent';
 import { DialogProvider } from '@/components/Dialog';
 import { NotificationProvider } from '@/components/NotificationToast';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent splash screen auto-hiding while loading fonts
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    ...Ionicons.font,
+  });
+
+  useEffect(() => {
+    if (error) console.error('[RootLayout] Font loading error:', error);
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
   return (
     <NotificationProvider>
     <DialogProvider>

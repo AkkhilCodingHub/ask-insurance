@@ -110,6 +110,21 @@ export interface AdminClaim {
   policy?: { id: string; policyNumber: string; type: string; provider: string };
 }
 
+// ── Notification Types ──────────────────────────────────────────────────────
+export interface AdminNotification {
+  id: string;
+  type: 'claim' | 'quote' | 'chat';
+  title: string;
+  body: string;
+  link: string;
+  createdAt: string;
+}
+
+export interface AdminNotificationsResponse {
+  notifications: AdminNotification[];
+  unreadCount: number;
+}
+
 // ── Stats Types ────────────────────────────────────────────────────────────
 export interface DashboardStats {
   totalUsers: number;
@@ -288,7 +303,7 @@ class AdminApiClient {
   constructor() {
     this.instance = axios.create({
       baseURL: `${API_BASE_URL}/admin`,
-      timeout: 10000
+      timeout: 60000 // Increase to 60s to accommodate Render cold-starts gracefully
     });
 
     // Add token to requests
@@ -328,6 +343,13 @@ class AdminApiClient {
     if (data.error) throw new Error(data.error);
     if (!data.token) throw new Error('No token received');
     localStorage.setItem('adminToken', data.token);
+    return data;
+  }
+
+// ── Notifications ──────────────────────────────────────────────────────
+  async getNotifications(): Promise<AdminNotificationsResponse> {
+    const { data } = await this.instance.get('/notifications');
+    if (data.error) throw new Error(data.error);
     return data;
   }
 

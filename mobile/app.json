@@ -13,6 +13,11 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.ask.insurance"
+        ]
       }
     },
     "android": {
@@ -78,7 +83,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7bc1e328-050a-4fc5-901f-9ba3afff8755"
+        "projectId": "5c033321-0330-420f-bc8f-793952ac9ec6"
       }
     }
   }
