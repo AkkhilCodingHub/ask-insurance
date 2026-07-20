@@ -131,8 +131,8 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
 
         {/* Actions */}
         <View style={pc.actions}>
-          <TouchableOpacity onPress={() => setExpanded(!expanded)} style={pc.detailBtn} activeOpacity={0.7}>
-            <Text style={[pc.detailBtnText, { color: colors.textMuted }]}>{expanded ? 'Less' : 'Details'}</Text>
+          <TouchableOpacity onPress={() => setExpanded(!expanded)} style={[pc.detailBtn, { backgroundColor: colors.isDark ? '#1F2937' : Colors.white, borderColor: colors.border }]} activeOpacity={0.7}>
+            <Text style={[pc.detailBtnText, { color: colors.text }]}>{expanded ? 'Less' : 'Details'}</Text>
             <Text style={[pc.detailBtnCaret, { color: colors.textMuted }]}>{expanded ? '˄' : '˅'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -236,7 +236,7 @@ export default function PlansTab() {
   const keyExtractor = useCallback((item: ApiPlan) => item.id, []);
 
   const ListHeaderComponent = total > 0 ? (
-    <Text style={s.count}>{total} plan{total !== 1 ? 's' : ''}</Text>
+    <Text style={[s.count, { color: colors.textMuted }]}>{total} plan{total !== 1 ? 's' : ''}</Text>
   ) : null;
 
   const ListEmptyComponent = !loading ? (

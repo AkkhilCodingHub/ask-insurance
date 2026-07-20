@@ -50,31 +50,24 @@ export function FloatingSupportChat() {
   if (!visible) return null;
 
   return (
-    <View
-      style={[StyleSheet.absoluteFill, styles.wrap]}
-      pointerEvents="box-none"
-    >
-      <View style={[styles.fabContainer, { bottom, right: 16 }]}>
-        <Pressable
-          onPress={() => router.push('/(tabs)/chat')}
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          accessibilityLabel="Open support chat"
-          accessibilityRole="button"
-        >
-          <Icon name="chatbubbles" size={26} color={Colors.white} />
-        </Pressable>
-      </View>
+    <View style={[styles.fabContainer, { bottom, right: 16 }]} pointerEvents="box-none">
+      <Pressable
+        onPress={() => router.push('/(tabs)/chat')}
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        accessibilityLabel="Open support chat"
+        accessibilityRole="button"
+      >
+        <Icon name="chatbubbles" size={26} color={Colors.white} />
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    zIndex: 200,
-    elevation: 200,
-  },
   fabContainer: {
     position: 'absolute',
+    zIndex: 200,
+    elevation: 200,
   },
   fab: {
     width: 58,
