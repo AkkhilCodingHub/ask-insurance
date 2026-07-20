@@ -1798,7 +1798,10 @@ router.get('/agents', adminAuthenticate, superadminOnly, async (_req: Request, r
   try {
     const agents = await prisma.admin.findMany({
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true },
+      select: {
+        id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true,
+        kycStatus: true, kycDocType: true, kycDocUrl: true, kycSubmittedAt: true, kycRejectionReason: true, kycVerifiedAt: true
+      },
     });
     res.json({ agents: agents.map(a => ({ ...a, storageUsed: Number(a.storageUsed) })) });
   } catch (e) {
@@ -2207,6 +2210,79 @@ router.post('/agents/:id/kyc/verify', adminAuthenticate, async (req: Request, re
     await logActivity(adminId, 'VERIFY_AGENT_KYC', { agentId: id, action, reason });
 
     res.json({ success: true, agent });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Agent Customers ──────────────────────────────────────────────────────────
+router.get('/customers', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const adminRole = (req as any).adminRole;
+
+    // Superadmins can see all customers, agents only see their own customers
+    const where = adminRole === 'superadmin' ? {} : { agentId: adminId };
+
+    const customers = await prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        kycStatus: true,
+        createdAt: true
+      }
+    });
+
+    res.json({ customers });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/customers', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const { name, phone, email } = z.object({
+      name: z.string().min(2),
+      phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+      email: z.string().email().optional().nullable()
+    }).parse(req.body);
+
+    // Check if phone or email already registered
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone },
+          ...(email ? [{ email }] : [])
+        ]
+      }
+    });
+
+    if (existing) {
+      res.status(409).json({ error: 'Customer with this phone or email already exists' });
+      return;
+    }
+
+    const customer = await prisma.user.create({
+      data: {
+        name,
+        phone,
+        email: email ?? null,
+        agentId: adminId,
+        kycStatus: 'pending' // default
+      }
+    });
+
+    await logActivity(adminId, 'ADD_CUSTOMER', { id: customer.id, name, phone });
+
+    res.status(201).json({ customer });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
