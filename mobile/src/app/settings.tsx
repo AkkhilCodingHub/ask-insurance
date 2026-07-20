@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -54,7 +54,7 @@ export default function SettingsScreen() {
   const router             = useRouter();
   const { logout }         = useAuth();
   const { alert, confirm } = useDialog();
-  const { t, currentLangMeta } = useLanguage();
+  const { t, currentLangMeta, darkMode, setDarkMode } = useLanguage();
   const [langModalVisible, setLangModalVisible] = React.useState(false);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -111,6 +111,22 @@ export default function SettingsScreen() {
             onPress={() => setLangModalVisible(true)}
             badge={currentLangMeta.code.toUpperCase()}
           />
+          <View style={s.divider} />
+          <View style={[r.row, { paddingVertical: 10 }]}>
+            <View style={r.icon}>
+              <Icon name={darkMode ? "moon" : "moon-outline"} size={18} color={Colors.textMuted} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={r.label}>Dark Mode</Text>
+              <Text style={r.sub}>{darkMode ? "Dark theme active" : "Use light theme"}</Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
+              thumbColor="#ffffff"
+            />
+          </View>
         </View>
 
         {/* ── Support & Legal ───────────────────────────── */}

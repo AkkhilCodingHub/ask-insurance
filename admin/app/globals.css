@@ -35,6 +35,22 @@
   --foreground: var(--text);
 }
 
+html[data-theme="dark"] {
+  --bg:             #090D16;
+  --white:          #111827;
+  --text:           #F9FAFB;
+  --text-muted:     #9CA3AF;
+  --text-light:     #6B7280;
+  --border:         #1F2937;
+  --sidebar-bg:     #030712;
+  --sidebar-border: #111827;
+  --primary-light:  rgba(21, 128, 255, 0.15);
+  --success-light:  rgba(5, 150, 105, 0.15);
+  --error-light:    rgba(220, 38, 38, 0.15);
+  --warning-light:  rgba(217, 119, 6, 0.15);
+  --info-light:     rgba(8, 145, 178, 0.15);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

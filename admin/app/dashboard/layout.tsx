@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
   LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive, UserCog, BadgeCheck,
-  Percent, ClipboardList, RefreshCcw, BookTemplate,
+  Percent, ClipboardList, RefreshCcw, BookTemplate, Sun, Moon
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -49,6 +49,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
+
+  // Theme state (light / dark)
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("admin_theme") as "light" | "dark" | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("admin_theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  };
 
   useEffect(() => {
     if (!admin) return;
@@ -255,6 +273,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Search size={15} color="var(--text-muted)" />
               <input placeholder="Quick search…" style={{ border: "none", outline: "none", fontSize: 13, background: "transparent", color: "var(--text)", width: "100%" }} />
             </div>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              title={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+            >
+              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
 
             {/* Notifications */}
             <div style={{ position: "relative" }}>
