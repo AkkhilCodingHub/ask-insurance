@@ -612,6 +612,12 @@ export interface AgentAdmin {
   name:  string;
   email: string;
   role:  string;
+  kycStatus?:          string;
+  kycDocType?:         string | null;
+  kycDocUrl?:          string | null;
+  kycRejectionReason?: string | null;
+  kycSubmittedAt?:     string | null;
+  kycVerifiedAt?:      string | null;
 }
 
 export interface AgentQuote {
@@ -624,6 +630,7 @@ export interface AgentQuote {
   approvedAt:      string | null;
   createdAt:       string;
   user:            { id: string; name: string | null; phone: string; email: string | null };
+  stage?:          string;
 }
 
 export interface AgentPolicy {
@@ -668,6 +675,9 @@ export const agentApi = {
       method: 'POST',
       body:   JSON.stringify({ email, password }),
     }),
+
+  getProfile: () =>
+    agentRequest<{ admin: AgentAdmin }>('/api/admin/me').then(r => r.admin),
 
   getQuotes: (status?: string, page = 1) => {
     const qs = new URLSearchParams({ page: String(page), limit: '50' });
@@ -779,6 +789,43 @@ export const agentApi = {
 
   getChatUnread: () =>
     agentRequest<{ unread: number }>('/api/admin/chat/unread').then(r => r.unread),
+
+  updateQuoteStage: (quoteId: string, stage: 'new' | 'quotation_sent' | 'in_discussion' | 'closed' | 'lost') =>
+    agentRequest<{ quote: AgentQuote }>(`/api/admin/quotes/${quoteId}/stage`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ stage }),
+    }),
+
+  getCustomers: () =>
+    agentRequest<{ customers: any[] }>('/api/admin/customers').then(r => r.customers),
+
+  addCustomer: (data: { name: string; phone: string; email?: string | null }) =>
+    agentRequest<{ customer: any }>('/api/admin/customers', {
+      method: 'POST',
+      body:   JSON.stringify(data),
+    }),
+
+  uploadKycDocument: async (
+    docType: 'aadhaar' | 'driving_license' | 'passport',
+    fileUri: string,
+    mimeType: string,
+    fileName: string,
+  ): Promise<{ success: boolean; kycStatus: string; docUrl: string }> => {
+    const token = await getAgentToken();
+    const form  = new FormData();
+    form.append('docType', docType);
+    form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
+
+    const url = `${BASE_URL}/api/admin/agents/kyc/upload`;
+    const resp = await fetch(url, {
+      method:  'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body:    form,
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
+    return data;
+  },
 };
 
 // ── KYC ───────────────────────────────────────────────────────────────────────

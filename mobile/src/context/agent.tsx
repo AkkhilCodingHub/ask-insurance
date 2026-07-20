@@ -6,6 +6,7 @@ interface AgentContextValue {
   loading: boolean;
   login:   (email: string, password: string) => Promise<void>;
   logout:  () => Promise<void>;
+  refreshAgent: () => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null);
@@ -20,16 +21,21 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       try {
         const token = await getAgentToken();
         if (token) {
-          // Quick validation: hit any authenticated endpoint; use getPolicies page 1
-          await agentApi.getPolicies(undefined, 1);
-          // Token stored separately — we don't have a /me for admin, so keep what was saved
+          // Fetch freshest profile from API (includes status)
+          const admin = await agentApi.getProfile();
+          const SecureStore = await import('expo-secure-store');
+          await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
+          setAgent(admin);
+        }
+      } catch {
+        try {
           const saved = await import('expo-secure-store').then(m =>
             m.getItemAsync('agent_profile')
           );
           if (saved) setAgent(JSON.parse(saved));
+        } catch {
+          await clearAgentToken();
         }
-      } catch {
-        await clearAgentToken();
       } finally {
         setLoading(false);
       }
@@ -51,8 +57,19 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     setAgent(null);
   };
 
+  const refreshAgent = async () => {
+    try {
+      const admin = await agentApi.getProfile();
+      const SecureStore = await import('expo-secure-store');
+      await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
+      setAgent(admin);
+    } catch (e) {
+      console.warn('[refreshAgent] error:', e);
+    }
+  };
+
   return (
-    <AgentContext.Provider value={{ agent, loading, login, logout }}>
+    <AgentContext.Provider value={{ agent, loading, login, logout, refreshAgent }}>
       {children}
     </AgentContext.Provider>
   );
