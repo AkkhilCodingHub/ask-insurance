@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
   let url = process.env.EXPO_PUBLIC_API_URL;
-  if (!url) {
+  if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
       const host = hostUri.split(':')[0];
@@ -13,6 +13,9 @@ function resolveBaseUrl(): string {
     } else {
       url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
     }
+  }
+  if (!url) {
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
   }
   if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
     const hostUri = Constants.expoConfig?.hostUri;
