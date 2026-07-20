@@ -277,6 +277,13 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
+            icon="folder-open-outline"
+            label="My Documents & Storage"
+            sub="DigiLocker & cloud files"
+            onPress={() => router.push('/files')}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
             icon="settings-outline"
             label="Settings"
             sub="App preferences & legal"
