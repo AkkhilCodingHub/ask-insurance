@@ -62,3 +62,6 @@ api/src/generated/
 .vercel
 .env*.local
 firebase-service-account.json
+
+# Project proposal features checklist
+features.md
