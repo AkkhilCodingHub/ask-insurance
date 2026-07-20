@@ -7,7 +7,7 @@ import { adminApi, DashboardStats, AdminClaim, AdminUser, ClaimsResponse, UsersR
 
 function KpiCard({ label, value, sub, icon: Icon, color, trend }: { label: string; value: string; sub: string; icon: React.ElementType; color: string; trend?: string }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "20px 22px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+    <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "20px 22px", display: "flex", alignItems: "flex-start", gap: 14 }}>
       <div style={{ width: 44, height: 44, borderRadius: 12, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <Icon size={20} color={color} />
       </div>
@@ -17,7 +17,7 @@ function KpiCard({ label, value, sub, icon: Icon, color, trend }: { label: strin
         <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{sub}</p>
       </div>
       {trend && (
-        <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "3px 8px", borderRadius: 100, flexShrink: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 700, color: "#059669", background: "var(--success-light)", padding: "3px 8px", borderRadius: 100, flexShrink: 0 }}>
           <ArrowUpRight size={12} /> {trend}
         </span>
       )}
@@ -177,7 +177,7 @@ export default function OverviewPage() {
       {/* Charts row */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 24 }} className="charts-row">
         {/* Revenue chart */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
+        <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Premium Revenue Trend</h3>
             <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Last months</p>
@@ -188,7 +188,7 @@ export default function OverviewPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="var(--text-muted)" style={{ fontSize: 11 }} />
                 <YAxis stroke="var(--text-muted)" style={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8 }} />
+                <Tooltip contentStyle={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)" }} />
                 <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2} dot={{ fill: "var(--primary)", r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -200,7 +200,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Claims distribution */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
+        <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" }}>
           <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 20 }}>Claims Distribution</h3>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
@@ -209,7 +209,7 @@ export default function OverviewPage() {
                   <Cell key={`cell-${idx}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => value && value.toString ? value.toString() : '0'} />
+              <Tooltip formatter={(value) => value && value.toString ? value.toString() : '0'} contentStyle={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)" }} />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
@@ -224,7 +224,7 @@ export default function OverviewPage() {
       </div>
 
       {/* Insurers chart */}
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 24 }}>
+      <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 24 }}>
         <div style={{ marginBottom: 20 }}>
           <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Top Performing Insurers</h3>
           <p style={{ fontSize: 12, color: "var(--text-muted)" }}>By policies and premium</p>
@@ -236,7 +236,7 @@ export default function OverviewPage() {
               <XAxis dataKey="name" stroke="var(--text-muted)" style={{ fontSize: 11 }} />
               <YAxis stroke="var(--text-muted)" style={{ fontSize: 11 }} yAxisId="left" />
               <YAxis orientation="right" stroke="var(--text-muted)" style={{ fontSize: 11 }} yAxisId="right" />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8 }} />
+              <Tooltip contentStyle={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)" }} />
               <Legend />
               <Bar yAxisId="left" dataKey="policies" fill="var(--primary)" radius={[8, 8, 0, 0]} name="Policies" />
               <Bar yAxisId="right" dataKey="premium" fill="#059669" radius={[8, 8, 0, 0]} name="Premium (₹)" />
@@ -252,7 +252,7 @@ export default function OverviewPage() {
       {/* Bottom tables row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="tables-row">
         {/* Recent claims */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
           <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>Recent Claims</h3>
             <a href="/dashboard/claims" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
@@ -274,7 +274,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Recent users */}
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
           <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>New Users</h3>
             <a href="/dashboard/users" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
