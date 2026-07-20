@@ -330,6 +330,7 @@ class AdminApiClient {
       (error) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('adminToken');
+          localStorage.removeItem('ask_admin');
           window.location.href = '/login';
         }
         const message = error.response?.data?.error || error.response?.data?.message || error.message;

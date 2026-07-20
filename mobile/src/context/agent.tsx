@@ -280,6 +280,8 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
 interface LanguageContextValue {
   language: LanguageCode;
   setLanguage: (lang: LanguageCode) => Promise<void>;
+  darkMode: boolean;
+  setDarkMode: (val: boolean) => Promise<void>;
   t: (key: string, fallback?: string) => string;
   currentLangMeta: LanguageOption;
 }
@@ -288,6 +290,7 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLangState] = useState<LanguageCode>('en');
+  const [darkMode, setDarkModeState] = useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -295,6 +298,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const prefs = await getPrefs();
         if (prefs?.language && translations[prefs.language as LanguageCode]) {
           setLangState(prefs.language as LanguageCode);
+        }
+        if (typeof prefs?.darkMode === 'boolean') {
+          setDarkModeState(prefs.darkMode);
         }
       } catch {}
     })();
@@ -305,6 +311,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     await setPrefs({ language: code });
   };
 
+  const setDarkMode = async (val: boolean) => {
+    setDarkModeState(val);
+    await setPrefs({ darkMode: val });
+  };
+
   const t = (key: string, fallback?: string): string => {
     const dict = translations[language] || translations.en;
     return dict[key] || fallback || translations.en[key] || key;
@@ -313,7 +324,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const currentLangMeta = SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[0];
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, currentLangMeta }}>
+    <LanguageContext.Provider value={{ language, setLanguage, darkMode, setDarkMode, t, currentLangMeta }}>
       {children}
     </LanguageContext.Provider>
   );
