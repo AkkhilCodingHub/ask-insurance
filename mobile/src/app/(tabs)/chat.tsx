@@ -78,30 +78,32 @@ function Bubble({ msg }: { msg: ChatMessage }) {
 
 // ── Date separator ────────────────────────────────────────────────────────────
 function DateSep({ label }: { label: string }) {
+  const colors = useThemeColors();
   return (
     <View style={ds.wrap}>
-      <View style={ds.line} />
-      <Text style={ds.label}>{label}</Text>
-      <View style={ds.line} />
+      <View style={[ds.line, { backgroundColor: colors.border }]} />
+      <Text style={[ds.label, { color: colors.textMuted }]}>{label}</Text>
+      <View style={[ds.line, { backgroundColor: colors.border }]} />
     </View>
   );
 }
 
 // ── Empty state (no conversation yet) ────────────────────────────────────────
 function EmptyChat({ onStart, loading }: { onStart: () => void; loading: boolean }) {
+  const colors = useThemeColors();
   return (
     <View style={e.wrap}>
       <View style={e.iconCircle}>
         <Icon name="chatbubbles-outline" size={40} color={Colors.primary} />
       </View>
-      <Text style={e.title}>Talk to an expert</Text>
-      <Text style={e.sub}>
+      <Text style={[e.title, { color: colors.text }]}>Talk to an expert</Text>
+      <Text style={[e.sub, { color: colors.textMuted }]}>
         Our licensed insurance advisors are available 24×7 to help you choose the right plan,
         answer questions, or assist with claims.
       </Text>
       <View style={e.trustRow}>
         {['IRDAI Licensed', 'Free advice', 'Quick response'].map(t => (
-          <View key={t} style={e.trustChip}>
+          <View key={t} style={[e.trustChip, { backgroundColor: colors.primaryLight }]}>
             <Icon name="checkmark-circle-outline" size={12} color={Colors.success} />
             <Text style={e.trustText}>{t}</Text>
           </View>
@@ -409,18 +411,18 @@ export default function ChatTab() {
   const isClosed = conversation.status === 'closed';
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={s.agentInfo}>
           <View style={s.agentAvatar}>
             <Icon name="headset-outline" size={18} color={Colors.white} />
           </View>
           <View>
-            <Text style={s.headerTitle}>{agentName}</Text>
+            <Text style={[s.headerTitle, { color: colors.text }]}>{agentName}</Text>
             <View style={s.onlineRow}>
-              <View style={[s.onlineDot, isClosed && { backgroundColor: Colors.textLight }]} />
-              <Text style={s.onlineText}>
+              <View style={[s.onlineDot, isClosed && { backgroundColor: colors.textLight }]} />
+              <Text style={[s.onlineText, { color: colors.textMuted }]}>
                 {isClosed ? 'Conversation closed' : 'Online · replies within minutes'}
               </Text>
             </View>
@@ -436,7 +438,7 @@ export default function ChatTab() {
         {/* Messages */}
         <ScrollView
           ref={scrollRef}
-          style={s.messageList}
+          style={[s.messageList, { backgroundColor: colors.bg }]}
           contentContainerStyle={{
             padding: 16,
             paddingBottom: BottomTabInset + 80,
