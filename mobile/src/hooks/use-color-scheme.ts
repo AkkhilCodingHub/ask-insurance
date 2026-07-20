@@ -5,6 +5,6 @@ export function useColorScheme(): 'light' | 'dark' {
     const { darkMode } = useLanguage();
     return darkMode ? 'dark' : 'light';
   } catch {
-    return 'light';
+    return 'dark';
   }
 }

@@ -1,6 +1,6 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { FloatingSupportChat } from '@/components/FloatingSupportChat';
 import { AuthProvider } from '@/context/auth';
 import { AgentProvider, LanguageProvider, useThemeColors } from '@/context/agent';
@@ -16,6 +16,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootContent() {
   const colors = useThemeColors();
+  const router = useRouter();
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (!router.canGoBack()) {
+        BackHandler.exitApp();
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]);
 
   return (
     <NotificationProvider>

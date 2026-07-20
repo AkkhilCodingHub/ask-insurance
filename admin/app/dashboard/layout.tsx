@@ -51,14 +51,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifOpen, setNotifOpen] = useState(false);
 
   // Theme state (light / dark)
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
     const saved = localStorage.getItem("admin_theme") as "light" | "dark" | null;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.setAttribute("data-theme", saved);
-    }
+    const activeTheme = saved ?? "dark";
+    setTheme(activeTheme);
+    document.documentElement.setAttribute("data-theme", activeTheme);
   }, []);
 
   const toggleTheme = () => {
