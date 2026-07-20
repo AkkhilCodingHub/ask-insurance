@@ -5,7 +5,7 @@ import { authenticate } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { uploadToR2, r2KeyFromUrl, deleteFromR2 } from '../lib/r2';
 import {
-  buildAuthUrl, exchangeCode, fetchIssuedFiles,
+  buildAuthUrl, exchangeCode, fetchIssuedFiles, fetchUploadedFiles,
   generateState, parseState, generateCodeVerifier, deriveCodeChallenge,
 } from '../lib/digilocker';
 
@@ -225,8 +225,13 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
     // Exchange code for DigiLocker tokens (PKCE — proves same client started the flow)
     const tokens = await exchangeCode(code, codeVerifier);
 
-    // Fetch issued documents (Aadhaar, PAN, etc.)
-    const files = await fetchIssuedFiles(tokens.access_token);
+    // Fetch issued documents (Aadhaar, PAN, DL, RC, Policies) and DigiLocker Drive files
+    const [issuedFiles, uploadedFiles] = await Promise.all([
+      fetchIssuedFiles(tokens.access_token).catch(() => []),
+      fetchUploadedFiles(tokens.access_token).catch(() => []),
+    ]);
+
+    const files = [...issuedFiles, ...uploadedFiles];
 
     // Check what documents were fetched
     const hasAadhaar = files.some(f =>
