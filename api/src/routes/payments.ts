@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireKyc } from '../middleware/auth';
 import { createPaymentLink } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
+import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
 const router = Router();
 
@@ -221,6 +222,9 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
           }
         });
         console.log(`[razorpay webhook]   ✓ in-app notification created`);
+
+        // Calculate and record brokerage for the policy
+        await calculateAndApplyBrokerage(tx, policyId);
       });
 
       console.log(`[razorpay webhook] policy ${policyId} fully activated ✓`);
