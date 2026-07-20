@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { FloatingSupportChat } from '@/components/FloatingSupportChat';
 import { AuthProvider } from '@/context/auth';
-import { AgentProvider } from '@/context/agent';
+import { AgentProvider, LanguageProvider } from '@/context/agent';
 import { DialogProvider } from '@/components/Dialog';
 import { NotificationProvider } from '@/components/NotificationToast';
 import { useFonts } from 'expo-font';
@@ -33,6 +33,7 @@ export default function RootLayout() {
   }
 
   return (
+    <LanguageProvider>
     <NotificationProvider>
     <DialogProvider>
     <AgentProvider>
@@ -69,6 +70,7 @@ export default function RootLayout() {
     </AgentProvider>
     </DialogProvider>
     </NotificationProvider>
+    </LanguageProvider>
   );
 }
 
