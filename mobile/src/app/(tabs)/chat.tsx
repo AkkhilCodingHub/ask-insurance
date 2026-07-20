@@ -11,6 +11,7 @@ import { useAuth } from '@/context/auth';
 import { ApiError, chatApi, ChatMessage, Conversation } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supportChatFocusedRef } from '@/lib/supportChatFocused';
@@ -42,6 +43,7 @@ function needsDateSeparator(msgs: ChatMessage[], idx: number): boolean {
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 function Bubble({ msg }: { msg: ChatMessage }) {
+  const colors = useThemeColors();
   const isUser = msg.senderType === 'user';
   return (
     <View style={[b.row, isUser ? b.rowUser : b.rowAdmin]}>
@@ -50,10 +52,17 @@ function Bubble({ msg }: { msg: ChatMessage }) {
           <Icon name="headset-outline" size={14} color={Colors.white} />
         </View>
       )}
-      <View style={[b.bubble, isUser ? b.bubbleUser : b.bubbleAdmin]}>
-        <Text style={[b.text, isUser ? b.textUser : b.textAdmin]}>{msg.content}</Text>
+      <View
+        style={[
+          b.bubble,
+          isUser ? b.bubbleUser : [b.bubbleAdmin, { backgroundColor: colors.card, borderColor: colors.border }],
+        ]}
+      >
+        <Text style={[b.text, isUser ? b.textUser : [b.textAdmin, { color: colors.text }]]}>
+          {msg.content}
+        </Text>
         <View style={b.meta}>
-          <Text style={[b.time, isUser ? b.timeUser : b.timeAdmin]}>
+          <Text style={[b.time, isUser ? b.timeUser : [b.timeAdmin, { color: colors.textLight }]]}>
             {formatTime(msg.createdAt)}
           </Text>
           {isUser && (
@@ -120,6 +129,7 @@ function EmptyChat({ onStart, loading }: { onStart: () => void; loading: boolean
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function ChatTab() {
+  const colors    = useThemeColors();
   const { user }  = useAuth();
   const router    = useRouter();
   const { alert } = useDialog();
@@ -280,17 +290,14 @@ export default function ChatTab() {
   );
 
   // ── Create conversation ────────────────────────────────────────────────────
-  const handleStart = async () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+  const handleStart = async (subject?: string, firstMsg?: string) => {
     setStarting(true);
     try {
-      const { conversation: conv } = await chatApi.getOrCreate('Support chat');
+      const { conversation: conv } = await chatApi.createConversation(subject, firstMsg);
       setConversation(conv);
-      setMessages(conv.messages ?? []);
-      if (conv.messages?.length) lastMsgTime.current = conv.messages[conv.messages.length - 1].createdAt;
+      const { messages: msgs } = await chatApi.getMessages(conv.id);
+      setMessages(msgs);
+      lastMsgTime.current = msgs.length > 0 ? msgs[msgs.length - 1].createdAt : null;
       scrollBottom(false);
       startPolling(conv.id);
       hasLoadedChatRef.current = true;
@@ -304,29 +311,30 @@ export default function ChatTab() {
 
   // ── Send message ───────────────────────────────────────────────────────────
   const handleSend = async () => {
+    if (!text.trim() || !conversation || sending) return;
     const content = text.trim();
-    if (!content || !conversation || sending) return;
     setText('');
-    setSending(true);
 
-    // Optimistic add
+    // Optimistic message
     const optimistic: ChatMessage = {
-      id:             `opt-${Date.now()}`,
-      content,
-      senderType:     'user',
-      senderId:       user?.id ?? '',
-      readAt:         null,
-      createdAt:      new Date().toISOString(),
+      id: `temp-${Date.now()}`,
       conversationId: conversation.id,
+      senderType: 'user',
+      senderId: user?.id ?? '',
+      content,
+      isInternal: false,
+      createdAt: new Date().toISOString(),
     };
+
     setMessages(prev => [...prev, optimistic]);
     scrollBottom();
+    setSending(true);
 
     try {
-      const { message } = await chatApi.sendMessage(conversation.id, content);
-      // Replace optimistic with real
-      setMessages(prev => prev.map(m => m.id === optimistic.id ? message : m));
-      lastMsgTime.current = message.createdAt;
+      const { message: realMsg } = await chatApi.sendMessage(conversation.id, content);
+      // Replace optimistic
+      setMessages(prev => prev.map(m => m.id === optimistic.id ? realMsg : m));
+      lastMsgTime.current = realMsg.createdAt;
     } catch (err: unknown) {
       // Remove optimistic on error
       setMessages(prev => prev.filter(m => m.id !== optimistic.id));
@@ -350,16 +358,16 @@ export default function ChatTab() {
   // ── Guest wall ─────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
-          <Text style={s.headerTitle}>Support Chat</Text>
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[s.headerTitle, { color: colors.text }]}>Support Chat</Text>
         </View>
         <View style={e.wrap}>
           <View style={e.iconCircle}>
             <Icon name="lock-closed-outline" size={36} color={Colors.primary} />
           </View>
-          <Text style={e.title}>Sign in to chat</Text>
-          <Text style={e.sub}>
+          <Text style={[e.title, { color: colors.text }]}>Sign in to chat</Text>
+          <Text style={[e.sub, { color: colors.textMuted }]}>
             Chat with our advisors is available to registered users.
           </Text>
           <TouchableOpacity style={e.startBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
@@ -373,9 +381,9 @@ export default function ChatTab() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
-          <Text style={s.headerTitle}>Support Chat</Text>
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[s.headerTitle, { color: colors.text }]}>Support Chat</Text>
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -483,14 +491,14 @@ export default function ChatTab() {
 
         {/* Input bar */}
         {!isClosed && (
-          <View style={s.inputBar}>
-            <View style={[af.inputRow, s.inputFieldWrap, af.inputRowTopAlign]}>
+          <View style={[s.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+            <View style={[af.inputRow, s.inputFieldWrap, af.inputRowTopAlign, { backgroundColor: colors.bgWarm, borderColor: colors.border }]}>
               <TextInput
-                style={[af.input, af.inputComposer, af.inputMultiline, s.inputText]}
+                style={[af.input, af.inputComposer, af.inputMultiline, s.inputText, { color: colors.text }]}
                 value={text}
                 onChangeText={setText}
                 placeholder="Type a message..."
-                placeholderTextColor={Colors.textLight}
+                placeholderTextColor={colors.textLight}
                 multiline
                 maxLength={2000}
                 returnKeyType="default"

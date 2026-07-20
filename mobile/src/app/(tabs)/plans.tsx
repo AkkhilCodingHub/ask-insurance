@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { plansApi, ApiPlan } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 
 const PAGE_SIZE = 10;
@@ -54,6 +55,7 @@ function parsedFeatures(plan: ApiPlan): string[] {
 
 function PlanCard({ plan }: { plan: ApiPlan }) {
   const router   = useRouter();
+  const colors   = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const color    = planColor(plan);
   const short    = planShort(plan);
@@ -61,7 +63,7 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
   const claimPct = plan.insurer?.claimsRatio ?? 0;
 
   return (
-    <View style={pc.card}>
+    <View style={[pc.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={pc.cardBody}>
         {/* Top */}
         <View style={pc.top}>
@@ -72,20 +74,20 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
           </View>
           <View style={pc.topMain}>
             <View style={pc.titleRow}>
-              <Text style={pc.insurer} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
+              <Text style={[pc.insurer, { color: colors.textMuted }]} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
               {plan.isFeatured && (
-                <View style={[pc.badge, { borderColor: color + '40' }]}>
+                <View style={[pc.badge, { borderColor: color + '40', backgroundColor: colors.card }]}>
                   <Text style={[pc.badgeText, { color }]}>Featured</Text>
                 </View>
               )}
             </View>
-            <Text style={pc.planName} numberOfLines={2}>{plan.name}</Text>
+            <Text style={[pc.planName, { color: colors.text }]} numberOfLines={2}>{plan.name}</Text>
             <View style={pc.metaPills}>
-              <View style={pc.pill}>
-                <Text style={pc.pillText}>{CATEGORIES.find(c => c.key === plan.type)?.label ?? plan.type}</Text>
+              <View style={[pc.pill, { backgroundColor: colors.bgWarm }]}>
+                <Text style={[pc.pillText, { color: colors.textMuted }]}>{CATEGORIES.find(c => c.key === plan.type)?.label ?? plan.type}</Text>
               </View>
-              <View style={pc.pill}>
-                <Text style={pc.pillTextMuted}>
+              <View style={[pc.pill, { backgroundColor: colors.bgWarm }]}>
+                <Text style={[pc.pillTextMuted, { color: colors.textLight }]}>
                   {claimPct}% claim settlement
                 </Text>
               </View>
@@ -94,20 +96,20 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
         </View>
 
         {/* Stats — flat row with hairline dividers */}
-        <View style={pc.statGrid}>
+        <View style={[pc.statGrid, { backgroundColor: colors.bgWarm, borderColor: colors.border }]}>
           <View style={pc.statCell}>
-            <Text style={pc.statLabel}>Premium</Text>
+            <Text style={[pc.statLabel, { color: colors.textLight }]}>Premium</Text>
             <Text style={[pc.statValue, { color }]}>{formatPremium(plan.basePremium)}</Text>
           </View>
-          <View style={pc.statSep} />
+          <View style={[pc.statSep, { backgroundColor: colors.border }]} />
           <View style={pc.statCell}>
-            <Text style={pc.statLabel}>Cover</Text>
-            <Text style={pc.statValue}>{formatCover(plan.maxCover)}</Text>
+            <Text style={[pc.statLabel, { color: colors.textLight }]}>Cover</Text>
+            <Text style={[pc.statValue, { color: colors.text }]}>{formatCover(plan.maxCover)}</Text>
           </View>
-          <View style={pc.statSep} />
+          <View style={[pc.statSep, { backgroundColor: colors.border }]} />
           <View style={pc.statCellLast}>
-            <Text style={pc.statLabel}>Insurer</Text>
-            <Text style={pc.statValue} numberOfLines={1}>
+            <Text style={[pc.statLabel, { color: colors.textLight }]}>Insurer</Text>
+            <Text style={[pc.statValue, { color: colors.text }]} numberOfLines={1}>
               {plan.insurer?.shortName ?? (plan.insurer?.name ? plan.insurer.name.split(' ')[0] : '—')}
             </Text>
           </View>
@@ -121,7 +123,7 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
                 <View style={[pc.featureTickWrap, { borderColor: color + '30' }]}>
                   <Text style={[pc.featureTick, { color }]}>✓</Text>
                 </View>
-                <Text style={pc.featureText}>{f}</Text>
+                <Text style={[pc.featureText, { color: colors.textMuted }]}>{f}</Text>
               </View>
             ))}
           </View>
@@ -130,8 +132,8 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
         {/* Actions */}
         <View style={pc.actions}>
           <TouchableOpacity onPress={() => setExpanded(!expanded)} style={pc.detailBtn} activeOpacity={0.7}>
-            <Text style={pc.detailBtnText}>{expanded ? 'Less' : 'Details'}</Text>
-            <Text style={pc.detailBtnCaret}>{expanded ? '˄' : '˅'}</Text>
+            <Text style={[pc.detailBtnText, { color: colors.textMuted }]}>{expanded ? 'Less' : 'Details'}</Text>
+            <Text style={[pc.detailBtnCaret, { color: colors.textMuted }]}>{expanded ? '˄' : '˅'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[pc.quoteBtn, { backgroundColor: color }]}
@@ -149,6 +151,7 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function PlansTab() {
+  const colors = useThemeColors();
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch]   = useState('');
   const [plans, setPlans]     = useState<ApiPlan[]>([]);
@@ -261,20 +264,20 @@ export default function PlansTab() {
   );
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       {/* Fixed header */}
-      <View style={s.header}>
-        <Text style={s.title}>Compare Plans</Text>
-        <Text style={s.sub}>Find the best coverage for your needs</Text>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <Text style={[s.title, { color: colors.text }]}>Compare Plans</Text>
+        <Text style={[s.sub, { color: colors.textMuted }]}>Find the best coverage for your needs</Text>
 
-        <View style={[af.inputRow, { marginBottom: 12 }]}>
+        <View style={[af.inputRow, { marginBottom: 12, backgroundColor: colors.bgWarm, borderColor: colors.border }]}>
           <View style={af.prefix}>
             <Icon name="search-outline" size={20} color={Colors.primary} />
           </View>
           <TextInput
-            style={af.input}
+            style={[af.input, { color: colors.text }]}
             placeholder="Search insurers or plans..."
-            placeholderTextColor={Colors.textLight}
+            placeholderTextColor={colors.textLight}
             value={search}
             onChangeText={setSearch}
           />
