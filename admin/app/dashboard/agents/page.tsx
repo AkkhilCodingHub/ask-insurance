@@ -83,21 +83,21 @@ function AgentModal({
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }}>
       <div style={{
-        background: "#fff", borderRadius: 20, width: "100%", maxWidth: 460,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+        background: "var(--white)", borderRadius: 20, width: "100%", maxWidth: 460,
+        boxShadow: "0 24px 64px rgba(0,0,0,0.3)", border: "1px solid var(--border)",
       }}>
         {/* Header */}
         <div style={{ padding: "20px 24px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 1, marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 1, marginBottom: 4 }}>
               {editing ? "EDIT AGENT" : "NEW AGENT"}
             </p>
-            <h2 style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", margin: 0 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", margin: 0 }}>
               {editing ? `Edit ${state.agent?.name}` : "Create Agent Account"}
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: "#F1F5F9", border: "none", borderRadius: 10, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <X size={16} color="#64748B" />
+          <button onClick={onClose} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X size={16} color="var(--text-muted)" />
           </button>
         </div>
 
@@ -288,21 +288,21 @@ export default function AgentsPage() {
   const kycAgents = agents.filter(a => a.kycStatus && a.kycStatus !== "pending");
 
   return (
-    <div style={{ padding: 32, minHeight: "100vh", background: "#F8FAFC" }}>
+    <div style={{ padding: 32, minHeight: "100vh", background: "var(--bg)" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <UserCog size={20} color="#6D28D9" />
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(109, 40, 217, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UserCog size={20} color="#8B5CF6" />
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "#0F172A", margin: 0, letterSpacing: -0.5 }}>Agents</h1>
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>Agents</h1>
           </div>
-          <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Manage advisor accounts and verify onboarding credentials.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>Manage advisor accounts and verify onboarding credentials.</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={load}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "var(--white)", border: "1.5px solid var(--border)", borderRadius: 12, color: "var(--text-muted)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             <RefreshCw size={14} /> Refresh
           </button>
           <button
@@ -319,19 +319,19 @@ export default function AgentsPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 10, borderBottom: "1.5px solid #E2E8F0", marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 10, borderBottom: "1.5px solid var(--border)", marginBottom: 24 }}>
         {[
           { id: "accounts", label: "Advisor Accounts", count: agents.length },
           { id: "kyc", label: "Advisor Verification (KYC)", count: submittedKyc, countColor: "#DC2626" },
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)} style={{
             padding: "10px 16px", border: "none", background: "none", fontSize: 14, fontWeight: activeTab === t.id ? 800 : 500,
-            color: activeTab === t.id ? "#3B82F6" : "#64748B", borderBottom: activeTab === t.id ? "3px solid #3B82F6" : "none",
+            color: activeTab === t.id ? "#3B82F6" : "var(--text-muted)", borderBottom: activeTab === t.id ? "3px solid #3B82F6" : "none",
             cursor: "pointer", display: "flex", alignItems: "center", gap: 8, marginBottom: -1.5
           }}>
             {t.label}
             {t.count > 0 && (
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: t.countColor ? t.countColor + "18" : "#E2E8F0", color: t.countColor ?? "#64748B" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: t.countColor ? t.countColor + "18" : "var(--border)", color: t.countColor ?? "var(--text-muted)" }}>
                 {t.count}
               </span>
             )}
@@ -344,12 +344,12 @@ export default function AgentsPage() {
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
             {[
-              { label: "Total Agents", value: agents.length, color: "#3B82F6", bg: "#EFF6FF" },
-              { label: "Active",       value: active,         color: "#059669", bg: "#ECFDF5" },
-              { label: "Superadmins",  value: superadmins,    color: "#6D28D9", bg: "#EDE9FE" },
+              { label: "Total Agents", value: agents.length, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.2)" },
+              { label: "Active",       value: active,         color: "#10B981", bg: "rgba(16, 185, 129, 0.2)" },
+              { label: "Superadmins",  value: superadmins,    color: "#8B5CF6", bg: "rgba(139, 92, 246, 0.2)" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E2E8F0" }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.8, margin: "0 0 8px" }}>{s.label.toUpperCase()}</p>
+              <div key={s.label} style={{ background: "var(--white)", borderRadius: 16, padding: "20px 24px", border: "1px solid var(--border)" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.8, margin: "0 0 8px" }}>{s.label.toUpperCase()}</p>
                 <p style={{ fontSize: 32, fontWeight: 900, color: s.color, margin: "0 0 4px", letterSpacing: -1 }}>{s.value}</p>
                 <div style={{ height: 3, borderRadius: 2, background: s.bg, marginTop: 8 }} />
               </div>
@@ -357,16 +357,16 @@ export default function AgentsPage() {
           </div>
 
           {/* Table */}
-          <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+          <div style={{ background: "var(--white)", borderRadius: 20, border: "1px solid var(--border)", overflow: "hidden" }}>
             {/* Table header */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
               {["Name", "Email", "Role", "Status", "Created", "Actions"].map(h => (
-                <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "#94A3B8", letterSpacing: 1 }}></span >
+                <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
               ))}
             </div>
 
             {loading && (
-              <div style={{ padding: 48, textAlign: "center", color: "#94A3B8" }}>Loading agents…</div>
+              <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>Loading agents…</div>
             )}
             {error && (
               <div style={{ padding: 48, textAlign: "center", color: "#DC2626" }}>
@@ -376,9 +376,9 @@ export default function AgentsPage() {
             )}
             {!loading && !error && agents.length === 0 && (
               <div style={{ padding: 64, textAlign: "center" }}>
-                <UserCog size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
-                <p style={{ fontSize: 15, fontWeight: 700, color: "#94A3B8", margin: "0 0 6px" }}>No agents yet</p>
-                <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 20px" }}>Create the first agent account to grant portal access.</p>
+                <UserCog size={40} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+                <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", margin: "0 0 6px" }}>No agents yet</p>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 20px" }}>Create the first agent account to grant portal access.</p>
                 <button onClick={() => setModal({ mode: "create" })} style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <Plus size={15} /> New Agent
                 </button>
@@ -391,25 +391,25 @@ export default function AgentsPage() {
                 style={{
                   display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px",
                   padding: "14px 20px", alignItems: "center",
-                  borderBottom: i < agents.length - 1 ? "1px solid #F1F5F9" : "none",
-                  background: agent.isActive ? "#fff" : "#FAFAFA",
+                  borderBottom: i < agents.length - 1 ? "1px solid var(--border)" : "none",
+                  background: "var(--white)",
                   transition: "background 0.15s",
                 }}
               >
                 {/* Name */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
-                    width: 36, height: 36, borderRadius: 10, background: "#EDE9FE",
+                    width: 36, height: 36, borderRadius: 10, background: "rgba(139, 92, 246, 0.15)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13, fontWeight: 800, color: "#6D28D9", flexShrink: 0,
+                    fontSize: 13, fontWeight: 800, color: "#8B5CF6", flexShrink: 0,
                   }}>
                     {agent.name.slice(0, 2).toUpperCase()}
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{agent.name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{agent.name}</span>
                 </div>
 
                 {/* Email */}
-                <span style={{ fontSize: 13, color: "#64748B" }}>{agent.email}</span>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{agent.email}</span>
 
                 {/* Role */}
                 <div><RoleBadge role={agent.role} /></div>
@@ -421,28 +421,28 @@ export default function AgentsPage() {
                   style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, padding: 0, opacity: togglingId === agent.id ? 0.5 : 1 }}
                 >
                   {agent.isActive
-                    ? <span style={{ color: "#059669", display: "flex", alignItems: "center", gap: 6 }}><ToggleRight size={24} /> Active</span>
-                    : <span style={{ color: "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}><ToggleLeft size={24} /> Inactive</span>
+                    ? <span style={{ color: "#10B981", display: "flex", alignItems: "center", gap: 6 }}><ToggleRight size={24} /> Active</span>
+                    : <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}><ToggleLeft size={24} /> Inactive</span>
                   }
                 </button>
 
                 {/* Created */}
-                <span style={{ fontSize: 12, color: "#94A3B8" }}>{fmtDate(agent.createdAt)}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fmtDate(agent.createdAt)}</span>
 
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
                     onClick={() => setModal({ mode: "edit", agent })}
                     title="Edit agent"
-                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--bg)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
-                    <Pencil size={13} color="#64748B" />
+                    <Pencil size={13} color="var(--text-muted)" />
                   </button>
                   <button
                     onClick={() => handleDelete(agent.id)}
                     disabled={deleting === agent.id}
                     title="Delete agent"
-                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #FEE2E2", background: "#FFF5F5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: deleting === agent.id ? 0.5 : 1 }}
+                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid rgba(220, 38, 38, 0.3)", background: "rgba(220, 38, 38, 0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: deleting === agent.id ? 0.5 : 1 }}
                   >
                     <Trash2 size={13} color="#DC2626" />
                   </button>
@@ -453,43 +453,44 @@ export default function AgentsPage() {
         </>
       ) : (
         /* KYC Verification Tab */
-        <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px", padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+        <div style={{ background: "var(--white)", borderRadius: 20, border: "1px solid var(--border)", overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
             {["Agent", "Doc Type", "Submitted On", "Document URL", "KYC Status", "Actions"].map(h => (
-              <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "#94A3B8", letterSpacing: 1 }}>{h.toUpperCase()}</span>
+              <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
             ))}
           </div>
 
-          {loading && <div style={{ padding: 48, textAlign: "center", color: "#94A3B8" }}>Loading submissions…</div>}
+          {loading && <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>Loading submissions…</div>}
 
           {!loading && kycAgents.length === 0 && (
             <div style={{ padding: 64, textAlign: "center" }}>
-              <ShieldCheck size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
-              <p style={{ fontSize: 15, fontWeight: 700, color: "#94A3B8", margin: "0 0 6px" }}>No verification requests</p>
-              <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>No agent KYC uploads are currently pending verification.</p>
+              <ShieldCheck size={40} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+              <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", margin: "0 0 6px" }}>No verification requests</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>No agent KYC uploads are currently pending verification.</p>
             </div>
           )}
 
           {!loading && kycAgents.map((agent, i) => {
             const isSub = agent.kycStatus === "submitted";
-            const badgeBg = agent.kycStatus === "verified" ? "#ECFDF5" : isSub ? "#FFFBEB" : "#FEF2F2";
-            const badgeColor = agent.kycStatus === "verified" ? "#059669" : isSub ? "#D97706" : "#DC2626";
+            const badgeBg = agent.kycStatus === "verified" ? "rgba(16, 185, 129, 0.15)" : isSub ? "rgba(217, 119, 6, 0.15)" : "rgba(220, 38, 38, 0.15)";
+            const badgeColor = agent.kycStatus === "verified" ? "#10B981" : isSub ? "#F59E0B" : "#EF4444";
             return (
               <div key={agent.id} style={{
                 display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px",
                 padding: "14px 20px", alignItems: "center",
-                borderBottom: i < kycAgents.length - 1 ? "1px solid #F1F5F9" : "none",
+                borderBottom: i < kycAgents.length - 1 ? "1px solid var(--border)" : "none",
+                background: "var(--white)",
               }}>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", margin: "0 0 2px" }}>{agent.name}</p>
-                  <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>{agent.email}</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 2px" }}>{agent.name}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>{agent.email}</p>
                 </div>
 
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#475569", textTransform: "capitalize" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textTransform: "capitalize" }}>
                   {agent.kycDocType?.replace("_", " ") ?? "—"}
                 </span>
 
-                <span style={{ fontSize: 12, color: "#64748B" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {agent.kycSubmittedAt ? fmtDate(agent.kycSubmittedAt) : "—"}
                 </span>
 
@@ -506,7 +507,7 @@ export default function AgentsPage() {
                     {agent.kycStatus}
                   </span>
                   {agent.kycStatus === "rejected" && agent.kycRejectionReason && (
-                    <p style={{ fontSize: 11, color: "#DC2626", marginTop: 4 }}>Reason: {agent.kycRejectionReason}</p>
+                    <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>Reason: {agent.kycRejectionReason}</p>
                   )}
                 </div>
 
@@ -523,7 +524,7 @@ export default function AgentsPage() {
                       </button>
                     </>
                   ) : (
-                    <span style={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic" }}>No actions</span>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No actions</span>
                   )}
                 </div>
               </div>
