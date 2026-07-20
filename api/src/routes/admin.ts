@@ -1887,6 +1887,40 @@ router.delete('/agents/:id', adminAuthenticate, superadminOnly, async (req: Requ
   }
 });
 
+// GET /admin/me — fetch own profile
+router.get('/me', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        kycStatus: true,
+        kycDocType: true,
+        kycDocUrl: true,
+        kycSubmittedAt: true,
+        kycRejectionReason: true,
+        kycVerifiedAt: true
+      }
+    });
+
+    if (!admin) {
+      res.status(404).json({ error: 'Admin not found' });
+      return;
+    }
+
+    res.json({ admin });
+  } catch (e) {
+    console.error('[admin/me]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // PUT /admin/me — update own profile / password
 router.put('/me', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -2287,6 +2321,22 @@ router.post('/customers', adminAuthenticate, async (req: Request, res: Response)
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Database Backup ──────────────────────────────────────────────────────────
+router.post('/backup', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const { runDatabaseBackup } = await import('../lib/backup');
+    const backupUrl = await runDatabaseBackup();
+
+    await logActivity(adminId, 'RUN_DATABASE_BACKUP', { backupUrl });
+
+    res.json({ success: true, backupUrl });
+  } catch (e: any) {
+    console.error('[admin/backup]', e);
+    res.status(500).json({ error: e?.message ?? 'Backup failed' });
   }
 });
 
