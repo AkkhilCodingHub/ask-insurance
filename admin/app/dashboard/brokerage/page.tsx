@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi, type Insurer } from "@/lib/api";
-import { DollarSign, Settings, Award, RefreshCw, CheckCircle, Percent, Plus, Loader } from "lucide-react";
+import { DollarSign, Settings, Award, RefreshCw, CheckCircle, Percent, Plus, Loader, Download } from "lucide-react";
 
 interface Slab {
   id: string;
@@ -121,10 +121,25 @@ export default function BrokeragePage() {
           </div>
           <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Configure partner slabs and release advisor commissions.</p>
         </div>
-        <button onClick={loadData}
-          style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <RefreshCw size={14} /> Refresh
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={async () => {
+              try {
+                const blob = await adminApi.exportBrokerage();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "brokerage-payouts.csv"; a.click();
+                URL.revokeObjectURL(url);
+              } catch { alert("Failed to export."); }
+            }}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#1D4ED8", border: "none", borderRadius: 12, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <Download size={14} /> Export CSV
+          </button>
+          <button onClick={loadData}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
       </div>
 
       {error && (

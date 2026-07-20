@@ -274,6 +274,26 @@ export default function AnalyticsPage() {
         </div>
       )}
 
+      {analytics?.renewals && (
+        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "20px 24px" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: "0 0 16px" }}>Renewals Pipeline</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+            {[
+              { label: "Total", value: analytics.renewals.total, color: "#0F172A", bg: "#F8FAFC" },
+              { label: "Pending",   value: analytics.renewals.pending,   color: "#D97706", bg: "#FFFBEB" },
+              { label: "Contacted", value: analytics.renewals.contacted, color: "#1D4ED8", bg: "#EFF6FF" },
+              { label: "Closed",    value: analytics.renewals.closed,    color: "#059669", bg: "#ECFDF5" },
+              { label: "Lost",      value: analytics.renewals.lost,      color: "#DC2626", bg: "#FEF2F2" },
+            ].map(item => (
+              <div key={item.label} style={{ background: item.bg, borderRadius: 12, padding: "14px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 22, fontWeight: 900, color: item.color, margin: "0 0 4px" }}>{item.value}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 0.6, margin: 0 }}>{item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <style>{`
         @media (max-width: 1000px) { .analytics-kpi { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (max-width: 768px) {

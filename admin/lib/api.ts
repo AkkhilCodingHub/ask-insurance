@@ -294,6 +294,7 @@ export interface AnalyticsData {
   }[];
   topPlans: { id: string; name: string; type: string; _count: { policies: number } }[];
   topInsurers: { insurerId: string | null; name: string; shortName: string; premium: number; policies: number }[];
+  renewals?: { total: number; pending: number; contacted: number; closed: number; lost: number };
 }
 
 // ── Users Response ─────────────────────────────────────────────────────
@@ -709,6 +710,84 @@ class AdminApiClient {
     const { data } = await this.instance.get('/logs');
     if (data.error) throw new Error(data.error);
     return data.logs || [];
+  }
+
+  async exportBrokerage(): Promise<Blob> {
+    const response = await this.instance.get('/brokerage/export', { responseType: 'blob' });
+    return response.data;
+  }
+
+  // ── Quotation Templates ─────────────────────────────────────────────────────
+  async getQuotationTemplates(): Promise<any[]> {
+    const { data } = await this.instance.get('/templates');
+    if (data.error) throw new Error(data.error);
+    return data.templates || [];
+  }
+
+  async saveQuotationTemplate(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/templates', payload);
+    if (data.error) throw new Error(data.error);
+    return data.template;
+  }
+
+  async deleteQuotationTemplate(id: string): Promise<void> {
+    await this.instance.delete(`/templates/${id}`);
+  }
+
+  // ── Premium Rate Charts ─────────────────────────────────────────────────────
+  async getRateCharts(): Promise<any[]> {
+    const { data } = await this.instance.get('/rate-charts');
+    if (data.error) throw new Error(data.error);
+    return data.charts || [];
+  }
+
+  async saveRateChart(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/rate-charts', payload);
+    if (data.error) throw new Error(data.error);
+    return data.chart;
+  }
+
+  async deleteRateChart(id: string): Promise<void> {
+    await this.instance.delete(`/rate-charts/${id}`);
+  }
+
+  // ── Renewals ────────────────────────────────────────────────────────────────
+  async getRenewals(): Promise<any> {
+    const { data } = await this.instance.get('/renewals');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async autoDetectRenewals(): Promise<any> {
+    const { data } = await this.instance.post('/renewals/auto-detect');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async updateRenewal(id: string, payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.patch(`/renewals/${id}`, payload);
+    if (data.error) throw new Error(data.error);
+    return data.renewal;
+  }
+
+  // ── Communication Templates ─────────────────────────────────────────────────
+  async getCommunicationTemplates(): Promise<any[]> {
+    const { data } = await this.instance.get('/communication-templates');
+    if (data.error) throw new Error(data.error);
+    return data.templates || [];
+  }
+
+  async saveCommunicationTemplate(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/communication-templates', payload);
+    if (data.error) throw new Error(data.error);
+    return data.template;
+  }
+
+  // ── Admin list (for renewals assignment) ────────────────────────────────────
+  async getAdminList(): Promise<any> {
+    const { data } = await this.instance.get('/agents');
+    if (data.error) throw new Error(data.error);
+    return data;
   }
 }
 
