@@ -98,8 +98,8 @@ router.post('/upload', authenticate, upload.single('file'), async (req: Request,
     const adminId = (req as any).adminId as string | undefined;
     const file = req.file;
 
-    if (!userId && !adminId) {
-      res.status(401).json({ error: 'Unauthorized' });
+    if (!adminId) {
+      res.status(403).json({ error: 'Custom file uploads are restricted to agents and admins. Customers access files via DigiLocker.' });
       return;
     }
 
