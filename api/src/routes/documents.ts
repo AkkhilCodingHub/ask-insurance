@@ -24,7 +24,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
     }
 
     if (userId) {
-      const user = await prisma.user.findUnique({
+      const user = await (prisma.user as any).findUnique({
         where: { id: userId },
         select: {
           kycStatus: true,
@@ -49,13 +49,13 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
         kycStatus: user.kycStatus,
         digilockerVerifiedAt: user.kycVerifiedAt,
         digilockerDocuments: digilockerDocs,
-        uploadedDocuments: user.userDocuments,
+        uploadedDocuments: user.userDocuments ?? [],
       });
       return;
     }
 
     if (adminId) {
-      const admin = await prisma.admin.findUnique({
+      const admin = await (prisma.admin as any).findUnique({
         where: { id: adminId },
         select: {
           kycStatus: true,
@@ -80,7 +80,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
         kycStatus: admin.kycStatus,
         digilockerVerifiedAt: admin.kycVerifiedAt,
         digilockerDocuments: digilockerDocs,
-        uploadedDocuments: admin.userDocuments,
+        uploadedDocuments: admin.userDocuments ?? [],
       });
       return;
     }
@@ -117,7 +117,7 @@ router.post('/upload', authenticate, upload.single('file'), async (req: Request,
 
     const fileUrl = await uploadToR2(key, file.buffer, file.mimetype);
 
-    const doc = await prisma.userDocument.create({
+    const doc = await (prisma as any).userDocument.create({
       data: {
         title,
         docType,
@@ -157,7 +157,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response): Promise
       return;
     }
 
-    const doc = await prisma.userDocument.findUnique({
+    const doc = await (prisma as any).userDocument.findUnique({
       where: { id },
     });
 
@@ -179,7 +179,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response): Promise
       await deleteFromR2(doc.fileKey).catch(() => {});
     }
 
-    await prisma.userDocument.delete({ where: { id } });
+    await (prisma as any).userDocument.delete({ where: { id } });
 
     res.json({ success: true, message: 'Document deleted successfully.' });
   } catch (error) {

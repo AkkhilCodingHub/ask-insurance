@@ -844,12 +844,20 @@ export const kycApi = {
   initiate: () =>
     request<{ url: string; state: string; codeVerifier: string }>('/api/kyc/initiate', {}, true),
 
-  callback: (code: string, state: string, codeVerifier: string) =>
-    request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
+  callback: (
+    codeOrObj: string | { code: string; state: string; codeVerifier: string },
+    state?: string,
+    codeVerifier?: string,
+  ) => {
+    const payload = typeof codeOrObj === 'object'
+      ? codeOrObj
+      : { code: codeOrObj, state: state!, codeVerifier: codeVerifier! };
+    return request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
       '/api/kyc/callback',
-      { method: 'POST', body: JSON.stringify({ code, state, codeVerifier }) },
+      { method: 'POST', body: JSON.stringify(payload) },
       true,
-    ),
+    );
+  },
 
   status: () =>
     request<{
@@ -857,6 +865,39 @@ export const kycApi = {
       kycDocType: string | null; kycDocUrl: string | null;
       kycRejectionReason: string | null; kycSubmittedAt: string | null;
     }>('/api/kyc/status', {}, true),
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+
+export const documentsApi = {
+  getDocuments: () =>
+    request<{
+      digilockerLinked: boolean;
+      kycStatus: string;
+      digilockerVerifiedAt: string | null;
+      digilockerDocuments: any[];
+      uploadedDocuments: any[];
+    }>('/api/documents', {}, true),
+
+  uploadDocument: async (fileUri: string, fileName: string, mimeType: string, title?: string, docType?: string) => {
+    const token = await getToken();
+    const form = new FormData();
+    form.append('file', { uri: fileUri, type: mimeType, name: fileName } as any);
+    if (title) form.append('title', title);
+    if (docType) form.append('docType', docType);
+
+    const res = await fetch(`${BASE_URL}/api/documents/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+    return data;
+  },
+
+  deleteDocument: (id: string) =>
+    request<{ success: boolean }>(`/api/documents/${id}`, { method: 'DELETE' }, true),
+};
 
   uploadDocument: async (
     docType: 'aadhaar' | 'driving_license' | 'passport',

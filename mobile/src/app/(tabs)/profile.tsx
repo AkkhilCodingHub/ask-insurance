@@ -280,7 +280,7 @@ export default function ProfileTab() {
             icon="folder-open-outline"
             label="My Documents & Storage"
             sub="DigiLocker & cloud files"
-            onPress={() => router.push('/files')}
+            onPress={() => router.push('/files' as any)}
           />
           <View style={s.menuDivider} />
           <MenuRow
