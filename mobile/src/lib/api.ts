@@ -826,6 +826,16 @@ export const agentApi = {
     if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
     return data;
   },
+
+  // ── Renewals ──────────────────────────────────────────────────────────────
+  getRenewals: () =>
+    agentRequest<{ renewals: any[] }>('/api/admin/renewals').then(r => r.renewals),
+
+  updateRenewalStatus: (id: string, status: 'pending' | 'contacted' | 'closed' | 'lost', notes?: string) =>
+    agentRequest<{ renewal: any }>(`/api/admin/renewals/${id}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ status, ...(notes ? { notes } : {}) }),
+    }),
 };
 
 // ── KYC ───────────────────────────────────────────────────────────────────────
