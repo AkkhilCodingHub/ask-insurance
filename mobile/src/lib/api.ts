@@ -1,15 +1,25 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    return `http://${host}:4000`;
+  let url = process.env.EXPO_PUBLIC_API_URL;
+  if (!url) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(':')[0];
+      url = `http://${host}:4000`;
+    } else {
+      url = 'http://localhost:4000';
+    }
   }
-  return 'http://localhost:4000';
+  if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    const host = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
+    url = url.replace(/localhost|127\.0\.0\.1/, host);
+  }
+  return url;
 }
 
 const BASE_URL = resolveBaseUrl();
