@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
   LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive, UserCog, BadgeCheck,
+  Percent, ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -23,6 +24,8 @@ const nav = [
   { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",      badge: true  },
   { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics", badge: false },
   { label: "Agents",     icon: UserCog,          href: "/dashboard/agents",    badge: false },
+  { label: "Brokerage",  icon: Percent,          href: "/dashboard/brokerage", badge: false },
+  { label: "Audit Logs", icon: ClipboardList,     href: "/dashboard/logs",      badge: false },
   { label: "Settings",   icon: Settings,         href: "/dashboard/settings",  badge: false },
 ];
 
