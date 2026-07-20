@@ -48,6 +48,10 @@ model User {
   notifications Notification[]
   conversations Conversation[]
 
+  // Agent Assignment
+  agentId     String?
+  agent       Admin?         @relation("AgentCustomers", fields: [agentId], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
   @@index([email])
   @@map("users")
@@ -72,6 +76,7 @@ model Insurer {
 
   plans    Plan[]
   policies Policy[]
+  brokerageSlabs BrokerageSlab[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -122,6 +127,12 @@ model Policy {
   notes         String?   @db.Text // admin notes visible to customer
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Brokerage Tracking
+  brokerageRate   Float?
+  brokerageAmount Float?
+  brokerageStatus String    @default("pending") // pending, paid
+  brokeragePaidAt DateTime?
 
   // Relations
   userId    String
@@ -179,6 +190,7 @@ model Quote {
   details         String    @db.Text  // JSON: user requirements (age, cover, etc.)
   providers       String    @db.Text  // JSON: kept for legacy, empty for new flow
   status          String    @default("pending") // pending, responded, approved, converted, expired
+  stage           String    @default("new")     // new, quotation_sent, in_discussion, closed, lost
   // Admin's actual quote response
   adminResponse   String?   @db.Text  // JSON: { insurer, planName, netPremium, gst, totalPremium, notes }
   adminResponseAt DateTime?
@@ -252,8 +264,22 @@ model Admin {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Agent KYC
+  kycStatus          String    @default("pending") // pending | submitted | verified | rejected
+  kycDocType         String?   // aadhaar | driving_license | passport
+  kycDocUrl          String?   // R2 public URL
+  kycRejectionReason String?
+  kycSubmittedAt     DateTime?
+  kycVerifiedAt      DateTime?
+
+  // Agent Settings / Assignments
+  assignedInsurers       Json? // JSON array of Insurer IDs
+  assignedInsuranceTypes Json? // JSON array of plan types (e.g. ["life", "health"])
+
   conversations Conversation[]
   files         AdminFile[]
+  addedUsers    User[]         @relation("AgentCustomers")
+  activityLogs  ActivityLog[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -328,4 +354,30 @@ model OtpChallenge {
   @@index([phone, consumedAt])
   @@index([userId])
   @@map("otp_challenges")
+}
+
+model BrokerageSlab {
+  id            String   @id @default(cuid())
+  insurerId     String
+  insurer       Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  insuranceType String   // life, health, motor, travel, home, business
+  percentage    Float    // e.g. 15.5 for 15.5%
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([insurerId, insuranceType])
+  @@map("brokerage_slabs")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action    String
+  details   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
