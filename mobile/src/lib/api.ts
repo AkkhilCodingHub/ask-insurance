@@ -11,7 +11,7 @@ function resolveBaseUrl(): string {
       const host = hostUri.split(':')[0];
       url = `http://${host}:4000`;
     } else {
-      url = 'http://localhost:4000';
+      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
     }
   }
   if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
