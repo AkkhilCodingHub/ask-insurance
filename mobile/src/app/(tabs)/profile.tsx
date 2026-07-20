@@ -57,8 +57,8 @@ function MenuRow({ icon, label, sub, onPress, badge, badgeColor }: MenuRowProps)
   const colors = useThemeColors();
   return (
     <TouchableOpacity style={m.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={[m.icon, { backgroundColor: colors.bgWarm }]}>
-        <Icon name={icon} size={20} color={colors.textMuted} />
+      <View style={[m.icon, { backgroundColor: colors.isDark ? 'rgba(96,165,250,0.15)' : Colors.primaryLight }]}>
+        <Icon name={icon} size={20} color={colors.isDark ? '#60A5FA' : Colors.primary} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[m.label, { color: colors.text }]}>{label}</Text>
@@ -113,7 +113,7 @@ export default function ProfileTab() {
     const yes = await confirm({
       title:       'Log out',
       message:     'Are you sure you want to log out of your account?',
-      confirmText: 'Log out',
+      confirmText: 'Log Out',
       cancelText:  'Cancel',
       destructive: true,
     });
@@ -139,7 +139,7 @@ export default function ProfileTab() {
   if (!user) {
     return (
       <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
-        <View style={s.header}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <Text style={[s.pageTitle, { color: colors.text }]}>Profile</Text>
         </View>
         <View style={s.guestWrap}>
@@ -167,11 +167,14 @@ export default function ProfileTab() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}
       >
         {/* Header */}
-        <View style={s.header}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
           <Text style={[s.pageTitle, { color: colors.text }]}>Profile</Text>
-          <TouchableOpacity style={s.editBtn} onPress={() => router.push('/edit-profile')}>
-            <Icon name="create-outline" size={16} color={Colors.primary} />
-            <Text style={s.editBtnText}>Edit</Text>
+          <TouchableOpacity 
+            style={[s.editBtn, { borderColor: Colors.primary, backgroundColor: colors.isDark ? 'rgba(21,128,255,0.12)' : 'transparent' }]} 
+            onPress={() => router.push('/edit-profile')}
+          >
+            <Icon name="create-outline" size={16} color={colors.isDark ? '#60A5FA' : Colors.primary} />
+            <Text style={[s.editBtnText, { color: colors.isDark ? '#60A5FA' : Colors.primary }]}>Edit</Text>
           </TouchableOpacity>
         </View>
 
