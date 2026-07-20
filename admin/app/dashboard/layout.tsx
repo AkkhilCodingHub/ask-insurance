@@ -277,12 +277,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              title={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+              title={theme === "dark" ? "Dark Mode Active (Click to switch to Light)" : "Light Mode Active (Click to switch to Dark)"}
               style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}
               onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg)")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
             >
-              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+              {theme === "dark" ? <Moon size={18} color="#F59E0B" /> : <Sun size={18} color="#64748B" />}
             </button>
 
             {/* Notifications */}
