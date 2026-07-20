@@ -375,16 +375,17 @@ export function useThemeColors() {
 
 export function LanguagePickerModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { language, setLanguage, t } = useLanguage();
+  const colors = useThemeColors();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={lp.backdrop}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-        <View style={lp.sheet}>
-          <View style={lp.header}>
-            <Text style={lp.title}>{t('selectLanguage', 'Select Preferred Language')}</Text>
+        <View style={[lp.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[lp.header, { borderBottomColor: colors.border }]}>
+            <Text style={[lp.title, { color: colors.text }]}>{t('selectLanguage', 'Select Preferred Language')}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={10}>
-              <Ionicons name="close-circle" size={24} color={Colors.textLight} />
+              <Ionicons name="close-circle" size={24} color={colors.textLight} />
             </TouchableOpacity>
           </View>
           <ScrollView style={lp.scroll} showsVerticalScrollIndicator={false}>
@@ -393,7 +394,11 @@ export function LanguagePickerModal({ visible, onClose }: { visible: boolean; on
               return (
                 <TouchableOpacity
                   key={item.code}
-                  style={[lp.item, selected && lp.itemSelected]}
+                  style={[
+                    lp.item,
+                    { borderBottomColor: colors.border },
+                    selected && { backgroundColor: colors.isDark ? 'rgba(21,128,255,0.15)' : Colors.primaryLight },
+                  ]}
                   onPress={async () => {
                     await setLanguage(item.code);
                     onClose();
@@ -402,8 +407,8 @@ export function LanguagePickerModal({ visible, onClose }: { visible: boolean; on
                 >
                   <Text style={lp.flag}>{item.flag}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={[lp.name, selected && lp.nameSelected]}>{item.name}</Text>
-                    <Text style={lp.nativeName}>{item.nativeName}</Text>
+                    <Text style={[lp.name, { color: colors.text }, selected && { color: Colors.primary }]}>{item.name}</Text>
+                    <Text style={[lp.nativeName, { color: colors.textMuted }]}>{item.nativeName}</Text>
                   </View>
                   {selected && <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />}
                 </TouchableOpacity>
