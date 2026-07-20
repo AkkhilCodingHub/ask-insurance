@@ -47,6 +47,7 @@ model User {
   payments      Payment[]
   notifications Notification[]
   conversations Conversation[]
+  userDocuments UserDocument[]
 
   // Agent Assignment
   agentId     String?
@@ -266,10 +267,12 @@ model Admin {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Agent KYC
+  // Agent KYC & DigiLocker Storage
   kycStatus          String    @default("pending") // pending | submitted | verified | rejected
+  digilockerSub      String?   @unique
   kycDocType         String?   // aadhaar | driving_license | passport
   kycDocUrl          String?   // R2 public URL
+  kycDocuments       Json?     // raw DigiLocker issued-files metadata
   kycRejectionReason String?
   kycSubmittedAt     DateTime?
   kycVerifiedAt      DateTime?
@@ -280,6 +283,7 @@ model Admin {
 
   conversations Conversation[]
   files         AdminFile[]
+  userDocuments UserDocument[]
   addedUsers    User[]         @relation("AgentCustomers")
   activityLogs  ActivityLog[]
   renewals      Renewal[]
@@ -441,4 +445,30 @@ model CommunicationTemplate {
   createdAt DateTime @default(now())
 
   @@map("communication_templates")
+}
+
+model UserDocument {
+  id            String   @id @default(cuid())
+  title         String
+  docType       String   // aadhaar, pan, driving_license, vehicle_rc, policy, custom
+  source        String   // digilocker | user_upload
+  fileUrl       String?  // R2 public URL
+  fileKey       String?  // R2 object key
+  mimeType      String?
+  fileSize      BigInt?
+  digilockerUri String?  // DigiLocker document URI e.g. in.gov.uidai-adhaar-...
+  issuer        String?
+  issueDate     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminId       String?
+  admin         Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([source])
+  @@map("user_documents")
 }
