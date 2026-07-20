@@ -10,6 +10,8 @@ import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
 
+import { useLanguage, LanguagePickerModal } from '@/context/agent';
+
 import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -52,6 +54,8 @@ export default function SettingsScreen() {
   const router             = useRouter();
   const { logout }         = useAuth();
   const { alert, confirm } = useDialog();
+  const { t, currentLangMeta } = useLanguage();
+  const [langModalVisible, setLangModalVisible] = React.useState(false);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -97,29 +101,41 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
 
+        {/* ── Preferences ───────────────────────────────── */}
+        <Text style={s.sectionLabel}>PREFERENCES</Text>
+        <View style={s.card}>
+          <NavRow
+            icon="language-outline"
+            label={t('language', 'Language')}
+            sub={`${currentLangMeta.flag} ${currentLangMeta.name} (${currentLangMeta.nativeName})`}
+            onPress={() => setLangModalVisible(true)}
+            badge={currentLangMeta.code.toUpperCase()}
+          />
+        </View>
+
         {/* ── Support & Legal ───────────────────────────── */}
         <Text style={s.sectionLabel}>SUPPORT & LEGAL</Text>
         <View style={s.card}>
           <NavRow
-            icon="help-circle-outline" label="Help & FAQ"
+            icon="help-circle-outline" label={t('helpFaq', 'Help & FAQ')}
             sub="Common questions answered"
             onPress={() => router.push('/faq')}
           />
           <View style={s.divider} />
           <NavRow
-            icon="chatbubble-outline" label="Contact support"
+            icon="chatbubble-outline" label={t('contactSupport', 'Contact support')}
             sub="Chat with our advisors 24×7"
             onPress={() => router.push('/(tabs)/chat')}
           />
           <View style={s.divider} />
           <NavRow
-            icon="hand-left-outline" label="Privacy Policy"
+            icon="hand-left-outline" label={t('privacyPolicy', 'Privacy Policy')}
             sub="How we handle your data"
             onPress={() => router.push('/privacy')}
           />
           <View style={s.divider} />
           <NavRow
-            icon="reader-outline" label="Terms of Service"
+            icon="reader-outline" label={t('termsOfService', 'Terms of Service')}
             sub="Usage terms and conditions"
             onPress={() => router.push('/terms')}
           />
@@ -147,6 +163,7 @@ export default function SettingsScreen() {
           IRDAI Licensed · © 2025 ASK
         </Text>
       </ScrollView>
+      <LanguagePickerModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
     </SafeAreaView>
   );
 }
