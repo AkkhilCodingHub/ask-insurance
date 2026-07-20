@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 
-import { useLanguage } from '@/context/agent';
+import { useLanguage, useThemeColors } from '@/context/agent';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
@@ -43,6 +43,7 @@ export function FadeScreen({ children }: { children: React.ReactNode }) {
 export default function TabLayout() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const tabBarHeight = 52 + insets.bottom;
 
@@ -61,11 +62,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: tabBarHeight,
           paddingTop: 8,
@@ -87,8 +88,8 @@ export default function TabLayout() {
           );
         },
         title: TAB_LABELS[route.name] ?? route.name,
-        // Fade between tab screens
-        sceneStyle: { backgroundColor: Colors.bg },
+        // Dynamic tab screen background
+        sceneStyle: { backgroundColor: colors.bg },
       })}
     >
       <Tabs.Screen name="index" />
