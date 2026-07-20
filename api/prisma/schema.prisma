@@ -77,6 +77,7 @@ model Insurer {
   plans    Plan[]
   policies Policy[]
   brokerageSlabs BrokerageSlab[]
+  rateCharts     PremiumRateChart[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -145,6 +146,7 @@ model Policy {
   plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
   claims    Claim[]
   payments  Payment[]
+  renewal   Renewal?
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -280,6 +282,7 @@ model Admin {
   files         AdminFile[]
   addedUsers    User[]         @relation("AgentCustomers")
   activityLogs  ActivityLog[]
+  renewals      Renewal[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -380,4 +383,62 @@ model ActivityLog {
   @@index([adminId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+model QuotationTemplate {
+  id                 String   @id @default(cuid())
+  name               String
+  type               String   // life, health, motor, travel, home, business
+  subject            String?
+  headerText         String?  @db.Text
+  footerText         String?  @db.Text
+  termsAndConditions String?  @db.Text
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@map("quotation_templates")
+}
+
+model PremiumRateChart {
+  id            String   @id @default(cuid())
+  insurerId     String
+  insurer       Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  insuranceType String   // life, health, motor, travel, home, business
+  minAge        Int?
+  maxAge        Int?
+  baseRate      Float    // flat premium amount or percentage of sumInsured
+  rateType      String   @default("flat") // flat, percentage_of_sum_insured
+  gstPercentage Float    @default(18.0)
+  createdAt     DateTime @default(now())
+
+  @@index([insurerId])
+  @@map("premium_rate_charts")
+}
+
+model Renewal {
+  id         String    @id @default(cuid())
+  policyId   String    @unique
+  policy     Policy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  agentId    String?
+  agent      Admin?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  status     String    @default("pending") // pending, contacted, closed, lost
+  notes      String?   @db.Text
+  assignedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+  @@map("renewals")
+}
+
+model CommunicationTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  channel   String   // sms, email, push
+  trigger   String   @unique // policy_expiry, quote_approved, claim_update
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@map("communication_templates")
 }
