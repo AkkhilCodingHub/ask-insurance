@@ -99,6 +99,7 @@ function DetailSheet({ quote, onClose, onDone }: {
 
   // Status change state
   const [statusBusy, setStatusBusy] = useState(false);
+  const [stageBusy,  setStageBusy]  = useState(false);
 
   // Payment link state
   const [payUrl,     setPayUrl]     = useState<string | null>(null);
@@ -161,6 +162,13 @@ function DetailSheet({ quote, onClose, onDone }: {
     setStatusBusy(true);
     try { await agentApi.updateQuoteStatus(quote.id, status); onDone(); }
     catch { /* silent */ } finally { setStatusBusy(false); }
+  };
+
+  const changeStage = async (stage: 'new' | 'quotation_sent' | 'in_discussion' | 'closed' | 'lost') => {
+    if (!quote || stageBusy) return;
+    setStageBusy(true);
+    try { await agentApi.updateQuoteStage(quote.id, stage); onDone(); }
+    catch { /* silent */ } finally { setStageBusy(false); }
   };
 
   const generatePayment = async () => {
@@ -314,6 +322,36 @@ function DetailSheet({ quote, onClose, onDone }: {
                   </View>
                 </View>
               )}
+
+              {/* Lead Stage Selection */}
+              <View style={sh.card}>
+                <Text style={sh.cardTitle}>Lead Stage</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {([
+                    { id: 'new', label: 'New', color: '#10B981', bg: '#ECFDF5' },
+                    { id: 'quotation_sent', label: 'Quoted', color: '#3B82F6', bg: '#EFF6FF' },
+                    { id: 'in_discussion', label: 'In Discussion', color: '#F59E0B', bg: '#FFFBEB' },
+                    { id: 'closed', label: 'Closed (Won)', color: '#059669', bg: '#D1FAE5' },
+                    { id: 'lost', label: 'Lost', color: '#EF4444', bg: '#FEF2F2' }
+                  ] as const).map(item => {
+                    const active = (q.stage ?? 'new') === item.id;
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[sh.statusChip, { backgroundColor: active ? item.bg : Colors.bg, borderColor: active ? item.color : Colors.border }]}
+                        onPress={() => changeStage(item.id)}
+                        disabled={active || stageBusy}
+                        activeOpacity={0.75}
+                      >
+                        {stageBusy && !active ? <ActivityIndicator size="small" color={item.color} style={{ marginRight: 4 }} /> : null}
+                        <Text style={[sh.statusChipText, { color: active ? item.color : Colors.textMuted, fontWeight: active ? '700' : '500' }]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
 
               {/* Status change */}
               {q.status !== 'converted' && (
