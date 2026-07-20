@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, ViewStyle, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from './Icon';
 import { Colors } from '@/constants/theme';
@@ -12,10 +12,21 @@ interface BackButtonProps {
 
 export function BackButton({ onPress, color = Colors.text, style }: BackButtonProps) {
   const router = useRouter();
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      BackHandler.exitApp();
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[styles.btn, style]}
-      onPress={onPress ?? (() => router.back())}
+      onPress={handlePress}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Icon name="arrow-back-outline" size={22} color={color} />

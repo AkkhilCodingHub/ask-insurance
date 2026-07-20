@@ -290,7 +290,7 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLangState] = useState<LanguageCode>('en');
-  const [darkMode, setDarkModeState] = useState<boolean>(false);
+  const [darkMode, setDarkModeState] = useState<boolean>(true);
 
   useEffect(() => {
     (async () => {
@@ -301,6 +301,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         }
         if (typeof prefs?.darkMode === 'boolean') {
           setDarkModeState(prefs.darkMode);
+        } else {
+          setDarkModeState(true);
         }
       } catch {}
     })();
