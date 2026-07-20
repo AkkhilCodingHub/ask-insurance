@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { adminApi, AgentRecord } from "@/lib/api";
 import {
   UserCog, Plus, Trash2, Pencil, ShieldCheck, Shield,
-  ToggleLeft, ToggleRight, KeyRound, X, Eye, EyeOff,
+  ToggleLeft, ToggleRight, KeyRound, X, Eye, EyeOff, RefreshCw
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -212,12 +212,14 @@ function AgentModal({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AgentsPage() {
-  const [agents,  setAgents]  = useState<AgentRecord[]>([]);
+  const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState("");
-  const [modal,   setModal]   = useState<ModalState | null>(null);
+  const [error, setError] = useState("");
+  const [modal, setModal] = useState<ModalState | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"accounts" | "kyc">("accounts");
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true); setError("");
@@ -256,8 +258,34 @@ export default function AgentsPage() {
     setModal(null);
   };
 
+  const handleVerifyKyc = async (id: string, action: "approve" | "reject") => {
+    let reason: string | undefined;
+    if (action === "reject") {
+      const input = prompt("Please enter the reason for rejecting KYC:");
+      if (input === null) return; // Cancelled
+      if (!input.trim()) { alert("Rejection reason is required."); return; }
+      reason = input.trim();
+    } else {
+      if (!confirm("Approve this advisor's KYC?")) return;
+    }
+
+    setVerifyingId(id);
+    try {
+      await adminApi.verifyAgentKyc(id, action, reason);
+      alert(`KYC ${action === "approve" ? "approved" : "rejected"} successfully!`);
+      load(); // Reload to get updated KYC fields
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "KYC action failed.");
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   const active   = agents.filter(a => a.isActive).length;
   const superadmins = agents.filter(a => a.role === "superadmin").length;
+  const submittedKyc = agents.filter(a => a.kycStatus === "submitted").length;
+
+  const kycAgents = agents.filter(a => a.kycStatus && a.kycStatus !== "pending");
 
   return (
     <div style={{ padding: 32, minHeight: "100vh", background: "#F8FAFC" }}>
@@ -270,132 +298,239 @@ export default function AgentsPage() {
             </div>
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "#0F172A", margin: 0, letterSpacing: -0.5 }}>Agents</h1>
           </div>
-          <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Manage advisor accounts and their portal access.</p>
+          <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Manage advisor accounts and verify onboarding credentials.</p>
         </div>
-        <button
-          onClick={() => setModal({ mode: "create" })}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: "#3B82F6", color: "#fff", border: "none",
-            borderRadius: 12, padding: "11px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer",
-          }}
-        >
-          <Plus size={16} /> New Agent
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
-        {[
-          { label: "Total Agents", value: agents.length, color: "#3B82F6", bg: "#EFF6FF" },
-          { label: "Active",       value: active,         color: "#059669", bg: "#ECFDF5" },
-          { label: "Superadmins",  value: superadmins,    color: "#6D28D9", bg: "#EDE9FE" },
-        ].map(s => (
-          <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E2E8F0" }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.8, margin: "0 0 8px" }}>{s.label.toUpperCase()}</p>
-            <p style={{ fontSize: 32, fontWeight: 900, color: s.color, margin: "0 0 4px", letterSpacing: -1 }}>{s.value}</p>
-            <div style={{ height: 3, borderRadius: 2, background: s.bg, marginTop: 8 }} />
-          </div>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden" }}>
-        {/* Table header */}
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
-          {["Name", "Email", "Role", "Status", "Created", "Actions"].map(h => (
-            <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "#94A3B8", letterSpacing: 1 }}>{h.toUpperCase()}</span>
-          ))}
-        </div>
-
-        {loading && (
-          <div style={{ padding: 48, textAlign: "center", color: "#94A3B8" }}>Loading agents…</div>
-        )}
-        {error && (
-          <div style={{ padding: 48, textAlign: "center", color: "#DC2626" }}>
-            <p style={{ fontWeight: 700, marginBottom: 12 }}>{error}</p>
-            <button onClick={load} style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 10, padding: "8px 20px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Retry</button>
-          </div>
-        )}
-        {!loading && !error && agents.length === 0 && (
-          <div style={{ padding: 64, textAlign: "center" }}>
-            <UserCog size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 15, fontWeight: 700, color: "#94A3B8", margin: "0 0 6px" }}>No agents yet</p>
-            <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 20px" }}>Create the first agent account to grant portal access.</p>
-            <button onClick={() => setModal({ mode: "create" })} style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <Plus size={15} /> New Agent
-            </button>
-          </div>
-        )}
-
-        {!loading && agents.map((agent, i) => (
-          <div
-            key={agent.id}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={load}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+          <button
+            onClick={() => setModal({ mode: "create" })}
             style={{
-              display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px",
-              padding: "14px 20px", alignItems: "center",
-              borderBottom: i < agents.length - 1 ? "1px solid #F1F5F9" : "none",
-              background: agent.isActive ? "#fff" : "#FAFAFA",
-              transition: "background 0.15s",
+              display: "flex", alignItems: "center", gap: 8,
+              background: "#3B82F6", color: "#fff", border: "none",
+              borderRadius: 12, padding: "11px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer",
             }}
           >
-            {/* Name */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, background: "#EDE9FE",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 800, color: "#6D28D9", flexShrink: 0,
-              }}>
-                {agent.name.slice(0, 2).toUpperCase()}
-              </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{agent.name}</span>
-            </div>
+            <Plus size={16} /> New Agent
+          </button>
+        </div>
+      </div>
 
-            {/* Email */}
-            <span style={{ fontSize: 13, color: "#64748B" }}>{agent.email}</span>
-
-            {/* Role */}
-            <div><RoleBadge role={agent.role} /></div>
-
-            {/* Status toggle */}
-            <button
-              onClick={() => handleToggleActive(agent)}
-              disabled={togglingId === agent.id}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, padding: 0, opacity: togglingId === agent.id ? 0.5 : 1 }}
-            >
-              {agent.isActive
-                ? <ToggleRight size={24} color="#059669" />
-                : <ToggleLeft  size={24} color="#94A3B8" />
-              }
-              <span style={{ fontSize: 12, fontWeight: 600, color: agent.isActive ? "#059669" : "#94A3B8" }}>
-                {agent.isActive ? "Active" : "Inactive"}
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 10, borderBottom: "1.5px solid #E2E8F0", marginBottom: 24 }}>
+        {[
+          { id: "accounts", label: "Advisor Accounts", count: agents.length },
+          { id: "kyc", label: "Advisor Verification (KYC)", count: submittedKyc, countColor: "#DC2626" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id as any)} style={{
+            padding: "10px 16px", border: "none", background: "none", fontSize: 14, fontWeight: activeTab === t.id ? 800 : 500,
+            color: activeTab === t.id ? "#3B82F6" : "#64748B", borderBottom: activeTab === t.id ? "3px solid #3B82F6" : "none",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 8, marginBottom: -1.5
+          }}>
+            {t.label}
+            {t.count > 0 && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: t.countColor ? t.countColor + "18" : "#E2E8F0", color: t.countColor ?? "#64748B" }}>
+                {t.count}
               </span>
-            </button>
-
-            {/* Created */}
-            <span style={{ fontSize: 12, color: "#94A3B8" }}>{fmtDate(agent.createdAt)}</span>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                onClick={() => setModal({ mode: "edit", agent })}
-                title="Edit agent"
-                style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <Pencil size={13} color="#64748B" />
-              </button>
-              <button
-                onClick={() => handleDelete(agent.id)}
-                disabled={deleting === agent.id}
-                title="Delete agent"
-                style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #FEE2E2", background: "#FFF5F5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: deleting === agent.id ? 0.5 : 1 }}
-              >
-                <Trash2 size={13} color="#DC2626" />
-              </button>
-            </div>
-          </div>
+            )}
+          </button>
         ))}
       </div>
+
+      {activeTab === "accounts" ? (
+        <>
+          {/* Stats */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
+            {[
+              { label: "Total Agents", value: agents.length, color: "#3B82F6", bg: "#EFF6FF" },
+              { label: "Active",       value: active,         color: "#059669", bg: "#ECFDF5" },
+              { label: "Superadmins",  value: superadmins,    color: "#6D28D9", bg: "#EDE9FE" },
+            ].map(s => (
+              <div key={s.label} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E2E8F0" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.8, margin: "0 0 8px" }}>{s.label.toUpperCase()}</p>
+                <p style={{ fontSize: 32, fontWeight: 900, color: s.color, margin: "0 0 4px", letterSpacing: -1 }}>{s.value}</p>
+                <div style={{ height: 3, borderRadius: 2, background: s.bg, marginTop: 8 }} />
+              </div>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+            {/* Table header */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+              {["Name", "Email", "Role", "Status", "Created", "Actions"].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "#94A3B8", letterSpacing: 1 }}></span >
+              ))}
+            </div>
+
+            {loading && (
+              <div style={{ padding: 48, textAlign: "center", color: "#94A3B8" }}>Loading agents…</div>
+            )}
+            {error && (
+              <div style={{ padding: 48, textAlign: "center", color: "#DC2626" }}>
+                <p style={{ fontWeight: 700, marginBottom: 12 }}>{error}</p>
+                <button onClick={load} style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 10, padding: "8px 20px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>Retry</button>
+              </div>
+            )}
+            {!loading && !error && agents.length === 0 && (
+              <div style={{ padding: 64, textAlign: "center" }}>
+                <UserCog size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
+                <p style={{ fontSize: 15, fontWeight: 700, color: "#94A3B8", margin: "0 0 6px" }}>No agents yet</p>
+                <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 20px" }}>Create the first agent account to grant portal access.</p>
+                <button onClick={() => setModal({ mode: "create" })} style={{ background: "#3B82F6", color: "#fff", border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <Plus size={15} /> New Agent
+                </button>
+              </div>
+            )}
+
+            {!loading && agents.map((agent, i) => (
+              <div
+                key={agent.id}
+                style={{
+                  display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px",
+                  padding: "14px 20px", alignItems: "center",
+                  borderBottom: i < agents.length - 1 ? "1px solid #F1F5F9" : "none",
+                  background: agent.isActive ? "#fff" : "#FAFAFA",
+                  transition: "background 0.15s",
+                }}
+              >
+                {/* Name */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, background: "#EDE9FE",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13, fontWeight: 800, color: "#6D28D9", flexShrink: 0,
+                  }}>
+                    {agent.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{agent.name}</span>
+                </div>
+
+                {/* Email */}
+                <span style={{ fontSize: 13, color: "#64748B" }}>{agent.email}</span>
+
+                {/* Role */}
+                <div><RoleBadge role={agent.role} /></div>
+
+                {/* Status toggle */}
+                <button
+                  onClick={() => handleToggleActive(agent)}
+                  disabled={togglingId === agent.id}
+                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, padding: 0, opacity: togglingId === agent.id ? 0.5 : 1 }}
+                >
+                  {agent.isActive
+                    ? <span style={{ color: "#059669", display: "flex", alignItems: "center", gap: 6 }}><ToggleRight size={24} /> Active</span>
+                    : <span style={{ color: "#94A3B8", display: "flex", alignItems: "center", gap: 6 }}><ToggleLeft size={24} /> Inactive</span>
+                  }
+                </button>
+
+                {/* Created */}
+                <span style={{ fontSize: 12, color: "#94A3B8" }}>{fmtDate(agent.createdAt)}</span>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => setModal({ mode: "edit", agent })}
+                    title="Edit agent"
+                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Pencil size={13} color="#64748B" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(agent.id)}
+                    disabled={deleting === agent.id}
+                    title="Delete agent"
+                    style={{ width: 32, height: 32, borderRadius: 8, border: "1.5px solid #FEE2E2", background: "#FFF5F5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: deleting === agent.id ? 0.5 : 1 }}
+                  >
+                    <Trash2 size={13} color="#DC2626" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        /* KYC Verification Tab */
+        <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E2E8F0", overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px", padding: "12px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+            {["Agent", "Doc Type", "Submitted On", "Document URL", "KYC Status", "Actions"].map(h => (
+              <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "#94A3B8", letterSpacing: 1 }}>{h.toUpperCase()}</span>
+            ))}
+          </div>
+
+          {loading && <div style={{ padding: 48, textAlign: "center", color: "#94A3B8" }}>Loading submissions…</div>}
+
+          {!loading && kycAgents.length === 0 && (
+            <div style={{ padding: 64, textAlign: "center" }}>
+              <ShieldCheck size={40} color="#CBD5E1" style={{ marginBottom: 12 }} />
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#94A3B8", margin: "0 0 6px" }}>No verification requests</p>
+              <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>No agent KYC uploads are currently pending verification.</p>
+            </div>
+          )}
+
+          {!loading && kycAgents.map((agent, i) => {
+            const isSub = agent.kycStatus === "submitted";
+            const badgeBg = agent.kycStatus === "verified" ? "#ECFDF5" : isSub ? "#FFFBEB" : "#FEF2F2";
+            const badgeColor = agent.kycStatus === "verified" ? "#059669" : isSub ? "#D97706" : "#DC2626";
+            return (
+              <div key={agent.id} style={{
+                display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px",
+                padding: "14px 20px", alignItems: "center",
+                borderBottom: i < kycAgents.length - 1 ? "1px solid #F1F5F9" : "none",
+              }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", margin: "0 0 2px" }}>{agent.name}</p>
+                  <p style={{ fontSize: 11, color: "#94A3B8", margin: 0 }}>{agent.email}</p>
+                </div>
+
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#475569", textTransform: "capitalize" }}>
+                  {agent.kycDocType?.replace("_", " ") ?? "—"}
+                </span>
+
+                <span style={{ fontSize: 12, color: "#64748B" }}>
+                  {agent.kycSubmittedAt ? fmtDate(agent.kycSubmittedAt) : "—"}
+                </span>
+
+                <div>
+                  {agent.kycDocUrl ? (
+                    <a href={agent.kycDocUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 700, color: "#3B82F6", textDecoration: "none" }}>
+                      View Document ↗
+                    </a>
+                  ) : "—"}
+                </div>
+
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: badgeBg, color: badgeColor, textTransform: "capitalize" }}>
+                    {agent.kycStatus}
+                  </span>
+                  {agent.kycStatus === "rejected" && agent.kycRejectionReason && (
+                    <p style={{ fontSize: 11, color: "#DC2626", marginTop: 4 }}>Reason: {agent.kycRejectionReason}</p>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 6 }}>
+                  {isSub ? (
+                    <>
+                      <button onClick={() => handleVerifyKyc(agent.id, "approve")} disabled={verifyingId === agent.id}
+                        style={{ flex: 1, padding: "6px 0", background: "#059669", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        Approve
+                      </button>
+                      <button onClick={() => handleVerifyKyc(agent.id, "reject")} disabled={verifyingId === agent.id}
+                        style={{ flex: 1, padding: "6px 0", background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        Reject
+                      </button>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic" }}>No actions</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {modal && <AgentModal state={modal} onClose={() => setModal(null)} onSaved={handleSaved} />}
     </div>

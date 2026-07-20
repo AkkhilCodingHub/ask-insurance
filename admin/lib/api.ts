@@ -272,6 +272,14 @@ export interface AgentRecord {
   isActive:     boolean;
   createdAt:    string;
   storageUsed?: number;
+  
+  // KYC fields
+  kycStatus?:          string;
+  kycDocType?:         string | null;
+  kycDocUrl?:          string | null;
+  kycRejectionReason?: string | null;
+  kycSubmittedAt?:     string | null;
+  kycVerifiedAt?:      string | null;
 }
 
 // ── Analytics Types ────────────────────────────────────────────────────────
@@ -666,6 +674,41 @@ class AdminApiClient {
   async rejectKyc(userId: string, reason: string): Promise<void> {
     const { data } = await this.instance.post(`/kyc/${userId}/reject`, { reason });
     if (data.error) throw new Error(data.error);
+  }
+
+  async verifyAgentKyc(agentId: string, action: 'approve' | 'reject', reason?: string): Promise<void> {
+    const { data } = await this.instance.post(`/agents/${agentId}/kyc/verify`, { action, reason });
+    if (data.error) throw new Error(data.error);
+  }
+
+  async getBrokerageSlabs(): Promise<any[]> {
+    const { data } = await this.instance.get('/brokerage/slabs');
+    if (data.error) throw new Error(data.error);
+    return data.slabs || [];
+  }
+
+  async saveBrokerageSlab(insurerId: string, insuranceType: string, percentage: number): Promise<any> {
+    const { data } = await this.instance.post('/brokerage/slabs', { insurerId, insuranceType, percentage });
+    if (data.error) throw new Error(data.error);
+    return data.slab;
+  }
+
+  async getBrokerageStats(): Promise<any> {
+    const { data } = await this.instance.get('/brokerage/stats');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async releaseBrokeragePayout(policyId: string): Promise<any> {
+    const { data } = await this.instance.post(`/brokerage/release/${policyId}`);
+    if (data.error) throw new Error(data.error);
+    return data.policy;
+  }
+
+  async getActivityLogs(): Promise<any[]> {
+    const { data } = await this.instance.get('/logs');
+    if (data.error) throw new Error(data.error);
+    return data.logs || [];
   }
 }
 
