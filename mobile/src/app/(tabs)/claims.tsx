@@ -9,6 +9,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { claimsApi, policiesApi, ApiClaim, ApiPolicy } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useDialog } from '@/components/Dialog';
 
@@ -256,6 +257,7 @@ function ClaimProgressSheet({ claim, visible, onClose }: {
 }
 
 function ClaimCard({ claim }: { claim: ApiClaim }) {
+  const colors  = useThemeColors();
   const [progressOpen, setProgressOpen] = useState(false);
   const color   = STATUS_COLOR[claim.status] ?? Colors.primary;
   const label   = STATUS_LABEL[claim.status]  ?? claim.status;
@@ -265,15 +267,15 @@ function ClaimCard({ claim }: { claim: ApiClaim }) {
   const iconName = (TYPE_ICONS[typeKey] ?? 'document-text-outline') as ComponentProps<typeof Icon>['name'];
 
   return (
-    <View style={c.card}>
+    <View style={[c.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={c.body}>
         <View style={c.top}>
-          <View style={c.iconWrap}>
+          <View style={[c.iconWrap, { backgroundColor: colors.primaryLight }]}>
             <Icon name={iconName} size={20} color={Colors.primary} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={c.desc} numberOfLines={2}>{claim.description}</Text>
-            <Text style={c.sub}>{claim.policy?.provider ?? '—'} · {date}</Text>
+            <Text style={[c.desc, { color: colors.text }]} numberOfLines={2}>{claim.description}</Text>
+            <Text style={[c.sub, { color: colors.textMuted }]}>{claim.policy?.provider ?? '—'} · {date}</Text>
           </View>
           <View style={[c.statusPill, { backgroundColor: color + '12', borderColor: color + '28' }]}>
             <View style={[c.statusDot, { backgroundColor: color }]} />
@@ -281,43 +283,29 @@ function ClaimCard({ claim }: { claim: ApiClaim }) {
           </View>
         </View>
 
-        <View style={c.meta}>
+        <View style={[c.meta, { borderTopColor: colors.border }]}>
           <View style={c.metaCell}>
-            <Text style={c.metaLabel}>Amount</Text>
+            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Amount</Text>
             <Text style={c.metaValueAccent}>{formatAmount(claim.amount)}</Text>
           </View>
-          <View style={c.metaSep} />
+          <View style={[c.metaSep, { backgroundColor: colors.border }]} />
           <View style={[c.metaCell, c.metaCellMid]}>
-            <Text style={c.metaLabel}>Claim no.</Text>
-            <Text style={c.metaValue} numberOfLines={1}>{claim.claimNumber}</Text>
+            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Claim no.</Text>
+            <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{claim.claimNumber}</Text>
           </View>
-          <View style={c.metaSep} />
+          <View style={[c.metaSep, { backgroundColor: colors.border }]} />
           <View style={[c.metaCell, c.metaCellEnd]}>
-            <Text style={c.metaLabel}>Type</Text>
-            <Text style={c.metaValue} numberOfLines={1}>{capitalize(claim.type)}</Text>
+            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Type</Text>
+            <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{capitalize(claim.type)}</Text>
           </View>
         </View>
       </View>
-
-      <TouchableOpacity
-        style={c.trackBtn}
-        onPress={() => setProgressOpen(true)}
-        activeOpacity={0.7}
-      >
-        <Text style={c.trackBtnText}>View progress</Text>
-        <Icon name="chevron-down-outline" size={16} color={Colors.textMuted} />
-      </TouchableOpacity>
-
-      <ClaimProgressSheet
-        claim={claim}
-        visible={progressOpen}
-        onClose={() => setProgressOpen(false)}
-      />
     </View>
   );
 }
 
 export default function ClaimsTab() {
+  const colors = useThemeColors();
   const { alert } = useDialog();
   const [claims, setClaims]         = useState<ApiClaim[]>([]);
   const [policies, setPolicies]     = useState<ApiPolicy[]>([]);
@@ -379,19 +367,18 @@ export default function ClaimsTab() {
     }
     setSubmitting(true);
     try {
-      const { claim } = await claimsApi.create({
+      await claimsApi.create({
         policyId: selectedPolicy.id,
         type: selectedPolicy.type,
+        incidentDate: new Date().toISOString(),
+        description: desc.trim(),
         amount: Number(amount),
-        description: desc,
-        incidentDate: new Date().toISOString()
       });
-      setClaims(prev => [claim, ...prev]);
       setModalVisible(false);
-      setStep(1); setAmount(''); setDesc('');
-      alert({ type: 'success', title: 'Claim Submitted!', message: `Your claim has been received.\nClaim No: ${claim.claimNumber}` });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Please try again.';
+      alert({ type: 'success', title: 'Claim filed!', message: 'Your claim was submitted successfully.' });
+      loadClaims();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Submission failed';
       alert({ type: 'error', title: 'Error', message: msg });
     } finally {
       setSubmitting(false);
@@ -405,12 +392,12 @@ export default function ClaimsTab() {
   };
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.header}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={s.kicker}>Claims</Text>
-          <Text style={s.title}>My claims</Text>
-          <Text style={s.sub}>
+          <Text style={[s.title, { color: colors.text }]}>My claims</Text>
+          <Text style={[s.sub, { color: colors.textMuted }]}>
             {loadingClaims ? 'Fetching your claims…' : `${claims.length} on record`}
           </Text>
         </View>

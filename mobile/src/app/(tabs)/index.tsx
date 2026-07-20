@@ -10,6 +10,7 @@ import { useAuth } from '@/context/auth';
 import { usersApi, plansApi, ApiPolicy, ApiPlan, DashboardData } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useLanguage, useThemeColors } from '@/context/agent';
 
 const { width: W } = Dimensions.get('window');
 
@@ -153,6 +154,8 @@ function getKycHomeBannerVisuals(status: string | undefined): KycHomeBannerVisua
 export default function HomeTab() {
   const router   = useRouter();
   const { user, refreshUser } = useAuth();
+  const colors = useThemeColors();
+  const { t } = useLanguage();
 
   const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
@@ -186,9 +189,9 @@ export default function HomeTab() {
   const policies = dashboard?.policies ?? [];
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       <ScrollView
-        style={s.scroll}
+        style={[s.scroll, { backgroundColor: colors.bg }]}
         contentContainerStyle={{ paddingBottom: BottomTabInset + 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
@@ -217,21 +220,21 @@ export default function HomeTab() {
 
           {/* Stat chips */}
           <View style={s.statsRow}>
-            <View style={s.statChip}>
+            <View style={[s.statChip, { backgroundColor: colors.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)' }]}>
               <View style={s.statChipIcon}>
                 <Icon name="shield-checkmark-outline" size={14} color={Colors.primary} />
               </View>
               <Text style={s.statNum}>{activePolicies}</Text>
               <Text style={s.statLbl}>Active{'\n'}Policies</Text>
             </View>
-            <View style={[s.statChip, s.statChipMid]}>
+            <View style={[s.statChip, s.statChipMid, { backgroundColor: colors.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)' }]}>
               <View style={[s.statChipIcon, openClaims > 0 && { backgroundColor: Colors.warning + '20' }]}>
                 <Icon name="document-text-outline" size={14} color={openClaims > 0 ? Colors.warning : Colors.primary} />
               </View>
               <Text style={[s.statNum, openClaims > 0 && { color: Colors.warning }]}>{openClaims}</Text>
               <Text style={s.statLbl}>Open{'\n'}Claims</Text>
             </View>
-            <View style={s.statChip}>
+            <View style={[s.statChip, { backgroundColor: colors.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.18)' }]}>
               <View style={s.statChipIcon}>
                 <Icon name="business-outline" size={14} color={Colors.primary} />
               </View>
@@ -242,7 +245,7 @@ export default function HomeTab() {
         </View>
 
         {/* ── Body ───────────────────────────────────── */}
-        <View style={s.body}>
+        <View style={[s.body, { backgroundColor: colors.bg }]}>
 
           {/* Guest nudge — shown when not logged in */}
           {!user && (
