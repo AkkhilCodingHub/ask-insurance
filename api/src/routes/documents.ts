@@ -44,12 +44,17 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
 
       const digilockerDocs = Array.isArray(user.kycDocuments) ? (user.kycDocuments as any[]) : [];
 
+      const formattedUploaded = (user.userDocuments ?? []).map((d: any) => ({
+        ...d,
+        fileSize: d.fileSize ? Number(d.fileSize) : null,
+      }));
+
       res.json({
         digilockerLinked: Boolean(user.digilockerSub || user.kycStatus === 'verified'),
         kycStatus: user.kycStatus,
         digilockerVerifiedAt: user.kycVerifiedAt,
         digilockerDocuments: digilockerDocs,
-        uploadedDocuments: user.userDocuments ?? [],
+        uploadedDocuments: formattedUploaded,
       });
       return;
     }
@@ -75,12 +80,17 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
 
       const digilockerDocs = Array.isArray(admin.kycDocuments) ? (admin.kycDocuments as any[]) : [];
 
+      const formattedUploaded = (admin.userDocuments ?? []).map((d: any) => ({
+        ...d,
+        fileSize: d.fileSize ? Number(d.fileSize) : null,
+      }));
+
       res.json({
         digilockerLinked: Boolean(admin.digilockerSub || admin.kycStatus === 'verified'),
         kycStatus: admin.kycStatus,
         digilockerVerifiedAt: admin.kycVerifiedAt,
         digilockerDocuments: digilockerDocs,
-        uploadedDocuments: admin.userDocuments ?? [],
+        uploadedDocuments: formattedUploaded,
       });
       return;
     }
