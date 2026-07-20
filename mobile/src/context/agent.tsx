@@ -336,6 +336,41 @@ export function useLanguage() {
   return ctx;
 }
 
+export function useThemeColors() {
+  const { darkMode } = useLanguage();
+  return darkMode ? {
+    bg: '#090D16',
+    bgWarm: '#111827',
+    white: '#111827',
+    card: '#111827',
+    text: '#F8FAFC',
+    textMuted: '#9CA3AF',
+    textLight: '#6B7280',
+    border: '#1F2937',
+    primary: '#1580FF',
+    primaryLight: 'rgba(21, 128, 255, 0.15)',
+    success: '#059669',
+    error: '#DC2626',
+    warning: '#D97706',
+    isDark: true,
+  } : {
+    bg: '#F6F9FC',
+    bgWarm: '#EFF3F8',
+    white: '#FFFFFF',
+    card: '#FFFFFF',
+    text: '#0A1628',
+    textMuted: '#5A6B80',
+    textLight: '#8C9DB0',
+    border: '#DDE4EC',
+    primary: '#1580FF',
+    primaryLight: '#E8F2FF',
+    success: '#059669',
+    error: '#DC2626',
+    warning: '#D97706',
+    isDark: false,
+  };
+}
+
 export function LanguagePickerModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { language, setLanguage, t } = useLanguage();
 
