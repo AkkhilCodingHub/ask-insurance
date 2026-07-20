@@ -16,7 +16,8 @@ console.log('[DigiLocker Config] Loaded values:', {
 });
 
 // files.issueddocs → access issued document list (PAN, Driving License, Aadhaar, etc.)
-const SCOPE = 'files.issueddocs';
+// files.uploadeddocs → access personal documents in DigiLocker Drive
+const SCOPE = 'files.issueddocs files.uploadeddocs';
 
 export interface DigiLockerTokens {
   access_token:  string;
