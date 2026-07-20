@@ -51,6 +51,36 @@ html[data-theme="dark"] {
   --info-light:     rgba(8, 145, 178, 0.15);
 }
 
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background: #FFF"],
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+html[data-theme="dark"] [style*="background:var(--white)"] {
+  background-color: var(--white) !important;
+}
+
+html[data-theme="dark"] [style*="border: 1px solid #E2E8F0"],
+html[data-theme="dark"] [style*="border: 1.5px solid #E2E8F0"] {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] [style*="color: #0F172A"],
+html[data-theme="dark"] [style*="color: #1E293B"] {
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] table th {
+  background-color: var(--white) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  color: var(--text) !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
