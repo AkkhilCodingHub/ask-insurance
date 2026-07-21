@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Returning user — restore saved profile or default
       const restoredUser: AuthUser = {
         id: `user_${phone}`,
-        name: "Hardil Singh",
+        name: "Akkhil Sharma",
         phone,
         dob: "15/08/1992",
       };
