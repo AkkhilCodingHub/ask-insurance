@@ -11,7 +11,7 @@ import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib
 import { logActivity } from '../lib/activity';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
-const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'hardilsingh87@gmail.com']);
+const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'admin@ask-insurance.in']);
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const upload = multer({
