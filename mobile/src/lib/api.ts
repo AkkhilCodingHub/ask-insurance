@@ -1,15 +1,28 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    return `http://${host}:4000`;
+  let url = process.env.EXPO_PUBLIC_API_URL;
+  if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const host = hostUri.split(':')[0];
+      url = `http://${host}:4000`;
+    } else {
+      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+    }
   }
-  return 'http://localhost:4000';
+  if (!url) {
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+  }
+  if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    const host = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
+    url = url.replace(/localhost|127\.0\.0\.1/, host);
+  }
+  return url;
 }
 
 const BASE_URL = resolveBaseUrl();
@@ -612,6 +625,12 @@ export interface AgentAdmin {
   name:  string;
   email: string;
   role:  string;
+  kycStatus?:          string;
+  kycDocType?:         string | null;
+  kycDocUrl?:          string | null;
+  kycRejectionReason?: string | null;
+  kycSubmittedAt?:     string | null;
+  kycVerifiedAt?:      string | null;
 }
 
 export interface AgentQuote {
@@ -624,6 +643,7 @@ export interface AgentQuote {
   approvedAt:      string | null;
   createdAt:       string;
   user:            { id: string; name: string | null; phone: string; email: string | null };
+  stage?:          string;
 }
 
 export interface AgentPolicy {
@@ -668,6 +688,9 @@ export const agentApi = {
       method: 'POST',
       body:   JSON.stringify({ email, password }),
     }),
+
+  getProfile: () =>
+    agentRequest<{ admin: AgentAdmin }>('/api/admin/me').then(r => r.admin),
 
   getQuotes: (status?: string, page = 1) => {
     const qs = new URLSearchParams({ page: String(page), limit: '50' });
@@ -779,6 +802,53 @@ export const agentApi = {
 
   getChatUnread: () =>
     agentRequest<{ unread: number }>('/api/admin/chat/unread').then(r => r.unread),
+
+  updateQuoteStage: (quoteId: string, stage: 'new' | 'quotation_sent' | 'in_discussion' | 'closed' | 'lost') =>
+    agentRequest<{ quote: AgentQuote }>(`/api/admin/quotes/${quoteId}/stage`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ stage }),
+    }),
+
+  getCustomers: () =>
+    agentRequest<{ customers: any[] }>('/api/admin/customers').then(r => r.customers),
+
+  addCustomer: (data: { name: string; phone: string; email?: string | null }) =>
+    agentRequest<{ customer: any }>('/api/admin/customers', {
+      method: 'POST',
+      body:   JSON.stringify(data),
+    }),
+
+  uploadKycDocument: async (
+    docType: 'aadhaar' | 'driving_license' | 'passport',
+    fileUri: string,
+    mimeType: string,
+    fileName: string,
+  ): Promise<{ success: boolean; kycStatus: string; docUrl: string }> => {
+    const token = await getAgentToken();
+    const form  = new FormData();
+    form.append('docType', docType);
+    form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
+
+    const url = `${BASE_URL}/api/admin/agents/kyc/upload`;
+    const resp = await fetch(url, {
+      method:  'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body:    form,
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
+    return data;
+  },
+
+  // ── Renewals ──────────────────────────────────────────────────────────────
+  getRenewals: () =>
+    agentRequest<{ renewals: any[] }>('/api/admin/renewals').then(r => r.renewals),
+
+  updateRenewalStatus: (id: string, status: 'pending' | 'contacted' | 'closed' | 'lost', notes?: string) =>
+    agentRequest<{ renewal: any }>(`/api/admin/renewals/${id}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ status, ...(notes ? { notes } : {}) }),
+    }),
 };
 
 // ── KYC ───────────────────────────────────────────────────────────────────────
@@ -787,12 +857,20 @@ export const kycApi = {
   initiate: () =>
     request<{ url: string; state: string; codeVerifier: string }>('/api/kyc/initiate', {}, true),
 
-  callback: (code: string, state: string, codeVerifier: string) =>
-    request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
+  callback: (
+    codeOrObj: string | { code: string; state: string; codeVerifier: string },
+    state?: string,
+    codeVerifier?: string,
+  ) => {
+    const payload = typeof codeOrObj === 'object'
+      ? codeOrObj
+      : { code: codeOrObj, state: state!, codeVerifier: codeVerifier! };
+    return request<{ success: boolean; kycStatus: string; aadhaarVerified: boolean; documentsCount: number }>(
       '/api/kyc/callback',
-      { method: 'POST', body: JSON.stringify({ code, state, codeVerifier }) },
+      { method: 'POST', body: JSON.stringify(payload) },
       true,
-    ),
+    );
+  },
 
   status: () =>
     request<{
@@ -822,4 +900,37 @@ export const kycApi = {
     if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
     return data;
   },
+};
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+
+export const documentsApi = {
+  getDocuments: () =>
+    request<{
+      digilockerLinked: boolean;
+      kycStatus: string;
+      digilockerVerifiedAt: string | null;
+      digilockerDocuments: any[];
+      uploadedDocuments: any[];
+    }>('/api/documents', {}, true),
+
+  uploadDocument: async (fileUri: string, fileName: string, mimeType: string, title?: string, docType?: string) => {
+    const token = await getToken();
+    const form = new FormData();
+    form.append('file', { uri: fileUri, type: mimeType, name: fileName } as any);
+    if (title) form.append('title', title);
+    if (docType) form.append('docType', docType);
+
+    const res = await fetch(`${BASE_URL}/api/documents/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? 'Upload failed');
+    return data;
+  },
+
+  deleteDocument: (id: string) =>
+    request<{ success: boolean }>(`/api/documents/${id}`, { method: 'DELETE' }, true),
 };

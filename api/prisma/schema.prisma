@@ -47,6 +47,11 @@ model User {
   payments      Payment[]
   notifications Notification[]
   conversations Conversation[]
+  userDocuments UserDocument[]
+
+  // Agent Assignment
+  agentId     String?
+  agent       Admin?         @relation("AgentCustomers", fields: [agentId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([email])
@@ -72,6 +77,8 @@ model Insurer {
 
   plans    Plan[]
   policies Policy[]
+  brokerageSlabs BrokerageSlab[]
+  rateCharts     PremiumRateChart[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -123,6 +130,12 @@ model Policy {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Brokerage Tracking
+  brokerageRate   Float?
+  brokerageAmount Float?
+  brokerageStatus String    @default("pending") // pending, paid
+  brokeragePaidAt DateTime?
+
   // Relations
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -134,6 +147,7 @@ model Policy {
   plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
   claims    Claim[]
   payments  Payment[]
+  renewal   Renewal?
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -179,6 +193,7 @@ model Quote {
   details         String    @db.Text  // JSON: user requirements (age, cover, etc.)
   providers       String    @db.Text  // JSON: kept for legacy, empty for new flow
   status          String    @default("pending") // pending, responded, approved, converted, expired
+  stage           String    @default("new")     // new, quotation_sent, in_discussion, closed, lost
   // Admin's actual quote response
   adminResponse   String?   @db.Text  // JSON: { insurer, planName, netPremium, gst, totalPremium, notes }
   adminResponseAt DateTime?
@@ -252,8 +267,26 @@ model Admin {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Agent KYC & DigiLocker Storage
+  kycStatus          String    @default("pending") // pending | submitted | verified | rejected
+  digilockerSub      String?   @unique
+  kycDocType         String?   // aadhaar | driving_license | passport
+  kycDocUrl          String?   // R2 public URL
+  kycDocuments       Json?     // raw DigiLocker issued-files metadata
+  kycRejectionReason String?
+  kycSubmittedAt     DateTime?
+  kycVerifiedAt      DateTime?
+
+  // Agent Settings / Assignments
+  assignedInsurers       Json? // JSON array of Insurer IDs
+  assignedInsuranceTypes Json? // JSON array of plan types (e.g. ["life", "health"])
+
   conversations Conversation[]
   files         AdminFile[]
+  userDocuments UserDocument[]
+  addedUsers    User[]         @relation("AgentCustomers")
+  activityLogs  ActivityLog[]
+  renewals      Renewal[]
 
   @@index([isActive])
   @@index([createdAt])
@@ -328,4 +361,114 @@ model OtpChallenge {
   @@index([phone, consumedAt])
   @@index([userId])
   @@map("otp_challenges")
+}
+
+model BrokerageSlab {
+  id            String   @id @default(cuid())
+  insurerId     String
+  insurer       Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  insuranceType String   // life, health, motor, travel, home, business
+  percentage    Float    // e.g. 15.5 for 15.5%
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([insurerId, insuranceType])
+  @@map("brokerage_slabs")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action    String
+  details   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model QuotationTemplate {
+  id                 String   @id @default(cuid())
+  name               String
+  type               String   // life, health, motor, travel, home, business
+  subject            String?
+  headerText         String?  @db.Text
+  footerText         String?  @db.Text
+  termsAndConditions String?  @db.Text
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@map("quotation_templates")
+}
+
+model PremiumRateChart {
+  id            String   @id @default(cuid())
+  insurerId     String
+  insurer       Insurer  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  insuranceType String   // life, health, motor, travel, home, business
+  minAge        Int?
+  maxAge        Int?
+  baseRate      Float    // flat premium amount or percentage of sumInsured
+  rateType      String   @default("flat") // flat, percentage_of_sum_insured
+  gstPercentage Float    @default(18.0)
+  createdAt     DateTime @default(now())
+
+  @@index([insurerId])
+  @@map("premium_rate_charts")
+}
+
+model Renewal {
+  id         String    @id @default(cuid())
+  policyId   String    @unique
+  policy     Policy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  agentId    String?
+  agent      Admin?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  status     String    @default("pending") // pending, contacted, closed, lost
+  notes      String?   @db.Text
+  assignedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+  @@map("renewals")
+}
+
+model CommunicationTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  channel   String   // sms, email, push
+  trigger   String   @unique // policy_expiry, quote_approved, claim_update
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@map("communication_templates")
+}
+
+model UserDocument {
+  id            String   @id @default(cuid())
+  title         String
+  docType       String   // aadhaar, pan, driving_license, vehicle_rc, policy, custom
+  source        String   // digilocker | user_upload
+  fileUrl       String?  // R2 public URL
+  fileKey       String?  // R2 object key
+  mimeType      String?
+  fileSize      BigInt?
+  digilockerUri String?  // DigiLocker document URI e.g. in.gov.uidai-adhaar-...
+  issuer        String?
+  issueDate     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminId       String?
+  admin         Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([source])
+  @@map("user_documents")
 }

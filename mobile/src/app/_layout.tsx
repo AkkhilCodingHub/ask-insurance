@@ -1,44 +1,44 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { FloatingSupportChat } from '@/components/FloatingSupportChat';
 import { AuthProvider } from '@/context/auth';
-import { AgentProvider } from '@/context/agent';
+import { AgentProvider, LanguageProvider, useThemeColors } from '@/context/agent';
 import { DialogProvider } from '@/components/Dialog';
 import { NotificationProvider } from '@/components/NotificationToast';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 
 // Prevent splash screen auto-hiding while loading fonts
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    ...Ionicons.font,
-  });
+function RootContent() {
+  const colors = useThemeColors();
+  const router = useRouter();
 
   useEffect(() => {
-    if (error) console.error('[RootLayout] Font loading error:', error);
-  }, [error]);
+    const onBackPress = () => {
+      if (!router.canGoBack()) {
+        BackHandler.exitApp();
+        return true;
+      }
+      return false;
+    };
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [router]);
 
   return (
     <NotificationProvider>
     <DialogProvider>
     <AgentProvider>
     <AuthProvider>
-      <View style={styles.root}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <View style={[styles.root, { backgroundColor: colors.bg }]}>
+      <StatusBar style={colors.isDark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Screen name="index"        options={{ animation: 'none' }} />
         <Stack.Screen name="welcome"      options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)"       options={{ animation: 'fade' }} />
@@ -69,6 +69,32 @@ export default function RootLayout() {
     </AgentProvider>
     </DialogProvider>
     </NotificationProvider>
+  );
+}
+
+export default function RootLayout() {
+  const [loaded, error] = useFonts({
+    ...Ionicons.font,
+  });
+
+  useEffect(() => {
+    if (error) console.error('[RootLayout] Font loading error:', error);
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
+  return (
+    <LanguageProvider>
+      <RootContent />
+    </LanguageProvider>
   );
 }
 

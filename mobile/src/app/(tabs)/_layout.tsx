@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 
+import { useLanguage, useThemeColors } from '@/context/agent';
+
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { outline: IoniconsName; filled: IoniconsName }> = {
@@ -16,14 +18,6 @@ const TAB_ICONS: Record<string, { outline: IoniconsName; filled: IoniconsName }>
   claims:  { outline: 'shield-outline',           filled: 'shield'             },
   chat:    { outline: 'chatbubble-outline',        filled: 'chatbubble'         },
   profile: { outline: 'person-outline',           filled: 'person'             },
-};
-
-const TAB_LABELS: Record<string, string> = {
-  index:   'Home',
-  plans:   'Plans',
-  claims:  'Claims',
-  chat:    'Support',
-  profile: 'Profile',
 };
 
 /** Wraps each tab screen in a fade-in animation on focus */
@@ -48,21 +42,31 @@ export function FadeScreen({ children }: { children: React.ReactNode }) {
 
 export default function TabLayout() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const tabBarHeight = 52 + insets.bottom;
 
   if (loading) return null;
   if (!user) return <Redirect href="/login" />;
 
+  const TAB_LABELS: Record<string, string> = {
+    index:   t('home', 'Home'),
+    plans:   t('plans', 'Plans'),
+    claims:  t('claims', 'Claims'),
+    chat:    t('chat', 'Support'),
+    profile: t('profile', 'Profile'),
+  };
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           height: tabBarHeight,
           paddingTop: 8,
@@ -84,8 +88,8 @@ export default function TabLayout() {
           );
         },
         title: TAB_LABELS[route.name] ?? route.name,
-        // Fade between tab screens
-        sceneStyle: { backgroundColor: Colors.bg },
+        // Dynamic tab screen background
+        sceneStyle: { backgroundColor: colors.bg },
       })}
     >
       <Tabs.Screen name="index" />

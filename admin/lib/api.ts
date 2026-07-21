@@ -272,6 +272,14 @@ export interface AgentRecord {
   isActive:     boolean;
   createdAt:    string;
   storageUsed?: number;
+  
+  // KYC fields
+  kycStatus?:          string;
+  kycDocType?:         string | null;
+  kycDocUrl?:          string | null;
+  kycRejectionReason?: string | null;
+  kycSubmittedAt?:     string | null;
+  kycVerifiedAt?:      string | null;
 }
 
 // ── Analytics Types ────────────────────────────────────────────────────────
@@ -286,6 +294,7 @@ export interface AnalyticsData {
   }[];
   topPlans: { id: string; name: string; type: string; _count: { policies: number } }[];
   topInsurers: { insurerId: string | null; name: string; shortName: string; premium: number; policies: number }[];
+  renewals?: { total: number; pending: number; contacted: number; closed: number; lost: number };
 }
 
 // ── Users Response ─────────────────────────────────────────────────────
@@ -321,6 +330,7 @@ class AdminApiClient {
       (error) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('adminToken');
+          localStorage.removeItem('ask_admin');
           window.location.href = '/login';
         }
         const message = error.response?.data?.error || error.response?.data?.message || error.message;
@@ -666,6 +676,119 @@ class AdminApiClient {
   async rejectKyc(userId: string, reason: string): Promise<void> {
     const { data } = await this.instance.post(`/kyc/${userId}/reject`, { reason });
     if (data.error) throw new Error(data.error);
+  }
+
+  async verifyAgentKyc(agentId: string, action: 'approve' | 'reject', reason?: string): Promise<void> {
+    const { data } = await this.instance.post(`/agents/${agentId}/kyc/verify`, { action, reason });
+    if (data.error) throw new Error(data.error);
+  }
+
+  async getBrokerageSlabs(): Promise<any[]> {
+    const { data } = await this.instance.get('/brokerage/slabs');
+    if (data.error) throw new Error(data.error);
+    return data.slabs || [];
+  }
+
+  async saveBrokerageSlab(insurerId: string, insuranceType: string, percentage: number): Promise<any> {
+    const { data } = await this.instance.post('/brokerage/slabs', { insurerId, insuranceType, percentage });
+    if (data.error) throw new Error(data.error);
+    return data.slab;
+  }
+
+  async getBrokerageStats(): Promise<any> {
+    const { data } = await this.instance.get('/brokerage/stats');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async releaseBrokeragePayout(policyId: string): Promise<any> {
+    const { data } = await this.instance.post(`/brokerage/release/${policyId}`);
+    if (data.error) throw new Error(data.error);
+    return data.policy;
+  }
+
+  async getActivityLogs(): Promise<any[]> {
+    const { data } = await this.instance.get('/logs');
+    if (data.error) throw new Error(data.error);
+    return data.logs || [];
+  }
+
+  async exportBrokerage(): Promise<Blob> {
+    const response = await this.instance.get('/brokerage/export', { responseType: 'blob' });
+    return response.data;
+  }
+
+  // ── Quotation Templates ─────────────────────────────────────────────────────
+  async getQuotationTemplates(): Promise<any[]> {
+    const { data } = await this.instance.get('/templates');
+    if (data.error) throw new Error(data.error);
+    return data.templates || [];
+  }
+
+  async saveQuotationTemplate(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/templates', payload);
+    if (data.error) throw new Error(data.error);
+    return data.template;
+  }
+
+  async deleteQuotationTemplate(id: string): Promise<void> {
+    await this.instance.delete(`/templates/${id}`);
+  }
+
+  // ── Premium Rate Charts ─────────────────────────────────────────────────────
+  async getRateCharts(): Promise<any[]> {
+    const { data } = await this.instance.get('/rate-charts');
+    if (data.error) throw new Error(data.error);
+    return data.charts || [];
+  }
+
+  async saveRateChart(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/rate-charts', payload);
+    if (data.error) throw new Error(data.error);
+    return data.chart;
+  }
+
+  async deleteRateChart(id: string): Promise<void> {
+    await this.instance.delete(`/rate-charts/${id}`);
+  }
+
+  // ── Renewals ────────────────────────────────────────────────────────────────
+  async getRenewals(): Promise<any> {
+    const { data } = await this.instance.get('/renewals');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async autoDetectRenewals(): Promise<any> {
+    const { data } = await this.instance.post('/renewals/auto-detect');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async updateRenewal(id: string, payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.patch(`/renewals/${id}`, payload);
+    if (data.error) throw new Error(data.error);
+    return data.renewal;
+  }
+
+  // ── Communication Templates ─────────────────────────────────────────────────
+  async getCommunicationTemplates(): Promise<any[]> {
+    const { data } = await this.instance.get('/communication-templates');
+    if (data.error) throw new Error(data.error);
+    return data.templates || [];
+  }
+
+  async saveCommunicationTemplate(payload: Record<string, any>): Promise<any> {
+    const { data } = await this.instance.post('/communication-templates', payload);
+    if (data.error) throw new Error(data.error);
+    return data.template;
+  }
+
+  // ── Admin list (for renewals assignment) ────────────────────────────────────
+  async getAdminList(): Promise<any> {
+    const { data } = await this.instance.get('/agents');
+    if (data.error) throw new Error(data.error);
+    return data;
   }
 }
 

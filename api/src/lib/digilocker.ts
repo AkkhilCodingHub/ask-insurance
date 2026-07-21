@@ -15,9 +15,9 @@ console.log('[DigiLocker Config] Loaded values:', {
   REDIRECT_URI
 });
 
-// files.issueddocs → access issued document list
-// Note: openid scope is not compatible with client_credentials token auth method
-const SCOPE = 'files.issueddocs';
+// files.issueddocs → access issued document list (PAN, Driving License, Aadhaar, etc.)
+// files.uploadeddocs → access personal documents in DigiLocker Drive
+const SCOPE = 'files.issueddocs files.uploadeddocs';
 
 export interface DigiLockerTokens {
   access_token:  string;
@@ -126,6 +126,23 @@ export async function fetchIssuedFiles(accessToken: string): Promise<DigiLockerF
 
   const data = await res.json() as DigiLockerFilesResponse;
   return data.items ?? [];
+}
+
+// ── Fetch uploaded drive files list ───────────────────────────────────────────
+
+export async function fetchUploadedFiles(accessToken: string): Promise<DigiLockerFile[]> {
+  try {
+    const res = await fetch(`${BASE_V2}/files/uploaded`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) return [];
+
+    const data = await res.json() as DigiLockerFilesResponse;
+    return data.items ?? [];
+  } catch {
+    return [];
+  }
 }
 
 // ── Generate a CSRF state token ───────────────────────────────────────────────
