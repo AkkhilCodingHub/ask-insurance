@@ -57,8 +57,6 @@ web-build/
 prisma/migrations/dev/
 api/src/generated/
 
-# Claude Code
-.claude/settings.local.json
 .vercel
 .env*.local
 firebase-service-account.json
