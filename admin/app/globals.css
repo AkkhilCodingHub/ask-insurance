@@ -35,6 +35,75 @@
   --foreground: var(--text);
 }
 
+html[data-theme="dark"] {
+  --bg:             #090D16;
+  --white:          #111827;
+  --text:           #F9FAFB;
+  --text-muted:     #9CA3AF;
+  --text-light:     #6B7280;
+  --border:         #1F2937;
+  --sidebar-bg:     #030712;
+  --sidebar-border: #111827;
+  --primary-light:  rgba(21, 128, 255, 0.15);
+  --success-light:  rgba(5, 150, 105, 0.15);
+  --error-light:    rgba(220, 38, 38, 0.15);
+  --warning-light:  rgba(217, 119, 6, 0.15);
+  --info-light:     rgba(8, 145, 178, 0.15);
+}
+
+html[data-theme="dark"] [style*="background: #fff"],
+html[data-theme="dark"] [style*="background: #FFF"],
+html[data-theme="dark"] [style*="background:#fff"],
+html[data-theme="dark"] [style*="background: white"],
+html[data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+html[data-theme="dark"] [style*="background:var(--white)"] {
+  background-color: var(--white) !important;
+}
+
+html[data-theme="dark"] [style*="background: #F8FAFC"],
+html[data-theme="dark"] [style*="background: #f8fafc"],
+html[data-theme="dark"] [style*="background:#F8FAFC"],
+html[data-theme="dark"] [style*="background:#f8fafc"],
+html[data-theme="dark"] [style*="background: #FAFAFA"],
+html[data-theme="dark"] [style*="background: #fafafa"],
+html[data-theme="dark"] [style*="background:#FAFAFA"],
+html[data-theme="dark"] [style*="background:#fafafa"] {
+  background-color: var(--bg) !important;
+}
+
+html[data-theme="dark"] [style*="border: 1px solid #E2E8F0"],
+html[data-theme="dark"] [style*="border: 1.5px solid #E2E8F0"],
+html[data-theme="dark"] [style*="border: 1px solid #F1F5F9"],
+html[data-theme="dark"] [style*="border-bottom: 1px solid #E2E8F0"],
+html[data-theme="dark"] [style*="border-bottom: 1.5px solid #E2E8F0"],
+html[data-theme="dark"] [style*="border-bottom: 1px solid #F1F5F9"] {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] [style*="color: #0F172A"],
+html[data-theme="dark"] [style*="color: #1E293B"],
+html[data-theme="dark"] [style*="color: #334155"] {
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] [style*="color: #64748B"],
+html[data-theme="dark"] [style*="color: #475569"] {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"] table th {
+  background-color: var(--white) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  color: var(--text) !important;
+  background-color: var(--white) !important;
+  border-color: var(--border) !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

@@ -7,23 +7,28 @@ import {
   LayoutDashboard, Users, FileText, Shield, Package,
   Building2, MessageSquare, BarChart3, Settings,
   LogOut, Bell, Search, ChevronRight, Menu, X, Headphones, HardDrive, UserCog, BadgeCheck,
+  Percent, ClipboardList, RefreshCcw, BookTemplate, Sun, Moon
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const nav = [
-  { label: "Overview",   icon: LayoutDashboard, href: "/dashboard",           badge: false },
-  { label: "Users",      icon: Users,            href: "/dashboard/users",     badge: false },
-  { label: "KYC",        icon: BadgeCheck,       href: "/dashboard/kyc",       badge: false },
-  { label: "Policies",   icon: FileText,         href: "/dashboard/policies",  badge: false },
-  { label: "Claims",     icon: Shield,           href: "/dashboard/claims",    badge: false },
-  { label: "Plans",      icon: Package,          href: "/dashboard/plans",     badge: false },
-  { label: "Insurers",   icon: Building2,        href: "/dashboard/insurers",  badge: false },
-  { label: "Quotes",     icon: MessageSquare,    href: "/dashboard/quotes",    badge: false },
-  { label: "Files",      icon: HardDrive,        href: "/dashboard/files",     badge: false },
-  { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",      badge: true  },
-  { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics", badge: false },
-  { label: "Agents",     icon: UserCog,          href: "/dashboard/agents",    badge: false },
-  { label: "Settings",   icon: Settings,         href: "/dashboard/settings",  badge: false },
+  { label: "Overview",   icon: LayoutDashboard, href: "/dashboard",                     badge: false },
+  { label: "Users",      icon: Users,            href: "/dashboard/users",               badge: false },
+  { label: "KYC",        icon: BadgeCheck,       href: "/dashboard/kyc",                 badge: false },
+  { label: "Policies",   icon: FileText,         href: "/dashboard/policies",            badge: false },
+  { label: "Claims",     icon: Shield,           href: "/dashboard/claims",              badge: false },
+  { label: "Plans",      icon: Package,          href: "/dashboard/plans",               badge: false },
+  { label: "Insurers",   icon: Building2,        href: "/dashboard/insurers",            badge: false },
+  { label: "Quotes",     icon: MessageSquare,    href: "/dashboard/quotes",              badge: false },
+  { label: "Files",      icon: HardDrive,        href: "/dashboard/files",               badge: false },
+  { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",                badge: true  },
+  { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics",          badge: false },
+  { label: "Agents",     icon: UserCog,          href: "/dashboard/agents",              badge: false },
+  { label: "Brokerage",  icon: Percent,          href: "/dashboard/brokerage",          badge: false },
+  { label: "Renewals",   icon: RefreshCcw,       href: "/dashboard/renewals",           badge: false },
+  { label: "Templates",  icon: BookTemplate,     href: "/dashboard/settings/templates", badge: false },
+  { label: "Audit Logs", icon: ClipboardList,    href: "/dashboard/logs",                badge: false },
+  { label: "Settings",   icon: Settings,         href: "/dashboard/settings",           badge: false },
 ];
 
 function getTitle(path: string) {
@@ -44,6 +49,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
+
+  // Theme state (light / dark)
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("admin_theme") as "light" | "dark" | null;
+    const activeTheme = saved ?? "dark";
+    setTheme(activeTheme);
+    document.documentElement.setAttribute("data-theme", activeTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("admin_theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  };
 
   useEffect(() => {
     if (!admin) return;
@@ -250,6 +272,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Search size={15} color="var(--text-muted)" />
               <input placeholder="Quick search…" style={{ border: "none", outline: "none", fontSize: 13, background: "transparent", color: "var(--text)", width: "100%" }} />
             </div>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Dark Mode Active (Click to switch to Light)" : "Light Mode Active (Click to switch to Dark)"}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--bg)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "none")}
+            >
+              {theme === "dark" ? <Moon size={18} color="#F59E0B" /> : <Sun size={18} color="#64748B" />}
+            </button>
 
             {/* Notifications */}
             <div style={{ position: "relative" }}>

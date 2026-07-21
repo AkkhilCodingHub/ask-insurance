@@ -56,9 +56,31 @@ export default function KycScreen() {
       await SecureStore.setItemAsync(DL_STATE_KEY, state);
       await SecureStore.setItemAsync(DL_VERIFIER_KEY, codeVerifier);
 
-      // Plain browser open — the deep link return is handled by /kyc-callback,
-      // not by intercepting the browser session (which the manual "Open app" tap bypasses).
-      await WebBrowser.openBrowserAsync(url);
+      // Use AuthSession to intercept deep link redirect and close browser popup automatically
+      const redirectUrl = 'askinsurance://kyc-callback';
+      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        setDlBusy(false);
+        return;
+      }
+
+      if (result.type === 'success' && result.url) {
+        const urlObj = new URL(result.url);
+        const code = urlObj.searchParams.get('code');
+        const stateParam = urlObj.searchParams.get('state');
+        const error = urlObj.searchParams.get('error') || urlObj.searchParams.get('error_description');
+
+        if (error) {
+          throw new Error(error);
+        }
+
+        if (code && stateParam) {
+          await kycApi.callback({ code, state: stateParam, codeVerifier });
+          await refreshUser();
+          setStep('success');
+        }
+      }
     } catch (e: any) {
       alert({ type: 'error', title: 'Verification failed', message: e?.message ?? 'Could not start DigiLocker verification. Please try again.' });
     } finally {

@@ -28,8 +28,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem("ask_admin");
-      if (stored) setAdmin(JSON.parse(stored));
-    } catch {}
+      const token = localStorage.getItem("adminToken");
+      if (stored && token) {
+        setAdmin(JSON.parse(stored));
+      } else {
+        localStorage.removeItem("ask_admin");
+        localStorage.removeItem("adminToken");
+        setAdmin(null);
+      }
+    } catch {
+      setAdmin(null);
+    }
     setLoading(false);
   }, []);
 

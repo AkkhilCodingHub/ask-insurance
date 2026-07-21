@@ -43,10 +43,12 @@ export default function AgentLayout() {
         sceneStyle:       { backgroundColor: Colors.bg },
         tabBarIcon: ({ focused, color }) => {
           const icons: Record<string, { on: IoniconsName; off: IoniconsName }> = {
-            quotes:   { on: 'document-text',     off: 'document-text-outline'     },
-            policies: { on: 'shield-checkmark',  off: 'shield-checkmark-outline'  },
-            claims:   { on: 'clipboard',         off: 'clipboard-outline'         },
-            chat:     { on: 'chatbubbles',       off: 'chatbubbles-outline'       },
+            quotes:    { on: 'document-text',     off: 'document-text-outline'     },
+            policies:  { on: 'shield-checkmark',  off: 'shield-checkmark-outline'  },
+            customers: { on: 'people',            off: 'people-outline'            },
+            claims:    { on: 'clipboard',         off: 'clipboard-outline'         },
+            chat:      { on: 'chatbubbles',       off: 'chatbubbles-outline'       },
+            renewals:  { on: 'refresh-circle',    off: 'refresh-circle-outline'    },
           };
           const set  = icons[route.name] ?? { on: 'grid', off: 'grid-outline' };
           const name = focused ? set.on : set.off;
@@ -54,10 +56,13 @@ export default function AgentLayout() {
         },
       })}
     >
-      <Tabs.Screen name="quotes"   options={{ title: 'Quotes'   }} />
-      <Tabs.Screen name="policies" options={{ title: 'Policies' }} />
-      <Tabs.Screen name="claims"   options={{ title: 'Claims'   }} />
-      <Tabs.Screen name="chat"     options={{ title: 'Chat'     }} />
+      <Tabs.Screen name="quotes"    options={{ title: 'Quotes'    }} />
+      <Tabs.Screen name="policies"  options={{ title: 'Policies'  }} />
+      <Tabs.Screen name="customers" options={{ title: 'Customers' }} />
+      <Tabs.Screen name="renewals"  options={{ title: 'Renewals'  }} />
+      <Tabs.Screen name="claims"    options={{ title: 'Claims'    }} />
+      <Tabs.Screen name="chat"      options={{ title: 'Chat'      }} />
+      <Tabs.Screen name="kyc"      options={{ title: 'KYC', tabBarButton: () => null }} />
       <Tabs.Screen
         name="logout"
         options={{

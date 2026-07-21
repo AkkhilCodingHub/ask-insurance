@@ -1088,7 +1088,7 @@ const tl = StyleSheet.create({
 
 const bs = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
@@ -1238,7 +1238,7 @@ const ds = StyleSheet.create({
 
 const ps = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.52)',
   },
 

@@ -9,6 +9,7 @@ import { plansApi, ApiPlan } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 
 function formatPremium(v: number): string {
   if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L/yr`;
@@ -25,6 +26,7 @@ function formatCover(v: number): string {
 export default function PlanDetailScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>();
   const router  = useRouter();
+  const colors  = useThemeColors();
 
   const [plan, setPlan]       = useState<ApiPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function PlanDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.safe}>
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -50,10 +52,10 @@ export default function PlanDetailScreen() {
 
   if (error || !plan) {
     return (
-      <SafeAreaView style={s.safe}>
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          <Icon name="search-outline" size={40} color={Colors.border} />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.text }}>Plan not found</Text>
+          <Icon name="search-outline" size={40} color={colors.border} />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Plan not found</Text>
           <TouchableOpacity onPress={() => router.back()} style={s.backPillBtn}>
             <Text style={s.backPillText}>Go back</Text>
           </TouchableOpacity>
@@ -67,11 +69,11 @@ export default function PlanDetailScreen() {
   const features = (() => { try { return JSON.parse(plan.features) as string[]; } catch { return []; } })();
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       {/* Header */}
-      <View style={[s.header, { borderBottomColor: color + '40' }]}>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: color + '40' }]}>
         <BackButton />
-        <Text style={s.headerTitle}>{plan.insurer?.name ?? plan.name}</Text>
+        <Text style={[s.headerTitle, { color: colors.text }]}>{plan.insurer?.name ?? plan.name}</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -90,44 +92,44 @@ export default function PlanDetailScreen() {
               <Text style={s.badgeText}>Featured</Text>
             </View>
           )}
-          <Text style={s.planName}>{plan.name}</Text>
-          <Text style={s.planInsurer}>{plan.insurer?.name} · {plan.type}</Text>
+          <Text style={[s.planName, { color: colors.text }]}>{plan.name}</Text>
+          <Text style={[s.planInsurer, { color: colors.textMuted }]}>{plan.insurer?.name} · {plan.type}</Text>
 
-          <View style={s.keyMetrics}>
+          <View style={[s.keyMetrics, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={s.metric}>
               <Text style={[s.metricValue, { color }]}>{formatPremium(plan.basePremium)}</Text>
-              <Text style={s.metricLabel}>PREMIUM</Text>
+              <Text style={[s.metricLabel, { color: colors.textMuted }]}>PREMIUM</Text>
             </View>
-            <View style={s.metricDivider} />
+            <View style={[s.metricDivider, { backgroundColor: colors.border }]} />
             <View style={s.metric}>
-              <Text style={s.metricValue}>{formatCover(plan.maxCover)}</Text>
-              <Text style={s.metricLabel}>COVER</Text>
+              <Text style={[s.metricValue, { color: colors.text }]}>{formatCover(plan.maxCover)}</Text>
+              <Text style={[s.metricLabel, { color: colors.textMuted }]}>COVER</Text>
             </View>
-            <View style={s.metricDivider} />
+            <View style={[s.metricDivider, { backgroundColor: colors.border }]} />
             <View style={s.metric}>
               <Text style={[s.metricValue, { color: Colors.success }]}>{plan.insurer?.claimsRatio ?? 0}%</Text>
-              <Text style={s.metricLabel}>CLAIM RATIO</Text>
+              <Text style={[s.metricLabel, { color: colors.textMuted }]}>CLAIM RATIO</Text>
             </View>
           </View>
         </View>
 
         {/* About */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>About this plan</Text>
-          <Text style={s.description}>{plan.description}</Text>
+        <View style={[s.section, { borderTopColor: colors.border }]}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>About this plan</Text>
+          <Text style={[s.description, { color: colors.textMuted }]}>{plan.description}</Text>
         </View>
 
         {/* Features */}
         {features.length > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Key features</Text>
+          <View style={[s.section, { borderTopColor: colors.border }]}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Key features</Text>
             <View style={s.featureList}>
               {features.map((f, i) => (
                 <View key={i} style={s.featureRow}>
                   <View style={[s.featureTick, { backgroundColor: color + '18' }]}>
                     <Text style={[s.featureTickText, { color }]}>✓</Text>
                   </View>
-                  <Text style={s.featureText}>{f}</Text>
+                  <Text style={[s.featureText, { color: colors.textMuted }]}>{f}</Text>
                 </View>
               ))}
             </View>
@@ -135,44 +137,44 @@ export default function PlanDetailScreen() {
         )}
 
         {/* Policy details */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Policy details</Text>
-          <View style={s.detailsCard}>
+        <View style={[s.section, { borderTopColor: colors.border }]}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Policy details</Text>
+          <View style={[s.detailsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={s.detailRow}>
-              <Text style={s.detailLabel}>Min cover</Text>
-              <Text style={s.detailValue}>{formatCover(plan.minCover)}</Text>
+              <Text style={[s.detailLabel, { color: colors.textMuted }]}>Min cover</Text>
+              <Text style={[s.detailValue, { color: colors.text }]}>{formatCover(plan.minCover)}</Text>
             </View>
-            <View style={s.detailDivider} />
+            <View style={[s.detailDivider, { backgroundColor: colors.border }]} />
             <View style={s.detailRow}>
-              <Text style={s.detailLabel}>Max cover</Text>
-              <Text style={s.detailValue}>{formatCover(plan.maxCover)}</Text>
+              <Text style={[s.detailLabel, { color: colors.textMuted }]}>Max cover</Text>
+              <Text style={[s.detailValue, { color: colors.text }]}>{formatCover(plan.maxCover)}</Text>
             </View>
             {plan.minAge != null && (
               <>
-                <View style={s.detailDivider} />
+                <View style={[s.detailDivider, { backgroundColor: colors.border }]} />
                 <View style={s.detailRow}>
-                  <Text style={s.detailLabel}>Eligible age</Text>
-                  <Text style={s.detailValue}>{plan.minAge}–{plan.maxAge ?? '—'} years</Text>
+                  <Text style={[s.detailLabel, { color: colors.textMuted }]}>Eligible age</Text>
+                  <Text style={[s.detailValue, { color: colors.text }]}>{plan.minAge}–{plan.maxAge ?? '—'} years</Text>
                 </View>
               </>
             )}
-            <View style={s.detailDivider} />
+            <View style={[s.detailDivider, { backgroundColor: colors.border }]} />
             <View style={s.detailRow}>
-              <Text style={s.detailLabel}>Category</Text>
-              <Text style={s.detailValue}>{plan.type.charAt(0).toUpperCase() + plan.type.slice(1)}</Text>
+              <Text style={[s.detailLabel, { color: colors.textMuted }]}>Category</Text>
+              <Text style={[s.detailValue, { color: colors.text }]}>{plan.type.charAt(0).toUpperCase() + plan.type.slice(1)}</Text>
             </View>
-            <View style={s.detailDivider} />
+            <View style={[s.detailDivider, { backgroundColor: colors.border }]} />
             <View style={s.detailRow}>
-              <Text style={s.detailLabel}>Claim settlement</Text>
+              <Text style={[s.detailLabel, { color: colors.textMuted }]}>Claim settlement</Text>
               <Text style={[s.detailValue, { color: Colors.success }]}>{plan.insurer?.claimsRatio ?? 0}%</Text>
             </View>
           </View>
         </View>
 
         {/* Trust badges */}
-        <View style={s.trustRow}>
+        <View style={[s.trustRow, { backgroundColor: colors.bgWarm, borderTopColor: colors.border }]}>
           {['IRDAI Approved', 'Instant Policy', 'Secure Payment', '24×7 Support'].map(t => (
-            <View key={t} style={s.trustChip}>
+            <View key={t} style={[s.trustChip, { backgroundColor: colors.primaryLight, borderColor: colors.primary + '30' }]}>
               <Text style={s.trustText}>✓ {t}</Text>
             </View>
           ))}
@@ -180,10 +182,10 @@ export default function PlanDetailScreen() {
       </ScrollView>
 
       {/* Sticky CTA */}
-      <View style={s.stickyBar}>
+      <View style={[s.stickyBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <View>
-          <Text style={s.stickyPremium}>{formatPremium(plan.basePremium)}</Text>
-          <Text style={s.stickyCover}>Cover: {formatCover(plan.maxCover)}</Text>
+          <Text style={[s.stickyPremium, { color: colors.text }]}>{formatPremium(plan.basePremium)}</Text>
+          <Text style={[s.stickyCover, { color: colors.textMuted }]}>Cover: {formatCover(plan.maxCover)}</Text>
         </View>
         <TouchableOpacity
           style={[s.ctaBtn, { backgroundColor: color }]}

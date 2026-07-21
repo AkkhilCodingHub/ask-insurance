@@ -8,6 +8,8 @@ import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken } from '../lib/jwt';
 import { sendPush } from '../lib/push';
 import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib/r2';
+import { logActivity } from '../lib/activity';
+import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
 const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'hardilsingh87@gmail.com']);
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -525,6 +527,9 @@ router.post('/insurers', adminAuthenticate, async (req: Request, res: Response):
 
     const insurer = await prisma.insurer.create({ data: data as any });
 
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'CREATE_INSURER', { id: insurer.id, name: insurer.name, slug: insurer.slug });
+
     res.status(201).json({ insurer });
     return;
   } catch (error) {
@@ -576,6 +581,9 @@ router.put('/insurers/:id', adminAuthenticate, async (req: Request, res: Respons
       data: data as any
     });
 
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'UPDATE_INSURER', { id: insurer.id, name: insurer.name });
+
     res.json({ insurer });
     return;
   } catch (error) {
@@ -594,6 +602,9 @@ router.delete('/insurers/:id', adminAuthenticate, async (req: Request, res: Resp
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
 
     await prisma.insurer.delete({ where: { id } });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'DELETE_INSURER', { id });
 
     res.json({ success: true, message: 'Insurer deleted' });
     return;
@@ -1145,6 +1156,9 @@ router.post('/policies/:id/confirm-payment', adminAuthenticate, async (req: Requ
         }
       });
 
+      // Calculate and record brokerage for the policy
+      await calculateAndApplyBrokerage(tx, id);
+
       return p;
     });
 
@@ -1254,6 +1268,20 @@ router.get('/analytics', adminAuthenticate, async (_req: Request, res: Response)
       policies: p._count.id
     }));
 
+    // Renewals stats
+    const renewalsStats = await prisma.renewal.groupBy({
+      by: ['status'],
+      _count: { id: true }
+    });
+
+    const renewalsSummary = {
+      total: renewalsStats.reduce((s: number, r: any) => s + r._count.id, 0),
+      pending: renewalsStats.find((r: any) => r.status === 'pending')?._count.id ?? 0,
+      contacted: renewalsStats.find((r: any) => r.status === 'contacted')?._count.id ?? 0,
+      closed: renewalsStats.find((r: any) => r.status === 'closed')?._count.id ?? 0,
+      lost: renewalsStats.find((r: any) => r.status === 'lost')?._count.id ?? 0
+    };
+
     res.json({
       byType: byTypePolicies.map((r) => ({
         type: r.type,
@@ -1262,7 +1290,8 @@ router.get('/analytics', adminAuthenticate, async (_req: Request, res: Response)
       })),
       monthly: months,
       topPlans,
-      topInsurers
+      topInsurers,
+      renewals: renewalsSummary
     });
     return;
   } catch (error) {
@@ -1784,7 +1813,10 @@ router.get('/agents', adminAuthenticate, superadminOnly, async (_req: Request, r
   try {
     const agents = await prisma.admin.findMany({
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true },
+      select: {
+        id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true,
+        kycStatus: true, kycDocType: true, kycDocUrl: true, kycSubmittedAt: true, kycRejectionReason: true, kycVerifiedAt: true
+      },
     });
     res.json({ agents: agents.map(a => ({ ...a, storageUsed: Number(a.storageUsed) })) });
   } catch (e) {
@@ -1811,6 +1843,8 @@ router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, r
       data: { name, email, password: hashed, role },
       select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
     });
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'CREATE_AGENT', { id: agent.id, name: agent.name, role: agent.role });
     res.status(201).json({ agent });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
@@ -1841,6 +1875,8 @@ router.patch('/agents/:id', adminAuthenticate, superadminOnly, async (req: Reque
       data,
       select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
     });
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'UPDATE_AGENT', { id: agent.id, name: agent.name, role: agent.role, isActive: agent.isActive });
     res.json({ agent });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
@@ -1856,10 +1892,46 @@ router.delete('/agents/:id', adminAuthenticate, superadminOnly, async (req: Requ
     const selfId = (req as Request & { adminId: string }).adminId;
     if (id === selfId) { res.status(400).json({ error: 'You cannot delete your own account' }); return; }
     await prisma.admin.delete({ where: { id } });
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'DELETE_AGENT', { id });
     res.json({ ok: true });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /admin/me — fetch own profile
+router.get('/me', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        kycStatus: true,
+        kycDocType: true,
+        kycDocUrl: true,
+        kycSubmittedAt: true,
+        kycRejectionReason: true,
+        kycVerifiedAt: true
+      }
+    });
+
+    if (!admin) {
+      res.status(404).json({ error: 'Admin not found' });
+      return;
+    }
+
+    res.json({ admin });
+  } catch (e) {
+    console.error('[admin/me]', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1981,6 +2053,659 @@ router.post('/kyc/:userId/reject', adminAuthenticate, async (req: Request, res: 
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: 'Rejection reason is required.' }); return; }
     console.error('[admin/kyc/reject]', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Activity Logs ────────────────────────────────────────────────────────────
+router.get('/logs', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const logs = await prisma.activityLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        admin: {
+          select: { name: true, email: true, role: true }
+        }
+      }
+    });
+    res.json({ logs });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Brokerage configuration and tracking ──────────────────────────────────────
+router.get('/brokerage/slabs', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const slabs = await prisma.brokerageSlab.findMany({
+      include: { insurer: { select: { name: true } } }
+    });
+    res.json({ slabs });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/brokerage/slabs', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { insurerId, insuranceType, percentage } = z.object({
+      insurerId: z.string().cuid(),
+      insuranceType: z.enum(['life', 'health', 'motor', 'travel', 'home', 'business']),
+      percentage: z.number().min(0).max(100),
+    }).parse(req.body);
+
+    const slab = await prisma.brokerageSlab.upsert({
+      where: {
+        insurerId_insuranceType: { insurerId, insuranceType }
+      },
+      update: { percentage },
+      create: { insurerId, insuranceType, percentage }
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'CONFIGURE_BROKERAGE', { insurerId, insuranceType, percentage });
+
+    res.status(201).json({ slab });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/brokerage/stats', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const policies = await prisma.policy.findMany({
+      where: {
+        paymentStatus: 'paid',
+        brokerageAmount: { not: null }
+      },
+      select: {
+        id: true,
+        policyNumber: true,
+        premium: true,
+        brokerageRate: true,
+        brokerageAmount: true,
+        brokerageStatus: true,
+        brokeragePaidAt: true,
+        insurer: { select: { name: true } },
+        user: { select: { name: true, phone: true } }
+      }
+    });
+
+    const totalEarned = policies.reduce((sum, p) => sum + (p.brokerageAmount ?? 0), 0);
+    const totalPending = policies.filter(p => p.brokerageStatus === 'pending').reduce((sum, p) => sum + (p.brokerageAmount ?? 0), 0);
+    const totalReleased = policies.filter(p => p.brokerageStatus === 'paid').reduce((sum, p) => sum + (p.brokerageAmount ?? 0), 0);
+
+    res.json({
+      policies,
+      stats: { totalEarned, totalPending, totalReleased }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/brokerage/release/:policyId', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { policyId } = z.object({ policyId: z.string().cuid() }).parse(req.params);
+    const policy = await prisma.policy.update({
+      where: { id: policyId },
+      data: {
+        brokerageStatus: 'paid',
+        brokeragePaidAt: new Date()
+      }
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'RELEASE_BROKERAGE', { policyId, amount: policy.brokerageAmount });
+
+    res.json({ policy });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Quote lead stage tracking ────────────────────────────────────────────────
+router.patch('/quotes/:id/stage', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { stage } = z.object({
+      stage: z.enum(['new', 'quotation_sent', 'in_discussion', 'closed', 'lost'])
+    }).parse(req.body);
+
+    const quote = await prisma.quote.update({
+      where: { id },
+      data: { stage }
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'UPDATE_QUOTE_STAGE', { quoteId: id, stage });
+
+    res.json({ quote });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Agent KYC management ─────────────────────────────────────────────────────
+router.post('/agents/kyc/upload', adminAuthenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const file = (req as any).file;
+    if (!file) { res.status(400).json({ error: 'No document file uploaded.' }); return; }
+
+    const { docType } = z.object({
+      docType: z.enum(['aadhaar', 'driving_license', 'passport'])
+    }).parse(req.body);
+
+    const ext = file.mimetype === 'application/pdf' ? 'pdf' : 'jpg';
+    const key = `agent-kyc/${adminId}/${Date.now()}.${ext}`;
+    const url = await uploadToR2(key, file.buffer, file.mimetype);
+
+    const agent = await prisma.admin.update({
+      where: { id: adminId },
+      data: {
+        kycStatus: 'submitted',
+        kycDocType: docType,
+        kycDocUrl: url,
+        kycSubmittedAt: new Date(),
+        kycRejectionReason: null,
+        kycVerifiedAt: null
+      }
+    });
+
+    await logActivity(adminId, 'SUBMIT_AGENT_KYC', { docType, url });
+
+    res.json({ success: true, kycStatus: 'submitted', docUrl: url });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/agents/:id/kyc/verify', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { action, reason } = z.object({
+      action: z.enum(['approve', 'reject']),
+      reason: z.string().optional()
+    }).parse(req.body);
+
+    const data = action === 'approve' ? {
+      kycStatus: 'verified',
+      kycVerifiedAt: new Date(),
+      kycRejectionReason: null
+    } : {
+      kycStatus: 'rejected',
+      kycRejectionReason: reason ?? 'Verification failed',
+      kycVerifiedAt: null
+    };
+
+    const agent = await prisma.admin.update({
+      where: { id },
+      data
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'VERIFY_AGENT_KYC', { agentId: id, action, reason });
+
+    res.json({ success: true, agent });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Agent Customers ──────────────────────────────────────────────────────────
+router.get('/customers', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const adminRole = (req as any).adminRole;
+
+    // Superadmins can see all customers, agents only see their own customers
+    const where = adminRole === 'superadmin' ? {} : { agentId: adminId };
+
+    const customers = await prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        kycStatus: true,
+        createdAt: true
+      }
+    });
+
+    res.json({ customers });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/customers', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const { name, phone, email } = z.object({
+      name: z.string().min(2),
+      phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
+      email: z.string().email().optional().nullable()
+    }).parse(req.body);
+
+    // Check if phone or email already registered
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone },
+          ...(email ? [{ email }] : [])
+        ]
+      }
+    });
+
+    if (existing) {
+      res.status(409).json({ error: 'Customer with this phone or email already exists' });
+      return;
+    }
+
+    const customer = await prisma.user.create({
+      data: {
+        name,
+        phone,
+        email: email ?? null,
+        agentId: adminId,
+        kycStatus: 'pending' // default
+      }
+    });
+
+    await logActivity(adminId, 'ADD_CUSTOMER', { id: customer.id, name, phone });
+
+    res.status(201).json({ customer });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Database Backup ──────────────────────────────────────────────────────────
+router.post('/backup', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as any).adminId;
+    const { runDatabaseBackup } = await import('../lib/backup');
+    const backupUrl = await runDatabaseBackup();
+
+    await logActivity(adminId, 'RUN_DATABASE_BACKUP', { backupUrl });
+
+    res.json({ success: true, backupUrl });
+  } catch (e: any) {
+    console.error('[admin/backup]', e);
+    res.status(500).json({ error: e?.message ?? 'Backup failed' });
+  }
+});
+
+// ── Quotation Templates ──────────────────────────────────────────────────────
+router.get('/templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await prisma.quotationTemplate.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ templates });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = z.object({
+      id: z.string().optional(),
+      name: z.string().min(2),
+      type: z.string().min(2),
+      subject: z.string().optional().nullable(),
+      headerText: z.string().optional().nullable(),
+      footerText: z.string().optional().nullable(),
+      termsAndConditions: z.string().optional().nullable(),
+      isDefault: z.boolean().optional()
+    }).parse(req.body);
+
+    const data = {
+      name: body.name,
+      type: body.type,
+      subject: body.subject ?? null,
+      headerText: body.headerText ?? null,
+      footerText: body.footerText ?? null,
+      termsAndConditions: body.termsAndConditions ?? null,
+      isDefault: body.isDefault ?? false
+    };
+
+    if (data.isDefault) {
+      await prisma.quotationTemplate.updateMany({
+        where: { type: body.type, isDefault: true },
+        data: { isDefault: false }
+      });
+    }
+
+    let template;
+    const adminId = (req as any).adminId;
+
+    if (body.id) {
+      template = await prisma.quotationTemplate.update({
+        where: { id: body.id },
+        data
+      });
+      await logActivity(adminId, 'UPDATE_QUOTATION_TEMPLATE', { id: template.id, name: template.name });
+    } else {
+      template = await prisma.quotationTemplate.create({
+        data
+      });
+      await logActivity(adminId, 'CREATE_QUOTATION_TEMPLATE', { id: template.id, name: template.name });
+    }
+
+    res.json({ success: true, template });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/templates/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).adminId;
+    await prisma.quotationTemplate.delete({ where: { id: id as string } });
+    await logActivity(adminId, 'DELETE_QUOTATION_TEMPLATE', { id });
+    res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Premium Rate Charts ──────────────────────────────────────────────────────
+router.get('/rate-charts', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const charts = await prisma.premiumRateChart.findMany({
+      include: { insurer: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ charts });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/rate-charts', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = z.object({
+      id: z.string().optional(),
+      insurerId: z.string(),
+      insuranceType: z.string(),
+      minAge: z.number().int().optional().nullable(),
+      maxAge: z.number().int().optional().nullable(),
+      baseRate: z.number().positive(),
+      rateType: z.enum(['flat', 'percentage_of_sum_insured']).optional(),
+      gstPercentage: z.number().nonnegative().optional()
+    }).parse(req.body);
+
+    const data = {
+      insurerId: body.insurerId,
+      insuranceType: body.insuranceType,
+      minAge: body.minAge ?? null,
+      maxAge: body.maxAge ?? null,
+      baseRate: body.baseRate,
+      rateType: body.rateType ?? 'flat',
+      gstPercentage: body.gstPercentage ?? 18.0
+    };
+
+    let chart;
+    const adminId = (req as any).adminId;
+
+    if (body.id) {
+      chart = await prisma.premiumRateChart.update({
+        where: { id: body.id },
+        data
+      });
+      await logActivity(adminId, 'UPDATE_PREMIUM_RATE_CHART', { id: chart.id, insurerId: chart.insurerId });
+    } else {
+      chart = await prisma.premiumRateChart.create({
+        data
+      });
+      await logActivity(adminId, 'CREATE_PREMIUM_RATE_CHART', { id: chart.id, insurerId: chart.insurerId });
+    }
+
+    res.json({ success: true, chart });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/rate-charts/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).adminId;
+    await prisma.premiumRateChart.delete({ where: { id: id as string } });
+    await logActivity(adminId, 'DELETE_PREMIUM_RATE_CHART', { id });
+    res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Brokerage CSV Export ─────────────────────────────────────────────────────
+router.get('/brokerage/export', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const policies = await prisma.policy.findMany({
+      where: {
+        brokerageAmount: { not: null }
+      },
+      include: {
+        user: { select: { name: true, phone: true } },
+        insurer: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    let csv = 'Policy Number,Insurer,Customer,Phone,Premium,Brokerage Rate (%),Brokerage Amount (₹),Status,Paid At\n';
+    for (const p of policies) {
+      const rate = p.brokerageRate ? `${p.brokerageRate}%` : '—';
+      const amount = p.brokerageAmount ? `${p.brokerageAmount}` : '0';
+      const paidAt = p.brokeragePaidAt ? new Date(p.brokeragePaidAt).toLocaleDateString('en-IN') : '—';
+      csv += `"${p.policyNumber}","${p.insurer?.name || p.provider}","${p.user?.name || '—'}","${p.user?.phone}","${p.premium}","${rate}","${amount}","${p.brokerageStatus}","${paidAt}"\n`;
+    }
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=brokerage-payouts.csv');
+    res.status(200).send(csv);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Renewals Pipeline ────────────────────────────────────────────────────────
+router.get('/renewals', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const renewals = await prisma.renewal.findMany({
+      include: {
+        policy: {
+          include: {
+            user: { select: { id: true, name: true, phone: true } },
+            insurer: { select: { name: true } }
+          }
+        },
+        agent: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ renewals });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/renewals/auto-detect', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const now = new Date();
+
+    const expiringPolicies = await prisma.policy.findMany({
+      where: {
+        status: 'active',
+        endDate: {
+          gte: now,
+          lte: thirtyDaysFromNow
+        }
+      },
+      include: {
+        renewal: true,
+        user: { select: { name: true, phone: true } }
+      }
+    });
+
+    let createdCount = 0;
+    for (const p of expiringPolicies) {
+      if (!p.renewal) {
+        const user = await prisma.user.findUnique({
+          where: { id: p.userId },
+          select: { agentId: true }
+        });
+
+        await prisma.renewal.create({
+          data: {
+            policyId: p.id,
+            agentId: user?.agentId ?? null,
+            status: 'pending'
+          }
+        });
+        createdCount++;
+
+        await prisma.notification.create({
+          data: {
+            userId: p.userId,
+            type: 'policy_expiry',
+            title: 'Policy Nearing Expiry',
+            body: `Your ${p.type} policy ${p.policyNumber} is expiring on ${p.endDate.toLocaleDateString('en-IN')}. Renew today to ensure continuous coverage!`
+          }
+        });
+      }
+    }
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'AUTO_DETECT_RENEWALS', { detectedCount: expiringPolicies.length, createdCount });
+
+    res.json({ success: true, detectedCount: expiringPolicies.length, createdCount });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/renewals/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const body = z.object({
+      agentId: z.string().optional().nullable(),
+      status: z.enum(['pending', 'contacted', 'closed', 'lost']).optional(),
+      notes: z.string().optional().nullable()
+    }).parse(req.body);
+
+    const data: Record<string, any> = {};
+    if (body.agentId !== undefined) {
+      data.agentId = body.agentId;
+      data.assignedAt = body.agentId ? new Date() : null;
+    }
+    if (body.status !== undefined) data.status = body.status;
+    if (body.notes !== undefined) data.notes = body.notes;
+
+    const renewal = await prisma.renewal.update({
+      where: { id: id as string },
+      data,
+      include: {
+        policy: { select: { policyNumber: true } }
+      }
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'UPDATE_RENEWAL', { id: renewal.id, policyNumber: (renewal as any).policy?.policyNumber || '', status: renewal.status });
+
+    res.json({ success: true, renewal });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Communication Templates ──────────────────────────────────────────────────
+router.get('/communication-templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const templates = await prisma.communicationTemplate.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ templates });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/communication-templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = z.object({
+      id: z.string().optional(),
+      name: z.string().min(2),
+      channel: z.enum(['sms', 'email', 'push']),
+      trigger: z.string().min(2),
+      content: z.string().min(2)
+    }).parse(req.body);
+
+    const data = {
+      name: body.name,
+      channel: body.channel,
+      trigger: body.trigger,
+      content: body.content
+    };
+
+    let template;
+    const adminId = (req as any).adminId;
+
+    if (body.id) {
+      template = await prisma.communicationTemplate.update({
+        where: { id: body.id },
+        data
+      });
+      await logActivity(adminId, 'UPDATE_COMM_TEMPLATE', { id: template.id, name: template.name });
+    } else {
+      template = await prisma.communicationTemplate.create({
+        data
+      });
+      await logActivity(adminId, 'CREATE_COMM_TEMPLATE', { id: template.id, name: template.name });
+    }
+
+    res.json({ success: true, template });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

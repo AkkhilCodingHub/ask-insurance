@@ -10,6 +10,7 @@ import { useAuth } from '@/context/auth';
 import { usersApi, plansApi, ApiPolicy, ApiPlan, DashboardData } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
+import { useLanguage, useThemeColors } from '@/context/agent';
 
 const { width: W } = Dimensions.get('window');
 
@@ -153,6 +154,8 @@ function getKycHomeBannerVisuals(status: string | undefined): KycHomeBannerVisua
 export default function HomeTab() {
   const router   = useRouter();
   const { user, refreshUser } = useAuth();
+  const colors = useThemeColors();
+  const { t } = useLanguage();
 
   const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
@@ -186,9 +189,9 @@ export default function HomeTab() {
   const policies = dashboard?.policies ?? [];
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       <ScrollView
-        style={s.scroll}
+        style={[s.scroll, { backgroundColor: colors.bg }]}
         contentContainerStyle={{ paddingBottom: BottomTabInset + 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
@@ -217,38 +220,38 @@ export default function HomeTab() {
 
           {/* Stat chips */}
           <View style={s.statsRow}>
-            <View style={s.statChip}>
-              <View style={s.statChipIcon}>
-                <Icon name="shield-checkmark-outline" size={14} color={Colors.primary} />
+            <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+              <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Icon name="shield-checkmark-outline" size={14} color={Colors.white} />
               </View>
-              <Text style={s.statNum}>{activePolicies}</Text>
-              <Text style={s.statLbl}>Active{'\n'}Policies</Text>
+              <Text style={[s.statNum, { color: Colors.white }]}>{activePolicies}</Text>
+              <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Active{'\n'}Policies</Text>
             </View>
-            <View style={[s.statChip, s.statChipMid]}>
-              <View style={[s.statChipIcon, openClaims > 0 && { backgroundColor: Colors.warning + '20' }]}>
-                <Icon name="document-text-outline" size={14} color={openClaims > 0 ? Colors.warning : Colors.primary} />
+            <View style={[s.statChip, s.statChipMid, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+              <View style={[s.statChipIcon, { backgroundColor: openClaims > 0 ? Colors.warning + '30' : 'rgba(255,255,255,0.2)' }]}>
+                <Icon name="document-text-outline" size={14} color={openClaims > 0 ? '#FBBF24' : Colors.white} />
               </View>
-              <Text style={[s.statNum, openClaims > 0 && { color: Colors.warning }]}>{openClaims}</Text>
-              <Text style={s.statLbl}>Open{'\n'}Claims</Text>
+              <Text style={[s.statNum, { color: openClaims > 0 ? '#FBBF24' : Colors.white }]}>{openClaims}</Text>
+              <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Open{'\n'}Claims</Text>
             </View>
-            <View style={s.statChip}>
-              <View style={s.statChipIcon}>
-                <Icon name="business-outline" size={14} color={Colors.primary} />
+            <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+              <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Icon name="business-outline" size={14} color={Colors.white} />
               </View>
-              <Text style={s.statNum}>38+</Text>
-              <Text style={s.statLbl}>Partner{'\n'}Insurers</Text>
+              <Text style={[s.statNum, { color: Colors.white }]}>38+</Text>
+              <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Partner{'\n'}Insurers</Text>
             </View>
           </View>
         </View>
 
         {/* ── Body ───────────────────────────────────── */}
-        <View style={s.body}>
+        <View style={[s.body, { backgroundColor: colors.bg }]}>
 
           {/* Guest nudge — shown when not logged in */}
           {!user && (
             <View style={s.section}>
               <TouchableOpacity
-                style={s.guestBanner}
+                style={[s.guestBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
                 activeOpacity={0.85}
                 onPress={() => router.push('/login')}
               >
@@ -258,8 +261,8 @@ export default function HomeTab() {
                     <Icon name="person-outline" size={20} color={Colors.primary} />
                   </View>
                   <View>
-                    <Text style={s.guestBannerTitle}>Sign in to your account</Text>
-                    <Text style={s.guestBannerSub}>View policies, track claims & get quotes</Text>
+                    <Text style={[s.guestBannerTitle, { color: colors.text }]}>Sign in to your account</Text>
+                    <Text style={[s.guestBannerSub, { color: colors.textMuted }]}>View policies, track claims & get quotes</Text>
                   </View>
                 </View>
                 <Icon name="arrow-forward-outline" size={18} color={Colors.primary} />
@@ -289,7 +292,7 @@ export default function HomeTab() {
             return (
               <View style={s.section}>
                 <TouchableOpacity
-                  style={[s.kycBanner, { backgroundColor: v.bg, borderColor: v.border }]}
+                  style={[s.kycBanner, { backgroundColor: colors.isDark ? '#1F2415' : v.bg, borderColor: colors.isDark ? '#374125' : v.border }]}
                   activeOpacity={0.85}
                   onPress={() => router.push('/kyc')}
                 >
@@ -299,8 +302,8 @@ export default function HomeTab() {
                       <Icon name={v.iconName} size={20} color={v.iconColor} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[s.kycBannerTitle, { color: v.titleColor }]}>{title}</Text>
-                      <Text style={[s.kycBannerSub, { color: v.subColor }]}>{sub}</Text>
+                      <Text style={[s.kycBannerTitle, { color: colors.isDark ? '#FACC15' : v.titleColor }]}>{title}</Text>
+                      <Text style={[s.kycBannerSub, { color: colors.isDark ? '#D97706' : v.subColor }]}>{sub}</Text>
                     </View>
                   </View>
                   <View style={[s.kycBannerCta, { backgroundColor: v.ctaBg, borderColor: v.ctaBorder }]}>
@@ -314,19 +317,19 @@ export default function HomeTab() {
 
           {/* Quick actions */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Quick Actions</Text>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
             <View style={s.actionsGrid}>
               {QUICK_ACTIONS.map((a, i) => (
                 <TouchableOpacity
                   key={a.label}
-                  style={s.actionCard}
+                  style={[s.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   activeOpacity={0.72}
                   onPress={() => router.push(a.route)}
                 >
                   <View style={[s.actionIconWrap, i === 0 && s.actionIconPrimary]}>
                     <Icon name={a.icon} size={20} color={i === 0 ? Colors.white : Colors.primary} />
                   </View>
-                  <Text style={s.actionLabel}>{a.label}</Text>
+                  <Text style={[s.actionLabel, { color: colors.text }]}>{a.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -336,14 +339,14 @@ export default function HomeTab() {
           {user && (
             <View style={s.section}>
               <View style={s.sectionRow}>
-                <Text style={s.sectionTitle}>My Policies</Text>
+                <Text style={[s.sectionTitle, { color: colors.text }]}>My Policies</Text>
                 <TouchableOpacity onPress={() => router.push('/profile')}>
                   <Text style={s.viewAll}>View all →</Text>
                 </TouchableOpacity>
               </View>
               {policies.length === 0 ? (
                 <TouchableOpacity
-                  style={s.emptyCard}
+                  style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   activeOpacity={0.8}
                   onPress={() => router.push('/plans')}
                 >
@@ -351,8 +354,8 @@ export default function HomeTab() {
                     <Icon name="shield-outline" size={26} color={Colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.emptyTitle}>No active policies</Text>
-                    <Text style={s.emptySub}>Browse plans and get covered in minutes</Text>
+                    <Text style={[s.emptyTitle, { color: colors.text }]}>No active policies</Text>
+                    <Text style={[s.emptySub, { color: colors.textMuted }]}>Browse plans and get covered in minutes</Text>
                   </View>
                   <View style={s.emptyArrow}>
                     <Icon name="arrow-forward-outline" size={16} color={Colors.primary} />
@@ -374,7 +377,7 @@ export default function HomeTab() {
                     return (
                       <TouchableOpacity
                         key={p.id}
-                        style={s.policyCard}
+                        style={[s.policyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                         activeOpacity={0.88}
                         onPress={() => router.push('/my-policies')}
                       >
@@ -386,33 +389,33 @@ export default function HomeTab() {
                               </View>
                             </View>
                             <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={s.policyNum} numberOfLines={1}>{p.policyNumber}</Text>
-                              <Text style={s.policyProvider} numberOfLines={1}>{providerStr || '—'}</Text>
+                              <Text style={[s.policyNum, { color: colors.text }]} numberOfLines={1}>{p.policyNumber}</Text>
+                              <Text style={[s.policyProvider, { color: colors.textMuted }]} numberOfLines={1}>{providerStr || '—'}</Text>
                             </View>
                             <View style={[s.policyStatusTag, { backgroundColor: st.bg, borderColor: st.color + '2A' }]}>
                               <Icon name={st.icon} size={12} color={st.color} />
                               <Text style={[s.policyStatusText, { color: st.color }]}>{st.label}</Text>
                             </View>
                           </View>
-                          <View style={s.policyStatGrid}>
+                          <View style={[s.policyStatGrid, { backgroundColor: colors.bgWarm, borderColor: colors.border }]}>
                             <View style={s.policyStatCell}>
-                              <Text style={s.policyStatLbl}>Cover</Text>
-                              <Text style={s.policyStatVal}>{formatCover(p.sumInsured)}</Text>
+                              <Text style={[s.policyStatLbl, { color: colors.textMuted }]}>Cover</Text>
+                              <Text style={[s.policyStatVal, { color: colors.text }]}>{formatCover(p.sumInsured)}</Text>
                             </View>
-                            <View style={s.policyStatSep} />
+                            <View style={[s.policyStatSep, { backgroundColor: colors.border }]} />
                             <View style={s.policyStatCell}>
-                              <Text style={s.policyStatLbl}>Premium</Text>
+                              <Text style={[s.policyStatLbl, { color: colors.textMuted }]}>Premium</Text>
                               <Text style={[s.policyStatVal, { color }]}>{formatPremium(p.premium)}</Text>
                             </View>
-                            <View style={s.policyStatSep} />
+                            <View style={[s.policyStatSep, { backgroundColor: colors.border }]} />
                             <View style={[s.policyStatCell, s.policyStatCellLast]}>
-                              <Text style={s.policyStatLbl}>Type</Text>
-                              <Text style={s.policyStatVal} numberOfLines={1}>{capitalize(typeStr)}</Text>
+                              <Text style={[s.policyStatLbl, { color: colors.textMuted }]}>Type</Text>
+                              <Text style={[s.policyStatVal, { color: colors.text }]} numberOfLines={1}>{capitalize(typeStr)}</Text>
                             </View>
                           </View>
-                          <View style={s.policyFooter}>
-                            <Icon name="calendar-outline" size={14} color={Colors.textLight} />
-                            <Text style={s.policyDue}>Renews / ends {due}</Text>
+                          <View style={[s.policyFooter, { borderColor: colors.border }]}>
+                            <Icon name="calendar-outline" size={14} color={colors.textMuted} />
+                            <Text style={[s.policyDue, { color: colors.textMuted }]}>Renews / ends {due}</Text>
                           </View>
                         </View>
                       </TouchableOpacity>
@@ -427,7 +430,7 @@ export default function HomeTab() {
           {(loadingFeatured || featured.length > 0) && (
             <View style={s.section}>
               <View style={s.sectionRow}>
-                <Text style={s.sectionTitle}>Recommended</Text>
+                <Text style={[s.sectionTitle, { color: colors.text }]}>Recommended</Text>
                 <TouchableOpacity onPress={() => router.push('/plans')}>
                   <Text style={s.viewAll}>See all →</Text>
                 </TouchableOpacity>
@@ -462,7 +465,7 @@ export default function HomeTab() {
                   return (
                     <TouchableOpacity
                       key={plan.id}
-                      style={s.recCard}
+                      style={[s.recCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                       activeOpacity={0.88}
                       onPress={() => router.push(`/plan/${plan.id}`)}
                     >
@@ -475,39 +478,39 @@ export default function HomeTab() {
                           </View>
                           <View style={s.recTopMain}>
                             <View style={s.recTitleRow}>
-                              <Text style={s.recInsurerLab} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
+                              <Text style={[s.recInsurerLab, { color: colors.textMuted }]} numberOfLines={1}>{plan.insurer?.name ?? '—'}</Text>
                               {plan.isFeatured && (
-                                <View style={[s.recBadge, { borderColor: color + '40' }]}>
+                                <View style={[s.recBadge, { borderColor: color + '40', backgroundColor: colors.card }]}>
                                   <Text style={[s.recBadgeText, { color }]}>Featured</Text>
                                 </View>
                               )}
                             </View>
-                            <Text style={s.recPlanTitle} numberOfLines={2}>{plan.name}</Text>
+                            <Text style={[s.recPlanTitle, { color: colors.text }]} numberOfLines={2}>{plan.name}</Text>
                             <View style={s.recPills}>
-                              <View style={s.recPill}>
-                                <Text style={s.recPillText}>{typeLabel}</Text>
+                              <View style={[s.recPill, { backgroundColor: colors.bgWarm }]}>
+                                <Text style={[s.recPillText, { color: colors.textMuted }]}>{typeLabel}</Text>
                               </View>
-                              <View style={s.recPill}>
-                                <Text style={s.recPillMuted}>{claimPct ? `${claimPct}% claims` : 'Top insurer'}</Text>
+                              <View style={[s.recPill, { backgroundColor: colors.bgWarm }]}>
+                                <Text style={[s.recPillMuted, { color: colors.textLight }]}>{claimPct ? `${claimPct}% claims` : 'Top insurer'}</Text>
                               </View>
                             </View>
                           </View>
                         </View>
 
-                        <View style={s.recStatGrid}>
+                        <View style={[s.recStatGrid, { backgroundColor: colors.bgWarm, borderColor: colors.border }]}>
                           <View style={s.recStatCell}>
-                            <Text style={s.recStatLbl}>Premium</Text>
+                            <Text style={[s.recStatLbl, { color: colors.textMuted }]}>Premium</Text>
                             <Text style={[s.recStatVal, { color }]}>{premium}</Text>
                           </View>
-                          <View style={s.recStatSep} />
+                          <View style={[s.recStatSep, { backgroundColor: colors.border }]} />
                           <View style={s.recStatCell}>
-                            <Text style={s.recStatLbl}>Cover</Text>
-                            <Text style={s.recStatVal}>{cover}</Text>
+                            <Text style={[s.recStatLbl, { color: colors.textMuted }]}>Cover</Text>
+                            <Text style={[s.recStatVal, { color: colors.text }]}>{cover}</Text>
                           </View>
-                          <View style={s.recStatSep} />
+                          <View style={[s.recStatSep, { backgroundColor: colors.border }]} />
                           <View style={[s.recStatCell, s.recStatCellEnd]}>
-                            <Text style={s.recStatLbl}>Insurer</Text>
-                            <Text style={s.recStatVal} numberOfLines={1}>
+                            <Text style={[s.recStatLbl, { color: colors.textMuted }]}>Insurer</Text>
+                            <Text style={[s.recStatVal, { color: colors.text }]} numberOfLines={1}>
                               {plan.insurer?.shortName ?? (plan.insurer?.name ? plan.insurer.name.split(' ')[0] : '—')}
                             </Text>
                           </View>
@@ -520,14 +523,14 @@ export default function HomeTab() {
                                 <View style={[s.recFeatTick, { borderColor: color + '30' }]}>
                                   <Text style={[s.recFeatTickMark, { color }]}>✓</Text>
                                 </View>
-                                <Text style={s.recFeatTxt} numberOfLines={2}>{f}</Text>
+                                <Text style={[s.recFeatTxt, { color: colors.textMuted }]} numberOfLines={2}>{f}</Text>
                               </View>
                             ))}
                           </View>
                         )}
 
                         <View style={s.recCardFooter}>
-                          <Text style={s.recTypeTxt}>{(plan.type ?? 'plan').toUpperCase()}</Text>
+                          <Text style={[s.recTypeTxt, { color: colors.textMuted }]}>{(plan.type ?? 'plan').toUpperCase()}</Text>
                           <View style={[s.recViewCta, { backgroundColor: color }]}>
                             <Text style={s.recViewCtaText}>View plan</Text>
                             <Icon name="chevron-forward" size={16} color={Colors.white} />

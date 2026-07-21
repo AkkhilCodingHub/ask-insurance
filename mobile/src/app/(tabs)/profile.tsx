@@ -10,6 +10,7 @@ import { policiesApi, claimsApi, paymentsApi, ApiPolicy, ApiClaim, ApiPayment } 
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
+import { useThemeColors } from '@/context/agent';
 
 import type { ComponentProps } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,21 +54,22 @@ interface MenuRowProps {
 }
 
 function MenuRow({ icon, label, sub, onPress, badge, badgeColor }: MenuRowProps) {
+  const colors = useThemeColors();
   return (
     <TouchableOpacity style={m.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={m.icon}>
-        <Icon name={icon} size={20} color={Colors.textMuted} />
+      <View style={[m.icon, { backgroundColor: colors.isDark ? 'rgba(96,165,250,0.15)' : Colors.primaryLight }]}>
+        <Icon name={icon} size={20} color={colors.isDark ? '#60A5FA' : Colors.primary} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={m.label}>{label}</Text>
-        <Text style={m.sub}>{sub}</Text>
+        <Text style={[m.label, { color: colors.text }]}>{label}</Text>
+        <Text style={[m.sub, { color: colors.textMuted }]}>{sub}</Text>
       </View>
       {badge !== undefined && (
         <View style={[m.badge, badgeColor ? { backgroundColor: badgeColor + '18' } : {}]}>
           <Text style={[m.badgeText, badgeColor ? { color: badgeColor } : {}]}>{badge}</Text>
         </View>
       )}
-      <Text style={m.arrow}>›</Text>
+      <Text style={[m.arrow, { color: colors.textMuted }]}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -75,6 +77,7 @@ function MenuRow({ icon, label, sub, onPress, badge, badgeColor }: MenuRowProps)
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function ProfileTab() {
+  const colors = useThemeColors();
   const router = useRouter();
   const { user, logout } = useAuth();
   const { confirm } = useDialog();
@@ -110,7 +113,7 @@ export default function ProfileTab() {
     const yes = await confirm({
       title:       'Log out',
       message:     'Are you sure you want to log out of your account?',
-      confirmText: 'Log out',
+      confirmText: 'Log Out',
       cancelText:  'Cancel',
       destructive: true,
     });
@@ -135,16 +138,16 @@ export default function ProfileTab() {
   // ── Guest view ─────────────────────────────────────────────────────────────
   if (!user) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
-          <Text style={s.pageTitle}>Profile</Text>
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[s.pageTitle, { color: colors.text }]}>Profile</Text>
         </View>
         <View style={s.guestWrap}>
           <View style={s.guestIconCircle}>
             <Icon name="person-outline" size={40} color={Colors.silver} />
           </View>
-          <Text style={s.guestTitle}>You're browsing as a guest</Text>
-          <Text style={s.guestSub}>
+          <Text style={[s.guestTitle, { color: colors.text }]}>You're browsing as a guest</Text>
+          <Text style={[s.guestSub, { color: colors.textMuted }]}>
             Sign in to view your policies, file claims, and track everything in one place.
           </Text>
           <TouchableOpacity style={s.guestLoginBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
@@ -156,7 +159,7 @@ export default function ProfileTab() {
   }
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={{ paddingBottom: BottomTabInset + 24 }}
@@ -164,28 +167,31 @@ export default function ProfileTab() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}
       >
         {/* Header */}
-        <View style={s.header}>
-          <Text style={s.pageTitle}>Profile</Text>
-          <TouchableOpacity style={s.editBtn} onPress={() => router.push('/edit-profile')}>
-            <Icon name="create-outline" size={16} color={Colors.primary} />
-            <Text style={s.editBtnText}>Edit</Text>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[s.pageTitle, { color: colors.text }]}>Profile</Text>
+          <TouchableOpacity 
+            style={[s.editBtn, { borderColor: Colors.primary, backgroundColor: colors.isDark ? 'rgba(21,128,255,0.12)' : 'transparent' }]} 
+            onPress={() => router.push('/edit-profile')}
+          >
+            <Icon name="create-outline" size={16} color={colors.isDark ? '#60A5FA' : Colors.primary} />
+            <Text style={[s.editBtnText, { color: colors.isDark ? '#60A5FA' : Colors.primary }]}>Edit</Text>
           </TouchableOpacity>
         </View>
 
         {/* Avatar card */}
-        <View style={s.avatarCard}>
+        <View style={[s.avatarCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={s.avatarCircle}>
             <Text style={s.avatarText}>{initials}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.userName}>{user.name ?? 'Add your name'}</Text>
-            <Text style={s.userSub}>{user.email ?? user.phone}</Text>
+            <Text style={[s.userName, { color: colors.text }]}>{user.name ?? 'Add your name'}</Text>
+            <Text style={[s.userSub, { color: colors.textMuted }]}>{user.email ?? user.phone}</Text>
             {user.email && (
-              <Text style={s.userSub}>{user.phone}</Text>
+              <Text style={[s.userSub, { color: colors.textMuted }]}>{user.phone}</Text>
             )}
             {(user.city || user.state) && (
-              <Text style={s.userLocation}>
-                <Icon name="location-outline" size={11} color={Colors.textMuted} />{' '}
+              <Text style={[s.userLocation, { color: colors.textMuted }]}>
+                <Icon name="location-outline" size={11} color={colors.textMuted} />{' '}
                 {[user.city, user.state].filter(Boolean).join(', ')}
               </Text>
             )}
@@ -199,12 +205,12 @@ export default function ProfileTab() {
         {loading ? (
           <ActivityIndicator style={{ marginVertical: 20 }} color={Colors.primary} />
         ) : (
-          <View style={s.statsRow}>
+          <View style={[s.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={s.statBox}>
-              <Text style={s.statNum}>{claims.length}</Text>
-              <Text style={s.statLbl}>Total{'\n'}Claims</Text>
+              <Text style={[s.statNum, { color: colors.text }]}>{claims.length}</Text>
+              <Text style={[s.statLbl, { color: colors.textMuted }]}>Total{'\n'}Claims</Text>
             </View>
-            <View style={s.statDivider} />
+            <View style={[s.statDivider, { backgroundColor: colors.border }]} />
             <View style={s.statBox}>
               <Text style={[s.statNum, { color: Colors.success }]}>
                 {totalPaid >= 1000
@@ -212,7 +218,7 @@ export default function ProfileTab() {
                   : `₹${totalPaid}`
                 }
               </Text>
-              <Text style={s.statLbl}>Total{'\n'}Paid</Text>
+              <Text style={[s.statLbl, { color: colors.textMuted }]}>Total{'\n'}Paid</Text>
             </View>
           </View>
         )}
@@ -221,7 +227,7 @@ export default function ProfileTab() {
         {!loading && claims.length > 0 && (
           <View style={s.section}>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>Recent Claims</Text>
+              <Text style={[s.sectionTitle, { color: colors.text }]}>Recent Claims</Text>
             </View>
             {claims.slice(0, 2).map(claim => {
               const isApproved = claim.status === 'approved' || claim.status === 'settled';
@@ -229,10 +235,10 @@ export default function ProfileTab() {
               const color = isApproved ? Colors.success : isPending ? '#D97706' : Colors.error;
               const bgColor = isApproved ? (Colors.successLight ?? Colors.success + '18') : isPending ? '#FEF3C7' : Colors.error + '18';
               return (
-                <View key={claim.id} style={s.claimRow}>
+                <View key={claim.id} style={[s.claimRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.claimType}>{claim.type} · {claim.claimNumber}</Text>
-                    <Text style={s.claimAmt}>{formatAmount(claim.amount)}</Text>
+                    <Text style={[s.claimType, { color: colors.text }]}>{claim.type} · {claim.claimNumber}</Text>
+                    <Text style={[s.claimAmt, { color: colors.textMuted }]}>{formatAmount(claim.amount)}</Text>
                   </View>
                   <View style={[s.claimBadge, { backgroundColor: bgColor }]}>
                     <Text style={[s.claimBadgeText, { color }]}>
@@ -246,7 +252,7 @@ export default function ProfileTab() {
         )}
 
         {/* Menu */}
-        <View style={s.menu}>
+        <View style={[s.menu, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <MenuRow
             icon="document-text-outline"
             label="My Policies"
@@ -268,6 +274,13 @@ export default function ProfileTab() {
             label="Payment History"
             sub={payments.length > 0 ? `${payments.filter(p => p.status === 'success').length} successful payments` : 'Premiums & receipts'}
             onPress={() => router.push('/payments')}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
+            icon="folder-open-outline"
+            label="My Documents & Storage"
+            sub="DigiLocker & cloud files"
+            onPress={() => router.push('/files' as any)}
           />
           <View style={s.menuDivider} />
           <MenuRow
