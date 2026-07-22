@@ -248,7 +248,7 @@ const s = StyleSheet.create({
   slider: { flex: 1 },
   slide: {
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 36,
     paddingBottom: 20,
   },
@@ -257,7 +257,7 @@ const s = StyleSheet.create({
     height: 180,
     borderRadius: 90,
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     marginBottom: 32,
     position: 'relative',
   },
