@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
 import { getFirebaseAdmin } from '../lib/firebase';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
