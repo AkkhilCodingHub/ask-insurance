@@ -537,8 +537,8 @@ export interface Conversation {
 export const chatApi = {
   getConversations:   () => request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
   getConversation:    (id: string) => request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
-  getOrCreate:        (subject?: string) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: subject ?? 'Support' }, true),
-  createConversation: (subject?: string, firstMsg?: string) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: subject ?? 'Support', firstMsg }, true),
+  getOrCreate:        (subject?: unknown) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: typeof subject === 'string' ? subject : 'Support' }, true),
+  createConversation: (subject?: unknown, firstMsg?: unknown) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: typeof subject === 'string' ? subject : 'Support', firstMsg: typeof firstMsg === 'string' ? firstMsg : undefined }, true),
   getMessages:        (conversationId: string, after?: string) =>
     request<{ messages: ChatMessage[] }>(`/api/chat/conversations/${conversationId}/messages${after ? `?after=${encodeURIComponent(after)}` : ''}`, {}, true),
   sendMessage:        (conversationId: string, content: string) =>
