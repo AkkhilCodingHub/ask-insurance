@@ -166,7 +166,7 @@ export function AnimatedSplashScreen({ isReady = true, onFinish, children }: Ani
 const s = StyleSheet.create({
   root: { flex: 1 },
   splashContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#0A1628',
     alignItems: 'center',
     justifyContent: 'center',
