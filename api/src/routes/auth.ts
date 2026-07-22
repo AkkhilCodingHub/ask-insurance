@@ -113,14 +113,14 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
     });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(401).json({ error: 'User session expired or user not found' });
       return;
     }
 
     res.json({ user });
   } catch (error) {
     console.error('[auth/me]', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(401).json({ error: 'Session invalid' });
   }
 });
 
