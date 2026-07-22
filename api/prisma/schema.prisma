@@ -205,12 +205,15 @@ model Quote {
   // Relations
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId  String?
+  agent    Admin?   @relation("AgentQuotes", fields: [agentId], references: [id], onDelete: SetNull)
   policies Policy[]
 
   @@index([userId, status])
   @@index([userId, expiresAt])
   @@index([userId, createdAt])
   @@index([status, expiresAt])
+  @@index([agentId])
   @@map("quotes")
 }
 
@@ -261,8 +264,9 @@ model Admin {
   password    String?  // null for Google-only admins
   googleId    String?  @unique
   name        String
-  role        String   @default("admin") // admin, superadmin
+  role        String   @default("admin") // admin, superadmin, agent
   isActive    Boolean  @default(true)
+  agentCode   String?  @unique // e.g. AGT-1082 for QR code scanning
   storageUsed BigInt   @default(0) // bytes used out of 10 GB quota
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -281,12 +285,13 @@ model Admin {
   assignedInsurers       Json? // JSON array of Insurer IDs
   assignedInsuranceTypes Json? // JSON array of plan types (e.g. ["life", "health"])
 
-  conversations Conversation[]
-  files         AdminFile[]
-  userDocuments UserDocument[]
-  addedUsers    User[]         @relation("AgentCustomers")
-  activityLogs  ActivityLog[]
-  renewals      Renewal[]
+  conversations  Conversation[]
+  files          AdminFile[]
+  userDocuments  UserDocument[]
+  addedUsers     User[]         @relation("AgentCustomers")
+  assignedQuotes Quote[]        @relation("AgentQuotes")
+  activityLogs   ActivityLog[]
+  renewals       Renewal[]
 
   @@index([isActive])
   @@index([createdAt])
