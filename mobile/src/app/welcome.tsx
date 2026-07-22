@@ -46,10 +46,11 @@ export default function WelcomeScreen() {
   const [typingComplete, setTypingComplete] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  const [cursorVisible, setCursorVisible] = useState(true);
+
   // Animation values
   const logoScale = useRef(new Animated.Value(0.4)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const cursorOpacity = useRef(new Animated.Value(1)).current;
 
   // 1. Typewriter Effect
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function WelcomeScreen() {
 
     // Blinking cursor
     const cursorInterval = setInterval(() => {
-      cursorOpacity.setValue(cursorOpacity._value === 1 ? 0 : 1);
+      setCursorVisible(v => !v);
     }, 400);
 
     return () => {
@@ -127,7 +128,7 @@ export default function WelcomeScreen() {
         
         <View style={s.typewriterRow}>
           <Text style={s.typewriterText}>{typedText}</Text>
-          <Animated.Text style={[s.cursorText, { opacity: cursorOpacity }]}>|</Animated.Text>
+          <Text style={[s.cursorText, { opacity: cursorVisible ? 1 : 0 }]}>|</Text>
         </View>
 
         <TouchableOpacity onPress={skip} style={s.skipBtn}>
@@ -216,7 +217,7 @@ const s = StyleSheet.create({
   typewriterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justify: 'center',
+    justifyContent: 'center',
     height: 24,
   },
   typewriterText: {
