@@ -83,14 +83,10 @@ export default function RootLayout() {
     if (error) console.error('[RootLayout] Font loading error:', error);
   }, [error]);
 
-  if (!loaded) {
-    return null;
-  }
-
   return (
     <LanguageProvider>
-      <AnimatedSplashScreen>
-        <RootContent />
+      <AnimatedSplashScreen isReady={loaded}>
+        {loaded ? <RootContent /> : null}
       </AnimatedSplashScreen>
     </LanguageProvider>
   );
