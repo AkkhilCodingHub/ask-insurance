@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ask-insurance-api
+    env: node
+    rootDir: api
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
