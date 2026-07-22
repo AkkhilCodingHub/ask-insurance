@@ -86,17 +86,11 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
-router.get('/me', async (req: Request, res: Response): Promise<void> => {
+router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '').trim();
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
-    }
-
-    const decoded = verifyAuthToken(token);
+    const userId = req.userId!;
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: {
         id: true,
         phone: true,
@@ -123,11 +117,9 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     }
 
     res.json({ user });
-    return;
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Invalid token' });
-    return;
+    console.error('[auth/me]', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

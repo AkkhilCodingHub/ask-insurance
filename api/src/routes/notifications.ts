@@ -7,12 +7,7 @@ const router = Router();
 
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.userId!;
     const unreadOnly = req.query.unread === 'true';
 
     const notifications = await prisma.notification.findMany({
@@ -29,23 +24,16 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
     });
 
     res.json({ notifications, unreadCount });
-    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.put('/:id/read', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const userId = req.userId!;
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
 
     const notification = await prisma.notification.findFirst({ where: { id, userId } });
     if (!notification) {
@@ -59,7 +47,6 @@ router.put('/:id/read', authenticate, async (req: Request, res: Response): Promi
     });
 
     res.json({ notification: updated });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid notification id' });
@@ -67,17 +54,12 @@ router.put('/:id/read', authenticate, async (req: Request, res: Response): Promi
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.put('/read-all', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const userId = req.userId!;
 
     await prisma.notification.updateMany({
       where: { userId, isRead: false },
@@ -85,11 +67,9 @@ router.put('/read-all', authenticate, async (req: Request, res: Response): Promi
     });
 
     res.json({ success: true });
-    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
