@@ -374,31 +374,38 @@ export interface DashboardData {
   policies:        ApiPolicy[];
 }
 
+// ── HTTP Shorthands ───────────────────────────────────────────────────────────
+
+const post = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const put = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const patch = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const del = <T>(path: string, auth = false) =>
+  request<T>(path, { method: 'DELETE' }, auth);
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const authApi = {
   sendOTP: (phone: string) =>
-    request<{ success: boolean; isNewUser: boolean }>('/api/auth/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone })
-    }),
+    post<{ success: boolean; isNewUser: boolean }>('/api/auth/send-otp', { phone }),
 
   verifyOTP: (phone: string, otp: string) =>
-    request<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-otp',
-      { method: 'POST', body: JSON.stringify({ phone, otp }) }
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/verify-otp', { phone, otp }
     ),
 
   verifyFirebase: (idToken: string) =>
-    request<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-firebase',
-      { method: 'POST', body: JSON.stringify({ idToken }) }
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/verify-firebase', { idToken }
     ),
 
   refresh: (refreshToken: string) =>
-    request<{ token: string; refreshToken: string }>('/api/auth/refresh', {
-      method: 'POST', body: JSON.stringify({ refreshToken })
-    }),
+    post<{ token: string; refreshToken: string }>('/api/auth/refresh', { refreshToken }),
 
   me: () =>
     request<{ user: ApiUser }>('/api/auth/me', {}, true)
@@ -416,11 +423,7 @@ export const usersApi = {
     city?:        string;
     state?:       string;
     pincode?:     string;
-  }) =>
-    request<{ user: ApiUser }>('/api/users/profile', {
-      method: 'PUT',
-      body:   JSON.stringify(data)
-    }, true),
+  }) => put<{ user: ApiUser }>('/api/users/profile', data, true),
 
   dashboard: () =>
     request<DashboardData>('/api/users/dashboard', {}, true)
@@ -448,48 +451,26 @@ export const plansApi = {
 // ── Policies ──────────────────────────────────────────────────────────────────
 
 export const policiesApi = {
-  list: () =>
-    request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
-  get: (id: string) =>
-    request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
-  renew: (id: string) =>
-    request<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {
-      method: 'PUT', body: JSON.stringify({})
-    }, true)
+  list: () => request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
+  get:  (id: string) => request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
+  renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
 };
 
 // ── Claims ────────────────────────────────────────────────────────────────────
 
 export const claimsApi = {
-  list: () =>
-    request<{ claims: ApiClaim[] }>('/api/claims', {}, true),
-  create: (data: {
-    policyId:     string;
-    type:         string;
-    amount:       number;
-    description:  string;
-    incidentDate: string;
-  }) =>
-    request<{ claim: ApiClaim }>('/api/claims', {
-      method: 'POST',
-      body:   JSON.stringify(data)
-    }, true)
+  list:   () => request<{ claims: ApiClaim[] }>('/api/claims', {}, true),
+  create: (data: { policyId: string; type: string; amount: number; description: string; incidentDate: string }) =>
+    post<{ claim: ApiClaim }>('/api/claims', data, true),
 };
 
 // ── Quotes ────────────────────────────────────────────────────────────────────
 
 export const quotesApi = {
-  create: (type: string, details: Record<string, unknown>, planId?: string) =>
-    request<{ quote: ApiQuote }>('/api/quotes', {
-      method: 'POST',
-      body:   JSON.stringify({ type, details, planId })
-    }, true),
-  list: () =>
-    request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true),
-  approve: (quoteId: string) =>
-    request<{ policy: ApiPolicy }>(`/api/quotes/${quoteId}/approve`, {
-      method: 'POST',
-    }, true),
+  create:  (type: string, details: Record<string, unknown>, planId?: string) =>
+    post<{ quote: ApiQuote }>('/api/quotes', { type, details, planId }, true),
+  list:    () => request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true),
+  approve: (quoteId: string) => post<{ policy: ApiPolicy }>(`/api/quotes/${quoteId}/approve`, undefined, true),
 };
 
 export interface ApiApplication {
@@ -511,13 +492,10 @@ export interface ApiApplication {
 export const paymentsApi = {
   list: () => request<{ payments: ApiPayment[] }>('/api/payments', {}, true),
   createRazorpayLink: (policyId?: string, quoteId?: string) =>
-    request<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
-      '/api/payments/razorpay/create-link',
-      { method: 'POST', body: JSON.stringify({ policyId, quoteId }) },
-      true
+    post<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
+      '/api/payments/razorpay/create-link', { policyId, quoteId }, true
     ),
-  savePushToken: (token: string) =>
-    request<void>('/api/users/push-token', { method: 'PUT', body: JSON.stringify({ token }) }, true),
+  savePushToken: (token: string) => put<void>('/api/users/push-token', { token }, true),
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -557,32 +535,13 @@ export interface Conversation {
 }
 
 export const chatApi = {
-  getConversations: () =>
-    request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
-
-  getConversation: (id: string) =>
-    request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
-
-  getOrCreate: (subject?: string) =>
-    request<{ conversation: Conversation }>('/api/chat/conversations', {
-      method: 'POST',
-      body:   JSON.stringify({ subject: subject ?? 'Support' })
-    }, true),
-
-  getMessages: (conversationId: string, after?: string) => {
-    const qs = after ? `?after=${encodeURIComponent(after)}` : '';
-    return request<{ messages: ChatMessage[] }>(
-      `/api/chat/conversations/${conversationId}/messages${qs}`,
-      {},
-      true
-    );
-  },
-
-  sendMessage: (conversationId: string, content: string) =>
-    request<{ message: ChatMessage }>(`/api/chat/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      body:   JSON.stringify({ content })
-    }, true)
+  getConversations: () => request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
+  getConversation:  (id: string) => request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
+  getOrCreate:      (subject?: string) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: subject ?? 'Support' }, true),
+  getMessages:      (conversationId: string, after?: string) =>
+    request<{ messages: ChatMessage[] }>(`/api/chat/conversations/${conversationId}/messages${after ? `?after=${encodeURIComponent(after)}` : ''}`, {}, true),
+  sendMessage:      (conversationId: string, content: string) =>
+    post<{ message: ChatMessage }>(`/api/chat/conversations/${conversationId}/messages`, { content }, true),
 };
 
 // ── Agent (admin) token storage ───────────────────────────────────────────────
