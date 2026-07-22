@@ -38,8 +38,8 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
       return;
     }
-    console.error('[send-otp]', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
     return;
   }
 });
