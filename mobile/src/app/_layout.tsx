@@ -72,8 +72,6 @@ function RootContent() {
   );
 }
 
-import { AnimatedSplashScreen } from '@/components/AnimatedSplashScreen';
-
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...Ionicons.font,
@@ -83,11 +81,19 @@ export default function RootLayout() {
     if (error) console.error('[RootLayout] Font loading error:', error);
   }, [error]);
 
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
+
   return (
     <LanguageProvider>
-      <AnimatedSplashScreen isReady={loaded}>
-        {loaded ? <RootContent /> : null}
-      </AnimatedSplashScreen>
+      <RootContent />
     </LanguageProvider>
   );
 }
