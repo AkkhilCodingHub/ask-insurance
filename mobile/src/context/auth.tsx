@@ -16,7 +16,6 @@ import {
 
 // ── Push notifications ────────────────────────────────────────────────────────
 
-/** expo-notifications permission result shape varies slightly by SDK; normalize to status string */
 function readNotificationPermissionStatus(result: unknown): 'granted' | 'denied' | 'undetermined' {
   if (result === 'granted' || result === 'denied' || result === 'undetermined') return result;
   if (typeof result === 'object' && result !== null && 'status' in result) {
@@ -26,81 +25,39 @@ function readNotificationPermissionStatus(result: unknown): 'granted' | 'denied'
   return 'undetermined';
 }
 
-// Step 1: request permission on app open (no auth needed).
 export async function requestNotificationPermission(): Promise<boolean> {
-  console.log('[push] requestNotificationPermission called');
   const Notifications = await import('expo-notifications');
-
-  // Channel setup is Android-only and non-fatal — Expo Go may reject this call.
   if (Platform.OS === 'android') {
     try {
-      console.log('[push] setting up Android notification channel');
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
       });
-      console.log('[push] Android channel set up successfully');
-    } catch (e) {
-      console.warn('[push] Android channel setup failed (non-fatal, continuing):', e);
-    }
+    } catch {}
   }
-
   try {
     const existing = readNotificationPermissionStatus(await Notifications.getPermissionsAsync());
-    console.log('[push] existing permission status:', existing);
-
-    if (existing === 'granted') {
-      console.log('[push] permission already granted');
-      return true;
-    }
-
-    console.log('[push] requesting permission from user...');
+    if (existing === 'granted') return true;
     const next = readNotificationPermissionStatus(await Notifications.requestPermissionsAsync());
-    console.log('[push] permission result:', next);
     return next === 'granted';
-  } catch (e) {
-    console.warn('[push] requestNotificationPermission error:', e);
+  } catch {
     return false;
   }
 }
 
-// Step 2: get token and save it to the DB (requires auth token to be set).
 async function savePushToken() {
-  console.log('[push] savePushToken called');
-  if (!isDevice) {
-    console.warn('[push] skipping — push tokens only work on physical devices, not simulators');
-    return;
-  }
-
+  if (!isDevice) return;
   try {
     const Notifications = await import('expo-notifications');
-
     const status = readNotificationPermissionStatus(await Notifications.getPermissionsAsync());
-    console.log('[push] permission status before token fetch:', status);
-    if (status !== 'granted') {
-      console.warn('[push] permission not granted, skipping token save');
-      return;
-    }
-
+    if (status !== 'granted') return;
     const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-    console.log('[push] fetching Expo push token (projectId:', projectId, ')');
-
     const { data: token } = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
-
-    console.log('[push] got token:', token);
-
-    if (token) {
-      await paymentsApi.savePushToken(token);
-      console.log('[push] token saved to database successfully');
-    } else {
-      console.warn('[push] getExpoPushTokenAsync returned empty token');
-    }
-  } catch (e) {
-    console.warn('[push] savePushToken error:', e);
-  }
+    if (token) await paymentsApi.savePushToken(token);
+  } catch {}
 }
 
 // ── AuthUser type (full profile) ──────────────────────────────────────────────
@@ -168,19 +125,6 @@ export function mapApiUser(u: ApiUser): AuthUser {
 
 const firebaseAuth = getAuth();
 
-/**
- * Android Phone Auth: Firebase verifies the app via Play Integrity (and reCAPTCHA fallback).
- * If you see "missing a valid app identifier" / Integrity + reCAPTCHA failed:
- *   1. Firebase Console → Project settings → Your apps → Android (`com.ask.insurance`)
- *      → Add **SHA-1** and **SHA-256** for every key that signs the APK/AAB you run:
- *      - Local debug: `cd android && ./gradlew signingReport` (or `keytool` on `~/.android/debug.keystore`)
- *      - EAS builds: `eas credentials -p android` → Keystore fingerprints
- *      - Play Store builds: Play Console → Setup → App integrity → **App signing key certificate**
- *   2. Download a fresh **google-services.json** after saving fingerprints and replace `mobile/google-services.json`.
- *   3. Google Cloud Console (same project): ensure **Play Integrity API** / device checks are not blocked by API key restrictions.
- *
- * `appVerificationDisabledForTesting` only applies in __DEV__; production must use registered certs.
- */
 if (__DEV__) {
   firebaseAuth.settings.appVerificationDisabledForTesting = true;
 }
@@ -190,13 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]         = useState(true);
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
-  // Holds the Firebase confirmation result for manual OTP entry
   const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
-  // True while verifyOTP is in-flight — prevents onAuthStateChanged from double-processing
   const manualVerifyInProgressRef = useRef(false);
   const isLocalOtpRef = useRef(false);
 
-  // ── Register session-expired callback so api.ts can signal logout ─────────
   useEffect(() => {
     registerSessionExpiredCallback(() => {
       setUser(null);
@@ -205,18 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => registerSessionExpiredCallback(null);
   }, []);
 
-  // ── Ask for notification permission on app open (no auth required) ────────
   useEffect(() => {
-    console.log('[push] app opened — checking notification permission');
     requestNotificationPermission();
   }, []);
 
-  // ── Save push token to DB whenever user becomes authenticated ─────────────
   useEffect(() => {
-    if (user) {
-      console.log('[push] user authenticated (id:', user.id, ') — saving push token');
-      savePushToken();
-    }
+    if (user) savePushToken();
   }, [user]);
 
   // ── Restore session on app launch ─────────────────────────────────────────
