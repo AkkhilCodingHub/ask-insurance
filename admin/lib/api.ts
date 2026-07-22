@@ -328,10 +328,12 @@ class AdminApiClient {
     this.instance.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
           localStorage.removeItem('adminToken');
           localStorage.removeItem('ask_admin');
-          window.location.href = '/login';
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
         }
         const message = error.response?.data?.error || error.response?.data?.message || error.message;
         return Promise.reject(new Error(message));
