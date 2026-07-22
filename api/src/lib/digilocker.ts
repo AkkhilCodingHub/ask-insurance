@@ -49,25 +49,18 @@ export interface DigiLockerFilesResponse {
   items: DigiLockerFile[];
 }
 
-// ── PKCE helpers ──────────────────────────────────────────────────────────────
-// DigiLocker (oauth-consent.dl6.in) registers apps as PKCE public clients: no
-// client_secret is issued; the code_verifier proves the token request comes from
-// the same client that started the flow. Method is always S256.
-
+// PKCE helper functions for DigiLocker OAuth2 flow
 function base64url(buf: Buffer): string {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export function generateCodeVerifier(): string {
-  // 32 random bytes → 43-char base64url string (within the spec's 43–128 range).
   return base64url(crypto.randomBytes(32));
 }
 
 export function deriveCodeChallenge(verifier: string): string {
   return base64url(crypto.createHash('sha256').update(verifier).digest());
 }
-
-// ── Generate auth URL ─────────────────────────────────────────────────────────
 
 export function buildAuthUrl(state: string, codeChallenge: string): string {
   const params = new URLSearchParams({
@@ -82,8 +75,6 @@ export function buildAuthUrl(state: string, codeChallenge: string): string {
   return `${BASE_V1}/authorize?${params.toString()}`;
 }
 
-// ── Exchange code for tokens ──────────────────────────────────────────────────
-
 export async function exchangeCode(code: string, codeVerifier: string): Promise<DigiLockerTokens> {
   const body = new URLSearchParams({
     code,
@@ -92,10 +83,7 @@ export async function exchangeCode(code: string, codeVerifier: string): Promise<
     redirect_uri:  REDIRECT_URI,
     code_verifier: codeVerifier,
   });
-  // Confidential clients (if a secret was issued) also send it; PKCE clients don't.
   if (CLIENT_SECRET) body.set('client_secret', CLIENT_SECRET);
-
-  console.log('[DigiLocker Token Exchange] Request body:', body.toString());
 
   const res = await fetch(`${BASE_V1}/token`, {
     method:  'POST',
@@ -112,8 +100,6 @@ export async function exchangeCode(code: string, codeVerifier: string): Promise<
   return res.json() as Promise<DigiLockerTokens>;
 }
 
-// ── Fetch issued files list ───────────────────────────────────────────────────
-
 export async function fetchIssuedFiles(accessToken: string): Promise<DigiLockerFile[]> {
   const res = await fetch(`${BASE_V2}/files/issued`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -127,8 +113,6 @@ export async function fetchIssuedFiles(accessToken: string): Promise<DigiLockerF
   const data = await res.json() as DigiLockerFilesResponse;
   return data.items ?? [];
 }
-
-// ── Fetch uploaded drive files list ───────────────────────────────────────────
 
 export async function fetchUploadedFiles(accessToken: string): Promise<DigiLockerFile[]> {
   try {
@@ -145,8 +129,7 @@ export async function fetchUploadedFiles(accessToken: string): Promise<DigiLocke
   }
 }
 
-// ── Generate a CSRF state token ───────────────────────────────────────────────
-
+// CSRF state token generation and verification
 export function generateState(userId: string): string {
   return `${userId}.${crypto.randomBytes(16).toString('hex')}`;
 }

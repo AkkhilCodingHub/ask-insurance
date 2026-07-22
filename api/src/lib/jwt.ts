@@ -51,8 +51,7 @@ const refreshVerifyOptions: VerifyOptions = {
   audience:   JWT_REFRESH_AUDIENCE,
 };
 
-// ── Access token ───────────────────────────────────────────────────────────────
-
+// Access token operations
 export const createAuthToken = (payload: AuthTokenPayload): string =>
   jwt.sign(payload, getSecret(), signOptions);
 
@@ -70,8 +69,7 @@ export const verifyAuthToken = (token: string): AuthTokenPayload => {
   return { userId: decoded.userId, phone: decoded.phone };
 };
 
-// ── Refresh token ──────────────────────────────────────────────────────────────
-
+// Refresh token operations
 export const createRefreshToken = (payload: AuthTokenPayload): string =>
   jwt.sign(payload, getRefreshSecret(), refreshSignOptions);
 

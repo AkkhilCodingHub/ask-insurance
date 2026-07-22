@@ -9,12 +9,10 @@ import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
 const router = Router();
 
-// ── GET / — list user payments ────────────────────────────────────────────────
-
+// List user payments
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const userId = req.userId!;
 
     const payments = await prisma.payment.findMany({
       where: { userId },
@@ -33,11 +31,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
   }
 });
 
-// ── POST /razorpay/create-link ────────────────────────────────────────────────
-// Accepts either policyId (direct) or quoteId (looks up the pending policy).
-// This means the mobile can call it with policy.id after approve, or quoteId
-// if the user re-opens the payment sheet for an already-approved quote.
-
+// Create Razorpay payment link for a pending policy or quote
 router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
@@ -56,7 +50,6 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
         include: { user: { select: { name: true, phone: true } } }
       });
     } else {
-      // Find the pending policy that was created when this quote was approved
       policy = await prisma.policy.findFirst({
         where: { quoteId: body.quoteId!, userId, paymentStatus: 'pending' },
         include: { user: { select: { name: true, phone: true } } }
@@ -68,8 +61,6 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
       return;
     }
 
-    console.log(`[razorpay] creating payment link for policy ${policy.id}, amount ₹${policy.premium}`);
-
     const link = await createPaymentLink({
       amount:        policy.premium,
       policyId:      policy.id,
@@ -79,8 +70,6 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
       description:   `${policy.type} Insurance Premium — ${policy.provider}`,
     });
 
-    console.log(`[razorpay] payment link created: ${link.short_url}`);
-
     res.json({ paymentLinkId: link.id, paymentUrl: link.short_url, amount: policy.premium });
   } catch (e) {
     console.error('[razorpay] create-link error:', e);
@@ -88,57 +77,31 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
   }
 });
 
-// ── POST /razorpay/webhook ────────────────────────────────────────────────────
-// Razorpay fires payment_link.paid when user pays via the link.
-
+// Razorpay webhook handler
 router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<void> => {
-  const ts = new Date().toISOString();
-  console.log(`\n${'─'.repeat(60)}`);
-  console.log(`[razorpay webhook] ${ts}`);
-  console.log(`[razorpay webhook] body type  : ${typeof req.body} | isBuffer: ${Buffer.isBuffer(req.body)}`);
-  console.log(`[razorpay webhook] headers    :`, {
-    'content-type':          req.headers['content-type'],
-    'x-razorpay-signature':  req.headers['x-razorpay-signature'] ? '***present***' : 'MISSING',
-    'user-agent':            req.headers['user-agent'],
-  });
-
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET ?? '';
-    console.log(`[razorpay webhook] secret configured: ${secret ? 'YES' : 'NO (skipping sig check)'}`);
 
-    // ── Signature verification ────────────────────────────────────────────────
+    // Verify webhook signature if secret configured
     if (secret) {
       const sig = req.headers['x-razorpay-signature'] as string;
       if (!sig) {
-        console.warn('[razorpay webhook] REJECTED — no x-razorpay-signature header');
         res.status(400).json({ error: 'Missing signature' });
         return;
       }
       const expected = crypto.createHmac('sha256', secret).update(req.body).digest('hex');
-      console.log(`[razorpay webhook] sig received : ${sig}`);
-      console.log(`[razorpay webhook] sig expected : ${expected}`);
       if (sig !== expected) {
-        console.warn('[razorpay webhook] REJECTED — signature mismatch');
         res.status(400).json({ error: 'Invalid signature' });
         return;
       }
-      console.log('[razorpay webhook] signature OK ✓');
     }
 
-    // ── Parse body ────────────────────────────────────────────────────────────
     const rawStr = req.body.toString();
-    console.log(`[razorpay webhook] raw body (first 500 chars):\n${rawStr.slice(0, 500)}`);
-
     const event = JSON.parse(rawStr);
-    console.log(`[razorpay webhook] event: ${event.event}`);
-    console.log(`[razorpay webhook] payload keys: ${Object.keys(event.payload ?? {}).join(', ')}`);
 
-    // ── Handle paid events ────────────────────────────────────────────────────
     const isPaid =
       event.event === 'payment_link.paid' ||
       event.event === 'payment.captured';
-
-    console.log(`[razorpay webhook] isPaid: ${isPaid}`);
 
     if (isPaid) {
       const policyId: string | undefined =
