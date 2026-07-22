@@ -599,21 +599,27 @@ export async function clearAgentToken(): Promise<void> {
   await SecureStore.deleteItemAsync(AGENT_TOKEN_KEY);
 }
 
-// ── Agent request wrapper (uses agent JWT → /api/admin/* routes) ──────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function agentRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getAgentToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  const headers = {
     ...(options.headers as Record<string, string> ?? {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  return request<T>(path, { ...options, headers }, false);
+}
+
+async function uploadForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
   let json: unknown;
   try { json = await res.json(); } catch { json = null; }
   if (!res.ok) {
-    const body = json as Record<string, unknown> | null;
-    throw new ApiError((body?.error as string) ?? 'Request failed', res.status);
+    throw new ApiError(((json as any)?.error as string) ?? 'Upload failed', res.status);
   }
   return json as T;
 }
@@ -762,14 +768,7 @@ export const agentApi = {
     form.append('issueDate',    data.issueDate);
     form.append('expiryDate',   data.expiryDate);
     if (data.notes) form.append('notes', data.notes);
-    const res = await fetch(`${BASE_URL}/api/admin/policies/${policyId}/upload-document`, {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token ?? ''}` },
-      body:    form,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new ApiError((json as any)?.error ?? 'Upload failed', res.status);
-    return json as { policy: AgentPolicy };
+    return uploadForm<{ policy: AgentPolicy }>(`/api/admin/policies/${policyId}/upload-document`, form, token);
   },
 
   // ── Chat ──────────────────────────────────────────────────────────────────
@@ -828,16 +827,7 @@ export const agentApi = {
     const form  = new FormData();
     form.append('docType', docType);
     form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
-
-    const url = `${BASE_URL}/api/admin/agents/kyc/upload`;
-    const resp = await fetch(url, {
-      method:  'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body:    form,
-    });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<{ success: boolean; kycStatus: string; docUrl: string }>('/api/admin/agents/kyc/upload', form, token);
   },
 
   // ── Renewals ──────────────────────────────────────────────────────────────
@@ -889,16 +879,7 @@ export const kycApi = {
     const form  = new FormData();
     form.append('docType', docType);
     form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
-
-    const url = `${BASE_URL}/api/kyc/upload`;
-    const resp = await fetch(url, {
-      method:  'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body:    form,
-    });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<{ success: boolean; kycStatus: string; docUrl: string }>('/api/kyc/upload', form, token);
   },
 };
 
@@ -920,15 +901,7 @@ export const documentsApi = {
     form.append('file', { uri: fileUri, type: mimeType, name: fileName } as any);
     if (title) form.append('title', title);
     if (docType) form.append('docType', docType);
-
-    const res = await fetch(`${BASE_URL}/api/documents/upload`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<any>('/api/documents/upload', form, token);
   },
 
   deleteDocument: (id: string) =>
