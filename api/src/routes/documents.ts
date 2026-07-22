@@ -11,6 +11,36 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max
 });
 
+// Helper to fetch user or agent documents
+async function fetchOwnerDocuments(modelName: 'user' | 'admin', id: string) {
+  const entity = await (prisma as any)[modelName].findUnique({
+    where: { id },
+    select: {
+      kycStatus: true,
+      digilockerSub: true,
+      kycDocuments: true,
+      kycVerifiedAt: true,
+      userDocuments: { orderBy: { createdAt: 'desc' } },
+    },
+  });
+
+  if (!entity) return null;
+
+  const digilockerDocs = Array.isArray(entity.kycDocuments) ? (entity.kycDocuments as any[]) : [];
+  const formattedUploaded = (entity.userDocuments ?? []).map((d: any) => ({
+    ...d,
+    fileSize: d.fileSize ? Number(d.fileSize) : null,
+  }));
+
+  return {
+    digilockerLinked: Boolean(entity.digilockerSub || entity.kycStatus === 'verified'),
+    kycStatus: entity.kycStatus,
+    digilockerVerifiedAt: entity.kycVerifiedAt,
+    digilockerDocuments: digilockerDocs,
+    uploadedDocuments: formattedUploaded,
+  };
+}
+
 // ── GET /documents ────────────────────────────────────────────────────────────
 // Fetch DigiLocker issued files + custom uploaded files for customer or agent
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
@@ -23,77 +53,16 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    if (userId) {
-      const user = await (prisma.user as any).findUnique({
-        where: { id: userId },
-        select: {
-          kycStatus: true,
-          digilockerSub: true,
-          kycDocuments: true,
-          kycVerifiedAt: true,
-          userDocuments: {
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-      });
+    const result = userId
+      ? await fetchOwnerDocuments('user', userId)
+      : await fetchOwnerDocuments('admin', adminId!);
 
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
-        return;
-      }
-
-      const digilockerDocs = Array.isArray(user.kycDocuments) ? (user.kycDocuments as any[]) : [];
-
-      const formattedUploaded = (user.userDocuments ?? []).map((d: any) => ({
-        ...d,
-        fileSize: d.fileSize ? Number(d.fileSize) : null,
-      }));
-
-      res.json({
-        digilockerLinked: Boolean(user.digilockerSub || user.kycStatus === 'verified'),
-        kycStatus: user.kycStatus,
-        digilockerVerifiedAt: user.kycVerifiedAt,
-        digilockerDocuments: digilockerDocs,
-        uploadedDocuments: formattedUploaded,
-      });
+    if (!result) {
+      res.status(404).json({ error: userId ? 'User not found' : 'Agent not found' });
       return;
     }
 
-    if (adminId) {
-      const admin = await (prisma.admin as any).findUnique({
-        where: { id: adminId },
-        select: {
-          kycStatus: true,
-          digilockerSub: true,
-          kycDocuments: true,
-          kycVerifiedAt: true,
-          userDocuments: {
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-      });
-
-      if (!admin) {
-        res.status(404).json({ error: 'Agent not found' });
-        return;
-      }
-
-      const digilockerDocs = Array.isArray(admin.kycDocuments) ? (admin.kycDocuments as any[]) : [];
-
-      const formattedUploaded = (admin.userDocuments ?? []).map((d: any) => ({
-        ...d,
-        fileSize: d.fileSize ? Number(d.fileSize) : null,
-      }));
-
-      res.json({
-        digilockerLinked: Boolean(admin.digilockerSub || admin.kycStatus === 'verified'),
-        kycStatus: admin.kycStatus,
-        digilockerVerifiedAt: admin.kycVerifiedAt,
-        digilockerDocuments: digilockerDocs,
-        uploadedDocuments: formattedUploaded,
-      });
-      return;
-    }
+    res.json(result);
   } catch (error) {
     console.error('[documents/list]', error);
     res.status(500).json({ error: 'Failed to fetch documents' });

@@ -92,7 +92,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
 router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
 
     const quote = await prisma.quote.findFirst({ where: { id, userId } });
     if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
@@ -121,7 +121,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
 router.post('/:id/approve', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
 
     const quote = await prisma.quote.findFirst({ where: { id, userId } });
     if (!quote)                         { res.status(404).json({ error: 'Quote not found' }); return; }
