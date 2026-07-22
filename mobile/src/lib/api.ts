@@ -505,9 +505,10 @@ export interface ChatMessage {
   content:        string;
   senderType:     'user' | 'admin';
   senderId:       string;
-  readAt:         string | null;
+  readAt?:        string | null;
   createdAt:      string;
   conversationId: string;
+  isInternal?:    boolean;
 }
 
 /** User summary included on admin/agent conversation payloads */
