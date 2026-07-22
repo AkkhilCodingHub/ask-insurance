@@ -9,11 +9,13 @@ const { width: W, height: H } = Dimensions.get('window');
 const FULL_TEXT = 'ASK INSURANCE BROKERS';
 
 interface AnimatedSplashScreenProps {
+  isReady?: boolean;
   onFinish?: () => void;
   children: React.ReactNode;
 }
 
-export function AnimatedSplashScreen({ onFinish, children }: AnimatedSplashScreenProps) {
+export function AnimatedSplashScreen({ isReady = true, onFinish, children }: AnimatedSplashScreenProps) {
+  const [animationDone, setAnimationDone] = useState(false);
   const [appReady, setAppReady] = useState(false);
   const [typedText, setTypedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
@@ -27,10 +29,8 @@ export function AnimatedSplashScreen({ onFinish, children }: AnimatedSplashScree
   const containerScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 1. Hide native splash screen immediately so our custom splash takes over seamlessly
     SplashScreen.hideAsync().catch(() => {});
 
-    // 2. Entrance animations: Spring scale & fade in logo + expanding rings
     Animated.parallel([
       Animated.spring(logoScale, {
         toValue: 1,
@@ -57,7 +57,6 @@ export function AnimatedSplashScreen({ onFinish, children }: AnimatedSplashScree
       ),
     ]).start();
 
-    // 3. Typewriter Effect
     let index = 0;
     const typingInterval = setInterval(() => {
       if (index <= FULL_TEXT.length) {
@@ -65,31 +64,10 @@ export function AnimatedSplashScreen({ onFinish, children }: AnimatedSplashScree
         index++;
       } else {
         clearInterval(typingInterval);
-        
-        // Hold briefly after typing finishes, then zoom out custom splash into the main app!
-        setTimeout(() => {
-          Animated.parallel([
-            Animated.timing(containerOpacity, {
-              toValue: 0,
-              duration: 550,
-              easing: Easing.out(Easing.cubic),
-              useNativeDriver: true,
-            }),
-            Animated.timing(containerScale, {
-              toValue: 1.15,
-              duration: 550,
-              easing: Easing.out(Easing.cubic),
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            setAppReady(true);
-            if (onFinish) onFinish();
-          });
-        }, 600);
+        setAnimationDone(true);
       }
     }, 55);
 
-    // Blinking cursor
     const cursorInterval = setInterval(() => {
       setCursorVisible(v => !v);
     }, 380);
@@ -99,6 +77,31 @@ export function AnimatedSplashScreen({ onFinish, children }: AnimatedSplashScree
       clearInterval(cursorInterval);
     };
   }, []);
+
+  // Smoothly exit when both typing animation and app resources are ready
+  useEffect(() => {
+    if (animationDone && isReady) {
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(containerOpacity, {
+            toValue: 0,
+            duration: 500,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(containerScale, {
+            toValue: 1.15,
+            duration: 500,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setAppReady(true);
+          if (onFinish) onFinish();
+        });
+      }, 400);
+    }
+  }, [animationDone, isReady]);
 
   return (
     <View style={s.root}>
