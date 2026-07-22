@@ -251,20 +251,6 @@ async function request<T>(
   return json as T;
 }
 
-// ── HTTP Method Helpers ───────────────────────────────────────────────────────
-
-const post = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
-
-const put = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
-
-const patch = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
-
-const del = <T>(path: string, auth = false) =>
-  request<T>(path, { method: 'DELETE' }, auth);
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ApiUser {
