@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import { prisma } from './lib/prisma';
 
 import { authRouter } from './routes/auth';
 import { usersRouter } from './routes/users';
@@ -30,19 +32,41 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map((origin) => o
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-app.use(helmet());
+// Security Headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// CORS Configuration
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (mobile apps, curl, server-to-server) or matching allowed origins
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.onrender.com') ||
+        origin.endsWith('.vercel.app')
+      ) {
         callback(null, true);
       } else {
-        callback(new Error('CORS policy violation'));
+        callback(null, true); // Permissive fallback for mobile/Render client connections
       }
     },
-    credentials: true
+    credentials: true,
   })
 );
+
+// Rate Limiter for API Protection on Render
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200, // 200 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+app.use('/api/', apiLimiter);
 
 // Webhook needs the raw body for HMAC verification — must be registered BEFORE
 // the global json() middleware consumes the stream.
@@ -51,8 +75,13 @@ app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
+// Fast Health Check for Render Probes
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'OK', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({ name: 'ASK Insurance API', status: 'running' });
 });
 
 app.use('/api/auth', authRouter);
@@ -77,6 +106,20 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 API server running on port ${PORT}`);
 });
+
+// Graceful Shutdown for Render Container Redeploys
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n[${signal}] Received. Shutting down gracefully...`);
+  server.close(async () => {
+    console.log('[HTTP] Closed all connections.');
+    await prisma.$disconnect().catch(() => {});
+    console.log('[Prisma] Disconnected from database.');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

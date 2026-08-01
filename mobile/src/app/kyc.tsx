@@ -12,6 +12,7 @@ import { Colors } from '@/constants/theme';
 import { kycApi } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
+import { useThemeColors } from '@/context/agent';
 import { DL_STATE_KEY, DL_VERIFIER_KEY } from './kyc-callback';
 
 type Step = 'idle' | 'success';
@@ -26,6 +27,7 @@ export default function KycScreen() {
   const router                = useRouter();
   const { refreshUser, user } = useAuth();
   const { alert }             = useDialog();
+  const colors                = useThemeColors();
 
   const [step,   setStep]   = useState<Step>('idle');
   const [dlBusy, setDlBusy] = useState(false);
@@ -51,12 +53,9 @@ export default function KycScreen() {
     try {
       const { url, state, codeVerifier } = await kycApi.initiate();
 
-      // Stash state + verifier so the kyc-callback route can complete the PKCE
-      // exchange after DigiLocker redirects back into the app via the HTTPS bridge.
       await SecureStore.setItemAsync(DL_STATE_KEY, state);
       await SecureStore.setItemAsync(DL_VERIFIER_KEY, codeVerifier);
 
-      // Use AuthSession to intercept deep link redirect and close browser popup automatically
       const redirectUrl = 'askinsurance://kyc-callback';
       const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
 
@@ -91,24 +90,24 @@ export default function KycScreen() {
   if (step === 'success') {
     const isVerified = user?.kycStatus === 'verified';
     return (
-      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <View style={s.header}>
-          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-            <Icon name="arrow-back-outline" size={22} color={Colors.text} />
+      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top', 'bottom']}>
+        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={[s.backBtn, { backgroundColor: colors.bg }]} onPress={() => router.back()}>
+            <Icon name="arrow-back-outline" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>KYC Verification</Text>
+          <Text style={[s.headerTitle, { color: colors.text }]}>KYC Verification</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={s.successWrap}>
-          <View style={[s.successCircle, { backgroundColor: isVerified ? '#ECFDF5' : Colors.primaryLight }]}>
+          <View style={[s.successCircle, { backgroundColor: isVerified ? '#ECFDF5' : colors.primaryLight }]}>
             <Icon
               name={isVerified ? 'checkmark-circle' : 'time-outline'}
               size={64}
               color={isVerified ? '#059669' : Colors.primary}
             />
           </View>
-          <Text style={s.successTitle}>{isVerified ? 'KYC Verified!' : 'KYC in progress'}</Text>
-          <Text style={s.successSub}>
+          <Text style={[s.successTitle, { color: colors.text }]}>{isVerified ? 'KYC Verified!' : 'KYC in progress'}</Text>
+          <Text style={[s.successSub, { color: colors.textMuted }]}>
             {isVerified
               ? 'Your identity has been verified. You can now access all features.'
               : 'Your verification is being processed.'}
@@ -129,12 +128,12 @@ export default function KycScreen() {
   const rejectionReason = (user as any)?.kycRejectionReason;
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Icon name="arrow-back-outline" size={22} color={Colors.text} />
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top', 'bottom']}>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[s.backBtn, { backgroundColor: colors.bg }]} onPress={() => router.back()}>
+          <Icon name="arrow-back-outline" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>KYC Verification</Text>
+        <Text style={[s.headerTitle, { color: colors.text }]}>KYC Verification</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -152,13 +151,14 @@ export default function KycScreen() {
         )}
 
         {/* Hero */}
-        <View style={s.heroCard}>
-          <View style={s.heroBg1} /><View style={s.heroBg2} />
-          <View style={s.heroIconCircle}>
+        <View style={[s.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[s.heroBg1, { backgroundColor: colors.primaryLight }]} />
+          <View style={[s.heroBg2, { backgroundColor: colors.primaryLight }]} />
+          <View style={[s.heroIconCircle, { backgroundColor: colors.primaryLight }]}>
             <Icon name="shield-checkmark-outline" size={40} color={Colors.primary} />
           </View>
-          <Text style={s.heroTitle}>Verify your identity</Text>
-          <Text style={s.heroSub}>
+          <Text style={[s.heroTitle, { color: colors.text }]}>Verify your identity</Text>
+          <Text style={[s.heroSub, { color: colors.textMuted }]}>
             Complete KYC instantly with DigiLocker to unlock payments, policies and claims.
           </Text>
         </View>
@@ -167,10 +167,10 @@ export default function KycScreen() {
         <View style={s.benefits}>
           {BENEFITS.map(b => (
             <View key={b.text} style={s.benefitRow}>
-              <View style={s.benefitIcon}>
+              <View style={[s.benefitIcon, { backgroundColor: colors.primaryLight }]}>
                 <Icon name={b.icon as any} size={18} color={Colors.primary} />
               </View>
-              <Text style={s.benefitText}>{b.text}</Text>
+              <Text style={[s.benefitText, { color: colors.text }]}>{b.text}</Text>
             </View>
           ))}
         </View>
@@ -194,7 +194,7 @@ export default function KycScreen() {
           {!dlBusy && <Icon name="chevron-forward" size={20} color={Colors.white} />}
         </TouchableOpacity>
 
-        <Text style={s.disclaimer}>
+        <Text style={[s.disclaimer, { color: colors.textMuted }]}>
           You'll be redirected to DigiLocker to grant access to your issued documents.
           We only receive the verification result — never your DigiLocker credentials.
         </Text>

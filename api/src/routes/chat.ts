@@ -25,8 +25,15 @@ router.post('/conversations', authenticate, async (req: Request, res: Response):
       return;
     }
 
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { agentId: true } });
+
     const conversation = await prisma.conversation.create({
-      data: { userId, subject: subject ?? null, status: 'open' },
+      data: {
+        userId,
+        subject: subject ?? null,
+        status: 'open',
+        adminId: user?.agentId ?? null,
+      },
       include: {
         messages: true,
         admin: { select: { id: true, name: true } }
@@ -74,7 +81,7 @@ router.get('/conversations', authenticate, async (req: Request, res: Response): 
 router.get('/conversations/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
 
     const conversation = await prisma.conversation.findFirst({
       where: { id, userId },
@@ -89,7 +96,6 @@ router.get('/conversations/:id', authenticate, async (req: Request, res: Respons
     }
 
     res.json({ conversation });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid id' });
@@ -97,7 +103,6 @@ router.get('/conversations/:id', authenticate, async (req: Request, res: Respons
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
@@ -105,7 +110,7 @@ router.get('/conversations/:id', authenticate, async (req: Request, res: Respons
 router.get('/conversations/:id/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const after = req.query.after ? new Date(req.query.after as string) : undefined;
 
     const conversation = await prisma.conversation.findUnique({ where: { id }, select: { userId: true } });
@@ -126,7 +131,6 @@ router.get('/conversations/:id/messages', authenticate, async (req: Request, res
     }
 
     res.json({ messages });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid id' });
@@ -134,7 +138,6 @@ router.get('/conversations/:id/messages', authenticate, async (req: Request, res
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
@@ -142,7 +145,7 @@ router.get('/conversations/:id/messages', authenticate, async (req: Request, res
 router.post('/conversations/:id/messages', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
     const { content } = z.object({ content: z.string().min(1).max(4000) }).parse(req.body);
 
     const conversation = await prisma.conversation.findUnique({ where: { id }, select: { userId: true, status: true } });

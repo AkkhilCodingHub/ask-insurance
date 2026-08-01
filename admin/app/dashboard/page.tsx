@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Users, FileText, Shield, TrendingUp, ArrowUpRight } from "lucide-react";
 import { LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { adminApi, DashboardStats, AdminClaim, AdminUser, ClaimsResponse, UsersResponse, AnalyticsData } from "@/lib/api";
@@ -255,7 +256,7 @@ export default function OverviewPage() {
         <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
           <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>Recent Claims</h3>
-            <a href="/dashboard/claims" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
+            <Link href="/dashboard/claims" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}>View all →</Link>
           </div>
           {claims.length > 0 ? (
             claims.map((c) => (
@@ -277,7 +278,7 @@ export default function OverviewPage() {
         <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
           <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>New Users</h3>
-            <a href="/dashboard/users" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>View all →</a>
+            <Link href="/dashboard/users" style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}>View all →</Link>
           </div>
           {users.length > 0 ? (
             users.map((u) => (

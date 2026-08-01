@@ -108,25 +108,25 @@ export default function TemplatesPage() {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #E2E8F0",
-    fontSize: 13, outline: "none", background: "#F9FAFB", fontFamily: "inherit", boxSizing: "border-box"
+    width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--border)",
+    fontSize: 13, outline: "none", background: "var(--bg)", color: "var(--text)", fontFamily: "inherit", boxSizing: "border-box"
   };
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 };
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 };
 
   return (
-    <div style={{ padding: 32, minHeight: "100vh", background: "#F8FAFC" }}>
+    <div style={{ padding: 24, minHeight: "100vh", background: "var(--bg)" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#F5F3FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(124, 58, 237, 0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookTemplate size={20} color="#7C3AED" />
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "#0F172A", margin: 0, letterSpacing: -0.5 }}>Templates & Settings</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>Templates & Settings</h1>
           </div>
-          <p style={{ color: "#64748B", fontSize: 14, margin: 0 }}>Configure quotation templates, rate charts, and communication messages.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Configure quotation templates, rate charts, and communication messages.</p>
         </div>
-        <button onClick={load} style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 12, color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <button onClick={load} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
           <RefreshCw size={14} /> Refresh
         </button>
       </div>
@@ -134,11 +134,11 @@ export default function TemplatesPage() {
       {error && <div style={{ padding: "12px 16px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 10, color: "#DC2626", fontSize: 13, marginBottom: 20 }}>{error}</div>}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 24, background: "#fff", padding: "6px", borderRadius: 14, border: "1px solid #E2E8F0", width: "fit-content" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 24, background: "var(--white)", padding: "6px", borderRadius: 12, border: "1px solid var(--border)", width: "fit-content" }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.15s",
-              background: tab === t.key ? "#7C3AED" : "transparent", color: tab === t.key ? "#fff" : "#64748B" }}>
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.15s",
+              background: tab === t.key ? "#7C3AED" : "transparent", color: tab === t.key ? "#fff" : "var(--text-muted)" }}>
             {t.icon} {t.label}
           </button>
         ))}
@@ -149,13 +149,13 @@ export default function TemplatesPage() {
           <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid #7C3AED", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          {/* ── Quotation Templates ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}>
+          {/* Quotation Templates */}
           {tab === "quotation" && (
             <>
               {/* Form */}
-              <div style={{ background: "#fff", borderRadius: 18, padding: 24, border: "1px solid #E2E8F0" }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginTop: 0, marginBottom: 20 }}>
+              <div style={{ background: "var(--white)", borderRadius: 16, padding: 20, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginTop: 0, marginBottom: 18 }}>
                   {qtForm.id ? "Edit Template" : "New Template"}
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -189,11 +189,11 @@ export default function TemplatesPage() {
                   </div>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                     <input type="checkbox" checked={qtForm.isDefault} onChange={e => setQtForm({ ...qtForm, isDefault: e.target.checked })} />
-                    <span style={{ fontSize: 13, color: "#374151" }}>Set as default for this type</span>
+                    <span style={{ fontSize: 13, color: "var(--text)" }}>Set as default for this type</span>
                   </label>
                   <div style={{ display: "flex", gap: 10 }}>
-                    {qtForm.id && <button onClick={() => setQtForm({ id: "", name: "", type: "health", subject: "", headerText: "", footerText: "", termsAndConditions: "", isDefault: false })} style={{ padding: "10px 16px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 10, cursor: "pointer", fontSize: 13, color: "#64748B", fontWeight: 600 }}><X size={14} /></button>}
-                    <button onClick={saveQt} disabled={qtSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", background: "#7C3AED", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: qtSaving ? 0.7 : 1 }}>
+                    {qtForm.id && <button onClick={() => setQtForm({ id: "", name: "", type: "health", subject: "", headerText: "", footerText: "", termsAndConditions: "", isDefault: false })} style={{ padding: "10px 16px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}><X size={14} /></button>}
+                    <button onClick={saveQt} disabled={qtSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px", background: "#7C3AED", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: qtSaving ? 0.7 : 1 }}>
                       <Save size={14} /> {qtSaving ? "Saving…" : qtForm.id ? "Update" : "Create Template"}
                     </button>
                   </div>
@@ -201,34 +201,34 @@ export default function TemplatesPage() {
               </div>
               {/* List */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {quotTemplates.length === 0 && <div style={{ background: "#fff", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed #E2E8F0", color: "#94A3B8", fontSize: 14 }}>No quotation templates yet. Create one!</div>}
+                {quotTemplates.length === 0 && <div style={{ background: "var(--white)", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed var(--border)", color: "var(--text-muted)", fontSize: 13 }}>No quotation templates yet. Create one!</div>}
                 {quotTemplates.map(t => (
-                  <div key={t.id} style={{ background: "#fff", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0" }}>
+                  <div key={t.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px 20px", border: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{t.name}</span>
-                        {t.isDefault && <span style={{ fontSize: 9, fontWeight: 800, background: "#F5F3FF", color: "#7C3AED", padding: "2px 7px", borderRadius: 100 }}>DEFAULT</span>}
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{t.name}</span>
+                        {t.isDefault && <span style={{ fontSize: 9, fontWeight: 800, background: "rgba(124, 58, 237, 0.12)", color: "#7C3AED", padding: "2px 7px", borderRadius: 100 }}>DEFAULT</span>}
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => setQtForm({ id: t.id, name: t.name, type: t.type, subject: t.subject || "", headerText: t.headerText || "", footerText: t.footerText || "", termsAndConditions: t.termsAndConditions || "", isDefault: t.isDefault })}
-                          style={{ padding: "6px 10px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 8, cursor: "pointer", fontSize: 12, color: "#64748B", fontWeight: 600 }}>Edit</button>
+                          style={{ padding: "5px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Edit</button>
                         <button onClick={async () => { if (confirm("Delete this template?")) { await adminApi.deleteQuotationTemplate(t.id); load(); } }}
-                          style={{ padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, cursor: "pointer", color: "#DC2626" }}><Trash2 size={12} /></button>
+                          style={{ padding: "5px 10px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 6, cursor: "pointer", color: "#DC2626" }}><Trash2 size={12} /></button>
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", padding: "2px 8px", borderRadius: 100, textTransform: "capitalize" }}>{t.type}</span>
-                    {t.subject && <p style={{ fontSize: 12, color: "#64748B", margin: "6px 0 0" }}>Subject: {t.subject}</p>}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "rgba(124, 58, 237, 0.12)", padding: "2px 8px", borderRadius: 100, textTransform: "capitalize" }}>{t.type}</span>
+                    {t.subject && <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "6px 0 0" }}>Subject: {t.subject}</p>}
                   </div>
                 ))}
               </div>
             </>
           )}
 
-          {/* ── Premium Rate Charts ── */}
+          {/* Premium Rate Charts */}
           {tab === "rateCharts" && (
             <>
-              <div style={{ background: "#fff", borderRadius: 18, padding: 24, border: "1px solid #E2E8F0" }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginTop: 0, marginBottom: 20 }}>
+              <div style={{ background: "var(--white)", borderRadius: 16, padding: 20, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginTop: 0, marginBottom: 18 }}>
                   {rcForm.id ? "Edit Rate Chart" : "New Rate Chart"}
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -275,33 +275,33 @@ export default function TemplatesPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    {rcForm.id && <button onClick={() => setRcForm({ id: "", insurerId: "", insuranceType: "health", minAge: "", maxAge: "", baseRate: "", rateType: "flat", gstPercentage: "18" })} style={{ padding: "10px 16px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 10, cursor: "pointer", fontSize: 13, color: "#64748B", fontWeight: 600 }}><X size={14} /></button>}
-                    <button onClick={saveRc} disabled={rcSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", background: "#7C3AED", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: rcSaving ? 0.7 : 1 }}>
+                    {rcForm.id && <button onClick={() => setRcForm({ id: "", insurerId: "", insuranceType: "health", minAge: "", maxAge: "", baseRate: "", rateType: "flat", gstPercentage: "18" })} style={{ padding: "10px 16px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}><X size={14} /></button>}
+                    <button onClick={saveRc} disabled={rcSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px", background: "#7C3AED", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: rcSaving ? 0.7 : 1 }}>
                       <Save size={14} /> {rcSaving ? "Saving…" : rcForm.id ? "Update" : "Add Rate Chart"}
                     </button>
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {rateCharts.length === 0 && <div style={{ background: "#fff", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed #E2E8F0", color: "#94A3B8", fontSize: 14 }}>No rate charts yet.</div>}
+                {rateCharts.length === 0 && <div style={{ background: "var(--white)", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed var(--border)", color: "var(--text-muted)", fontSize: 13 }}>No rate charts yet.</div>}
                 {rateCharts.map(rc => (
-                  <div key={rc.id} style={{ background: "#fff", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0" }}>
+                  <div key={rc.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px 20px", border: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{rc.insurer?.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{rc.insurer?.name}</span>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button onClick={() => setRcForm({ id: rc.id, insurerId: rc.insurerId, insuranceType: rc.insuranceType, minAge: rc.minAge?.toString() || "", maxAge: rc.maxAge?.toString() || "", baseRate: rc.baseRate?.toString() || "", rateType: rc.rateType, gstPercentage: rc.gstPercentage?.toString() || "18" })}
-                          style={{ padding: "6px 10px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 8, cursor: "pointer", fontSize: 12, color: "#64748B", fontWeight: 600 }}>Edit</button>
+                          style={{ padding: "5px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Edit</button>
                         <button onClick={async () => { if (confirm("Delete this rate chart?")) { await adminApi.deleteRateChart(rc.id); load(); } }}
-                          style={{ padding: "6px 10px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 8, cursor: "pointer", color: "#DC2626" }}><Trash2 size={12} /></button>
+                          style={{ padding: "5px 10px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 6, cursor: "pointer", color: "#DC2626" }}><Trash2 size={12} /></button>
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", padding: "2px 8px", borderRadius: 100, textTransform: "capitalize" }}>{rc.insuranceType}</span>
-                      <span style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", padding: "2px 8px", borderRadius: 100 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "rgba(124, 58, 237, 0.12)", padding: "2px 8px", borderRadius: 100, textTransform: "capitalize" }}>{rc.insuranceType}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", background: "var(--bg)", padding: "2px 8px", borderRadius: 100 }}>
                         ₹{rc.baseRate} {rc.rateType === "percentage_of_sum_insured" ? "% of SI" : "flat"}
                       </span>
-                      {(rc.minAge || rc.maxAge) && <span style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", padding: "2px 8px", borderRadius: 100 }}>Age {rc.minAge || "—"}–{rc.maxAge || "—"}</span>}
-                      <span style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", padding: "2px 8px", borderRadius: 100 }}>GST {rc.gstPercentage}%</span>
+                      {(rc.minAge || rc.maxAge) && <span style={{ fontSize: 11, color: "var(--text-muted)", background: "var(--bg)", padding: "2px 8px", borderRadius: 100 }}>Age {rc.minAge || "—"}–{rc.maxAge || "—"}</span>}
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", background: "var(--bg)", padding: "2px 8px", borderRadius: 100 }}>GST {rc.gstPercentage}%</span>
                     </div>
                   </div>
                 ))}
@@ -309,11 +309,11 @@ export default function TemplatesPage() {
             </>
           )}
 
-          {/* ── Communication Templates ── */}
+          {/* Communication Templates */}
           {tab === "communication" && (
             <>
-              <div style={{ background: "#fff", borderRadius: 18, padding: 24, border: "1px solid #E2E8F0" }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginTop: 0, marginBottom: 20 }}>
+              <div style={{ background: "var(--white)", borderRadius: 16, padding: 20, border: "1px solid var(--border)" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", marginTop: 0, marginBottom: 18 }}>
                   {ctForm.id ? "Edit Template" : "New Template"}
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -339,34 +339,34 @@ export default function TemplatesPage() {
                     <label style={labelStyle}>Message Content *</label>
                     <textarea style={{ ...inputStyle, resize: "vertical" }} rows={6} value={ctForm.content} onChange={e => setCtForm({ ...ctForm, content: e.target.value })}
                       placeholder="Use {name}, {policyNumber}, {expiryDate}, {insurer} as dynamic variables…" />
-                    <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>Variables: {"{name}"}, {"{policyNumber}"}, {"{expiryDate}"}, {"{insurer}"}, {"{premium}"}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>Variables: {"{name}"}, {"{policyNumber}"}, {"{expiryDate}"}, {"{insurer}"}, {"{premium}"}</p>
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    {ctForm.id && <button onClick={() => setCtForm({ id: "", name: "", channel: "email", trigger: "policy_expiry", content: "" })} style={{ padding: "10px 16px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 10, cursor: "pointer", fontSize: 13, color: "#64748B", fontWeight: 600 }}><X size={14} /></button>}
-                    <button onClick={saveCt} disabled={ctSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", background: "#7C3AED", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: ctSaving ? 0.7 : 1 }}>
+                    {ctForm.id && <button onClick={() => setCtForm({ id: "", name: "", channel: "email", trigger: "policy_expiry", content: "" })} style={{ padding: "10px 16px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}><X size={14} /></button>}
+                    <button onClick={saveCt} disabled={ctSaving} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px", background: "#7C3AED", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: ctSaving ? 0.7 : 1 }}>
                       <Save size={14} /> {ctSaving ? "Saving…" : ctForm.id ? "Update" : "Create Template"}
                     </button>
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {commTemplates.length === 0 && <div style={{ background: "#fff", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed #E2E8F0", color: "#94A3B8", fontSize: 14 }}>No communication templates yet.</div>}
+                {commTemplates.length === 0 && <div style={{ background: "var(--white)", borderRadius: 14, padding: "40px 24px", textAlign: "center", border: "1px dashed var(--border)", color: "var(--text-muted)", fontSize: 13 }}>No communication templates yet.</div>}
                 {commTemplates.map(ct => {
                   const ch = COMM_CHANNELS.find(c => c.value === ct.channel);
                   return (
-                    <div key={ct.id} style={{ background: "#fff", borderRadius: 14, padding: "16px 20px", border: "1px solid #E2E8F0" }}>
+                    <div key={ct.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px 20px", border: "1px solid var(--border)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{ct.name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{ct.name}</span>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => setCtForm({ id: ct.id, name: ct.name, channel: ct.channel, trigger: ct.trigger, content: ct.content })}
-                            style={{ padding: "6px 10px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 8, cursor: "pointer", fontSize: 12, color: "#64748B", fontWeight: 600 }}>Edit</button>
+                            style={{ padding: "5px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Edit</button>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "#F5F3FF", padding: "2px 8px", borderRadius: 100 }}>{ch?.icon} {ct.channel.toUpperCase()}</span>
-                        <span style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", padding: "2px 8px", borderRadius: 100 }}>{ct.trigger.replace(/_/g, " ")}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#7C3AED", background: "rgba(124, 58, 237, 0.12)", padding: "2px 8px", borderRadius: 100 }}>{ch?.icon} {ct.channel.toUpperCase()}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", background: "var(--bg)", padding: "2px 8px", borderRadius: 100 }}>{ct.trigger.replace(/_/g, " ")}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: "#64748B", margin: 0, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{ct.content}</p>
+                      <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{ct.content}</p>
                     </div>
                   );
                 })}

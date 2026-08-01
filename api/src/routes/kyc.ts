@@ -19,9 +19,7 @@ const upload = multer({
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const ALLOWED_DOC_TYPES = ['aadhaar', 'driving_license', 'passport'] as const;
 
-// ── POST /kyc/upload ──────────────────────────────────────────────────────────
-// User uploads a document (Aadhaar, Driving Licence, Passport) for manual KYC.
-
+// Manual document upload for KYC
 router.post('/upload', authenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId as string;
@@ -67,7 +65,6 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
     const key = `kyc/${userId}/${Date.now()}.${ext}`;
     const url = await uploadToR2(key, file.buffer, file.mimetype);
 
-    // Delete old document from R2 if replacing
     if (userRow.kycDocUrl) {
       const oldKey = r2KeyFromUrl(userRow.kycDocUrl);
       if (oldKey) deleteFromR2(oldKey).catch(() => { });
@@ -96,9 +93,7 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
   }
 });
 
-// ── GET /kyc/initiate ─────────────────────────────────────────────────────────
-// Returns the DigiLocker OAuth URL for the authenticated user.
-
+// Initiate DigiLocker OAuth flow
 router.get('/initiate', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     if (!process.env.DIGILOCKER_CLIENT_ID) {
@@ -112,7 +107,6 @@ router.get('/initiate', authenticate, async (req: Request, res: Response): Promi
     const codeChallenge = deriveCodeChallenge(codeVerifier);
     const url = buildAuthUrl(state, codeChallenge);
 
-    // The verifier is held by the app and sent back on /callback (no server store).
     res.json({ url, state, codeVerifier });
   } catch (error) {
     console.error('[kyc/initiate]', error);
@@ -120,14 +114,7 @@ router.get('/initiate', authenticate, async (req: Request, res: Response): Promi
   }
 });
 
-// ── GET /kyc/callback ─────────────────────────────────────────────────────────
-// HTTPS bridge. The DigiLocker partner portal requires an HTTPS redirect URL, so
-// DigiLocker sends the browser here with ?code=&state= (or ?error=). We forward
-// those params to the app's custom-scheme deep link, which the mobile app catches
-// and then completes verification via the authenticated POST /callback below.
-// This endpoint is intentionally public — it carries no secrets and the one-time
-// code is useless without the app's JWT-bound token exchange.
-
+// HTTPS redirect bridge for DigiLocker OAuth callback
 router.get('/callback', (req: Request, res: Response): void => {
   const appRedirect = process.env.DIGILOCKER_APP_REDIRECT || 'askinsurance://kyc-callback';
   const params = new URLSearchParams();
@@ -201,10 +188,7 @@ router.get('/callback', (req: Request, res: Response): void => {
 </body></html>`);
 });
 
-// ── POST /kyc/callback ────────────────────────────────────────────────────────
-// Called by the mobile app after DigiLocker redirects back with ?code=&state=
-// Exchanges the code, fetches documents, and updates the user's KYC status.
-
+// Complete DigiLocker verification and fetch document items
 router.post('/callback', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, state, codeVerifier } = z.object({
@@ -215,17 +199,14 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
 
     const userId = (req as any).userId as string;
 
-    // Verify state belongs to this user
     const parsed = parseState(state);
     if (!parsed || parsed.userId !== userId) {
       res.status(400).json({ error: 'Invalid state parameter' });
       return;
     }
 
-    // Exchange code for DigiLocker tokens (PKCE — proves same client started the flow)
     const tokens = await exchangeCode(code, codeVerifier);
 
-    // Fetch issued documents (Aadhaar, PAN, DL, RC, Policies) and DigiLocker Drive files
     const [issuedFiles, uploadedFiles] = await Promise.all([
       fetchIssuedFiles(tokens.access_token).catch(() => []),
       fetchUploadedFiles(tokens.access_token).catch(() => []),
@@ -233,7 +214,6 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
 
     const files = [...issuedFiles, ...uploadedFiles];
 
-    // Check what documents were fetched
     const hasAadhaar = files.some(f =>
       f.doctype?.toLowerCase().includes('aadhaar') ||
       f.name?.toLowerCase().includes('aadhaar') ||
@@ -245,7 +225,6 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
       f.name?.toLowerCase().includes('pan'),
     );
 
-    // Update user KYC fields
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -255,7 +234,6 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
         panNumber: panFile?.uri ?? null,
         kycDocuments: files as any,
         kycVerifiedAt: new Date(),
-        // Pre-fill profile fields from DigiLocker if not already set
         ...(tokens.name && !(await prisma.user.findUnique({ where: { id: userId }, select: { name: true } }))?.name
           ? { name: tokens.name } : {}),
         ...(tokens.dob ? (() => { const d = parseDigiLockerDob(tokens.dob!); return d ? { dateOfBirth: d } : {}; })() : {}),
@@ -275,14 +253,12 @@ router.post('/callback', authenticate, async (req: Request, res: Response): Prom
       return;
     }
     console.error('[kyc/callback]', error);
-    // Surface the underlying DigiLocker error to the client for diagnosis.
     const detail = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: `KYC verification failed: ${detail}` });
   }
 });
 
-// ── GET /kyc/status ───────────────────────────────────────────────────────────
-
+// Get user KYC status
 router.get('/status', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId as string;

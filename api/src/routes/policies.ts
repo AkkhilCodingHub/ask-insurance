@@ -5,7 +5,7 @@ import { authenticate, requireKyc } from '../middleware/auth';
 
 const router = Router();
 
-const paramsSchema = z.object({ id: z.string().cuid() });
+const paramsSchema = z.object({ id: z.string().min(1) });
 
 const createPolicySchema = z.object({
   type: z.enum(['life', 'health', 'motor', 'travel', 'home', 'business']),
@@ -17,11 +17,7 @@ const createPolicySchema = z.object({
 
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const userId = req.userId!;
 
     const policies = await prisma.policy.findMany({
       where: { userId },
@@ -41,23 +37,17 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
     });
 
     res.json({ policies });
-    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.userId!;
     const { id } = paramsSchema.parse(req.params);
+
     const policy = await prisma.policy.findFirst({
       where: { id, userId },
       include: {
@@ -71,7 +61,6 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     }
 
     res.json({ policy });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid policy id' });
@@ -79,18 +68,12 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.post('/', authenticate, requireKyc, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.userId!;
     const payload = createPolicySchema.parse(req.body);
     const now = new Date();
     const durationDays = payload.durationDays ?? 365;
@@ -109,7 +92,6 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     });
 
     res.status(201).json({ policy });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
@@ -117,21 +99,15 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.put('/:id/cancel', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.userId!;
     const { id } = paramsSchema.parse(req.params);
-    const policy = await prisma.policy.findFirst({ where: { id, userId } });
 
+    const policy = await prisma.policy.findFirst({ where: { id, userId } });
     if (!policy) {
       res.status(404).json({ error: 'Policy not found' });
       return;
@@ -147,7 +123,6 @@ router.put('/:id/cancel', authenticate, async (req: Request, res: Response): Pro
     });
 
     res.json({ policy: updated });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid policy id' });
@@ -155,18 +130,12 @@ router.put('/:id/cancel', authenticate, async (req: Request, res: Response): Pro
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.put('/:id/renew', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.userId!;
     const { id } = paramsSchema.parse(req.params);
     const renewSchema = z.object({ durationDays: z.number().int().positive().optional() });
     const { durationDays = 365 } = renewSchema.parse(req.body);
@@ -192,7 +161,6 @@ router.put('/:id/renew', authenticate, async (req: Request, res: Response): Prom
     });
 
     res.json({ policy: updated });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
@@ -200,7 +168,6 @@ router.put('/:id/renew', authenticate, async (req: Request, res: Response): Prom
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 

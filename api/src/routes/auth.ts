@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { createAuthToken, verifyAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
 import { getFirebaseAdmin } from '../lib/firebase';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -86,17 +87,11 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
-router.get('/me', async (req: Request, res: Response): Promise<void> => {
+router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '').trim();
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
-    }
-
-    const decoded = verifyAuthToken(token);
+    const userId = req.userId!;
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: {
         id: true,
         phone: true,
@@ -118,16 +113,14 @@ router.get('/me', async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(401).json({ error: 'User session expired or user not found' });
       return;
     }
 
     res.json({ user });
-    return;
   } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: 'Invalid token' });
-    return;
+    console.error('[auth/me]', error);
+    res.status(401).json({ error: 'Session invalid' });
   }
 });
 

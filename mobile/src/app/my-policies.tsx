@@ -37,10 +37,12 @@ const TYPE_ICONS: Record<string, string> = {
 type IonIcon = ComponentProps<typeof Icon>['name'];
 
 const STATUS_META: Record<string, { color: string; bg: string; label: string; icon: IonIcon }> = {
-  active:    { color: '#059669', bg: '#ECFDF5', label: 'Active',    icon: 'checkmark-circle' },
-  pending:   { color: '#B45309', bg: '#FFFBEB', label: 'Pending',   icon: 'time-outline' },
-  expired:   { color: '#B91C1C', bg: '#FEF2F2', label: 'Expired',   icon: 'alert-circle-outline' },
-  cancelled: { color: '#475569', bg: '#F1F5F9', label: 'Cancelled', icon: 'remove-circle-outline' },
+  active:    { color: '#059669', bg: '#ECFDF5', label: 'Active',            icon: 'checkmark-circle' },
+  pending:   { color: '#B45309', bg: '#FFFBEB', label: 'Pending',           icon: 'time-outline' },
+  expired:   { color: '#B91C1C', bg: '#FEF2F2', label: 'Expired',           icon: 'alert-circle-outline' },
+  claimed:   { color: '#7C3AED', bg: '#F5F3FF', label: 'Claimed & Settled', icon: 'shield-checkmark-outline' },
+  settled:   { color: '#7C3AED', bg: '#F5F3FF', label: 'Claimed & Settled', icon: 'shield-checkmark-outline' },
+  cancelled: { color: '#475569', bg: '#F1F5F9', label: 'Cancelled',         icon: 'remove-circle-outline' },
 };
 
 const stTag = StyleSheet.create({
@@ -323,7 +325,7 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
-const TABS = ['All', 'Active', 'Pending', 'Expired', 'Cancelled'] as const;
+const TABS = ['All', 'Active', 'Claimed', 'Expired', 'Cancelled'] as const;
 type Tab = typeof TABS[number];
 
 // ── Policy card ───────────────────────────────────────────────────────────────
@@ -425,7 +427,7 @@ function EmptyState({ tab }: { tab: Tab }) {
   return (
     <View style={e.wrap}>
       <View style={e.iconWrap}>
-        <Text style={{ fontSize: 52 }}>{isAll ? '📋' : tab === 'Active' ? '✅' : tab === 'Pending' ? '⏳' : '📁'}</Text>
+        <Text style={{ fontSize: 52 }}>{isAll ? '📋' : tab === 'Active' ? '✅' : tab === 'Claimed' ? '🛡️' : '📁'}</Text>
       </View>
       <Text style={e.title}>{isAll ? 'No policies yet' : `No ${tab} policies`}</Text>
       <Text style={e.sub}>
@@ -478,6 +480,8 @@ export default function MyPoliciesScreen() {
 
   const filtered = activeTab === 'All'
     ? policies
+    : activeTab === 'Claimed'
+    ? policies.filter(p => p.status === 'claimed' || p.status === 'settled')
     : policies.filter(p => p.status === activeTab.toLowerCase());
 
   return (
@@ -540,7 +544,11 @@ export default function MyPoliciesScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.tabRow} style={s.tabScroll}>
             {TABS.map(tab => {
-              const count  = tab === 'All' ? policies.length : policies.filter(p => p.status === tab.toLowerCase()).length;
+              const count = tab === 'All'
+                ? policies.length
+                : tab === 'Claimed'
+                ? policies.filter(p => p.status === 'claimed' || p.status === 'settled').length
+                : policies.filter(p => p.status === tab.toLowerCase()).length;
               const active = activeTab === tab;
               const sm     = tab !== 'All' ? STATUS_META[tab.toLowerCase()] : null;
               return (

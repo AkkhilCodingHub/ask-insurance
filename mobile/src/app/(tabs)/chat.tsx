@@ -111,7 +111,7 @@ function EmptyChat({ onStart, loading }: { onStart: () => void; loading: boolean
       </View>
       <TouchableOpacity
         style={[e.startBtn, loading && { opacity: 0.7 }]}
-        onPress={onStart}
+        onPress={() => onStart()}
         disabled={loading}
         activeOpacity={0.85}
       >
@@ -474,7 +474,7 @@ export default function ChatTab() {
               </View>
               <TouchableOpacity
                 style={[s.newConvBtn, starting && { opacity: 0.7 }]}
-                onPress={handleStart}
+                onPress={() => handleStart()}
                 disabled={starting}
                 activeOpacity={0.85}
               >
