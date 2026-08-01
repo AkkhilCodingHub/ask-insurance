@@ -11,13 +11,13 @@ import { Colors } from '@/constants/theme';
 import { agentApi } from '@/lib/api';
 import { useAgent } from '@/context/agent';
 
-type DocType = 'aadhaar' | 'driving_license' | 'passport';
+type DocType = 'appointment_letter' | 'aadhaar' | 'driving_license' | 'passport';
 
 export default function AgentKycScreen() {
   const router = useRouter();
   const { agent, refreshAgent } = useAgent();
 
-  const [docType, setDocType] = useState<DocType>('aadhaar');
+  const [docType, setDocType] = useState<DocType>('appointment_letter');
   const [file, setFile] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export default function AgentKycScreen() {
         file.type,
         file.name
       );
-      Alert.alert('Success', 'KYC Document submitted successfully!');
+      Alert.alert('Success', 'Authorization Letter submitted successfully!');
       refreshAgent();
       setFile(null);
     } catch (e: any) {
@@ -86,9 +86,9 @@ export default function AgentKycScreen() {
           <View style={[s.iconCircle, { backgroundColor: '#ECFDF5' }]}>
             <Icon name="checkmark-circle" size={64} color="#059669" />
           </View>
-          <Text style={s.statusTitle}>KYC Verified!</Text>
+          <Text style={s.statusTitle}>Authorization Verified!</Text>
           <Text style={s.statusSub}>
-            Your identity documents have been approved by the administrators. You have full portal access.
+            Your official ASK Insurance authorization letter has been approved by the administrators. You have full advisor portal access.
           </Text>
           <TouchableOpacity style={s.homeBtn} onPress={() => router.replace('/(agent)/quotes')}>
             <Text style={s.homeBtnText}>Go to Quotes</Text>
@@ -114,7 +114,7 @@ export default function AgentKycScreen() {
           </View>
           <Text style={s.statusTitle}>Pending Approval</Text>
           <Text style={s.statusSub}>
-            Your KYC document is under review by the administrator. This usually takes less than 24 hours.
+            Your authorization letter is under review by the administrator. This usually takes less than 24 hours.
           </Text>
           <TouchableOpacity style={s.homeBtn} onPress={() => router.replace('/(agent)/quotes')}>
             <Text style={s.homeBtnText}>Go to Quotes</Text>
@@ -130,21 +130,21 @@ export default function AgentKycScreen() {
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Icon name="arrow-back-outline" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Upload KYC</Text>
+        <Text style={s.headerTitle}>Upload Authorization Letter</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.title}>Verify your Identity</Text>
+        <Text style={s.title}>Verify Advisor Authorization</Text>
         <Text style={s.subtitle}>
-          Upload government-issued identity proof to enable your advisor account privileges.
+          Upload the Official Appointment or Authorization Letter provided by ASK Insurance officials to verify and activate your advisor account.
         </Text>
 
         {kycStatus === 'rejected' && agent?.kycRejectionReason && (
           <View style={s.rejectionBox}>
             <Icon name="alert-circle-outline" size={20} color="#DC2626" />
             <View style={{ flex: 1 }}>
-              <Text style={s.rejectionTitle}>KYC Rejected</Text>
+              <Text style={s.rejectionTitle}>Verification Rejected</Text>
               <Text style={s.rejectionReason}>{agent.kycRejectionReason}</Text>
             </View>
           </View>
@@ -153,6 +153,7 @@ export default function AgentKycScreen() {
         <Text style={s.sectionLabel}>SELECT DOCUMENT TYPE</Text>
         <View style={s.docSelector}>
           {([
+            { id: 'appointment_letter', label: 'ASK Insurance Authorization / Appointment Letter (Official)' },
             { id: 'aadhaar', label: 'Aadhaar Card' },
             { id: 'driving_license', label: 'Driving License' },
             { id: 'passport', label: 'Passport' }

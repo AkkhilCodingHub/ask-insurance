@@ -5,17 +5,20 @@ import { Platform } from 'react-native';
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
   let url = process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === 'ios') {
+    return 'http://127.0.0.1:4000';
+  }
   if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
       const host = hostUri.split(':')[0];
       url = `http://${host}:4000`;
     } else {
-      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
     }
   }
   if (!url) {
-    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
   }
   if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
     const hostUri = Constants.expoConfig?.hostUri;
@@ -495,7 +498,13 @@ export const paymentsApi = {
     post<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
       '/api/payments/razorpay/create-link', { policyId, quoteId }, true
     ),
+  verifyTestPayment: (quoteId?: string, policyId?: string) =>
+    post<{ success: boolean; message: string }>('/api/payments/verify-test-payment', { quoteId, policyId }, true),
   savePushToken: (token: string) => put<void>('/api/users/push-token', { token }, true),
+  linkAgent: (agentCode: string) =>
+    post<{ success: boolean; agent: { id: string; name: string; agentCode: string }; message: string }>(
+      '/api/users/link-agent', { agentCode }, true
+    ),
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -592,6 +601,7 @@ export interface AgentAdmin {
   name:  string;
   email: string;
   role:  string;
+  agentCode?:          string | null;
   kycStatus?:          string;
   kycDocType?:         string | null;
   kycDocUrl?:          string | null;
@@ -779,7 +789,7 @@ export const agentApi = {
     }),
 
   uploadKycDocument: async (
-    docType: 'aadhaar' | 'driving_license' | 'passport',
+    docType: 'appointment_letter' | 'aadhaar' | 'driving_license' | 'passport',
     fileUri: string,
     mimeType: string,
     fileName: string,

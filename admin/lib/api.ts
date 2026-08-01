@@ -193,6 +193,8 @@ export interface AdminQuote {
   adminResponse:  AdminQuoteResponse | null;
   adminResponseAt:string | null;
   approvedAt:     string | null;
+  agentId?:       string | null;
+  agent?:         { id: string; name: string; email: string; agentCode?: string | null } | null;
   createdAt:      string;
   updatedAt:      string;
   user?:          { id: string; name: string; phone: string; email: string };
@@ -268,7 +270,8 @@ export interface AgentRecord {
   id:           string;
   name:         string;
   email:        string;
-  role:         'admin' | 'superadmin';
+  role:         'agent' | 'superadmin';
+  agentCode?:   string | null;
   isActive:     boolean;
   createdAt:    string;
   storageUsed?: number;
@@ -515,6 +518,12 @@ class AdminApiClient {
     if (data.error) throw new Error(data.error);
   }
 
+  async assignQuote(id: string, agentId: string | null): Promise<AdminQuote> {
+    const { data } = await this.instance.post(`/quotes/${id}/assign`, { agentId });
+    if (data.error) throw new Error(data.error);
+    return data.quote;
+  }
+
   async confirmPayment(policyId: string, payload: { documentUrl?: string; providerRef?: string; notes?: string }): Promise<void> {
     const { data } = await this.instance.post(`/policies/${policyId}/confirm-payment`, payload);
     if (data.error) throw new Error(data.error);
@@ -639,13 +648,13 @@ class AdminApiClient {
     return data.agents;
   }
 
-  async createAgent(payload: { name: string; email: string; password?: string; role: 'admin' | 'superadmin' }): Promise<AgentRecord> {
+  async createAgent(payload: { name: string; email: string; password?: string; role: 'agent' | 'superadmin' }): Promise<AgentRecord> {
     const { data } = await this.instance.post('/agents', payload);
     if (data.error) throw new Error(data.error);
     return data.agent;
   }
 
-  async updateAgent(id: string, payload: Partial<{ name: string; role: 'admin' | 'superadmin'; isActive: boolean; password: string }>): Promise<AgentRecord> {
+  async updateAgent(id: string, payload: Partial<{ name: string; role: 'agent' | 'superadmin'; isActive: boolean; password: string }>): Promise<AgentRecord> {
     const { data } = await this.instance.patch(`/agents/${id}`, payload);
     if (data.error) throw new Error(data.error);
     return data.agent;
@@ -654,6 +663,22 @@ class AdminApiClient {
   async deleteAgent(id: string): Promise<void> {
     const { data } = await this.instance.delete(`/agents/${id}`);
     if (data.error) throw new Error(data.error);
+  }
+
+  async bulkImportAgents(fileOrCsv: File | string): Promise<{ importedCount: number; skippedCount: number; errors: string[] }> {
+    if (typeof fileOrCsv === 'string') {
+      const { data } = await this.instance.post('/agents/bulk-import', { csv: fileOrCsv });
+      if (data.error) throw new Error(data.error);
+      return data;
+    } else {
+      const form = new FormData();
+      form.append('file', fileOrCsv);
+      const { data } = await this.instance.post('/agents/bulk-import', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (data.error) throw new Error(data.error);
+      return data;
+    }
   }
 
   // ── Profile ──────────────────────────────────────────────────────────────

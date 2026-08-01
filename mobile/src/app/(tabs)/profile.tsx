@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator,
+  RefreshControl, ActivityIndicator, Modal, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -87,6 +87,29 @@ export default function ProfileTab() {
   const [payments,   setPayments]   = useState<ApiPayment[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
+  const [agentCodeInput, setAgentCodeInput]     = useState('');
+  const [linking, setLinking]                   = useState(false);
+
+  const handlePerformLinkAgent = async (codeToLink?: string) => {
+    const targetCode = (codeToLink ?? agentCodeInput).trim();
+    if (!targetCode) {
+      Alert.alert('Agent Code Required', 'Please enter a valid agent code (e.g. AGT-1082).');
+      return;
+    }
+    setLinking(true);
+    try {
+      const res = await paymentsApi.linkAgent(targetCode);
+      setLinkModalVisible(false);
+      setAgentCodeInput('');
+      Alert.alert('Agent Linked!', res.message || `Successfully linked to Agent ${res.agent.name}`);
+    } catch (e: any) {
+      Alert.alert('Link Failed', e.message || 'Invalid agent code. Please try again.');
+    } finally {
+      setLinking(false);
+    }
+  };
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
@@ -277,6 +300,13 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
+            icon="qr-code-outline"
+            label="Link Insurance Agent"
+            sub="Scan QR code or enter agent code"
+            onPress={() => setLinkModalVisible(true)}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
             icon="folder-open-outline"
             label="My Documents & Storage"
             sub="DigiLocker & cloud files"
@@ -306,6 +336,60 @@ export default function ProfileTab() {
 
         <Text style={s.version}>ASK Insurance Broker · v1.0.0{'\n'}IRDAI Licensed · Reg. No. XXXXX</Text>
       </ScrollView>
+
+      {/* Link Agent Modal */}
+      <Modal visible={linkModalVisible} transparent animationType="fade" onRequestClose={() => setLinkModalVisible(false)}>
+        <View style={mStyle.overlay}>
+          <View style={[mStyle.modalCard, { backgroundColor: colors.card }]}>
+            <View style={mStyle.modalHeader}>
+              <Text style={[mStyle.modalTitle, { color: colors.text }]}>Link Insurance Agent</Text>
+              <TouchableOpacity onPress={() => setLinkModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Icon name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[mStyle.modalSub, { color: colors.textMuted }]}>
+              Enter your advisor's Agent Code (e.g. AGT-1082) or tap below to auto-link an active advisor on Simulator:
+            </Text>
+
+            <TextInput
+              style={[mStyle.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bg }]}
+              placeholder="e.g. AGT-1082"
+              placeholderTextColor={colors.textMuted}
+              value={agentCodeInput}
+              onChangeText={setAgentCodeInput}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+
+            <View style={{ gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                style={[mStyle.primaryBtn, { backgroundColor: Colors.primary }]}
+                onPress={() => handlePerformLinkAgent()}
+                disabled={linking}
+                activeOpacity={0.85}
+              >
+                {linking ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={mStyle.primaryBtnText}>Link Agent Code</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Simulator 1-Tap Quick Link */}
+              <TouchableOpacity
+                style={[mStyle.secondaryBtn, { borderColor: colors.border }]}
+                onPress={() => handlePerformLinkAgent('AGT-1082')}
+                disabled={linking}
+                activeOpacity={0.85}
+              >
+                <Icon name="hardware-chip-outline" size={16} color={colors.text} />
+                <Text style={[mStyle.secondaryBtnText, { color: colors.text }]}>⚡ Simulator 1-Tap Auto Link</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -428,4 +512,33 @@ const m = StyleSheet.create({
   arrow:     { fontSize: 20, color: Colors.textLight },
   badge:     { backgroundColor: Colors.primary + '18', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginRight: 4 },
   badgeText: { fontSize: 11, fontWeight: '800', color: Colors.primary },
+});
+
+const mStyle = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  modalCard: {
+    width: '100%', borderRadius: 20, padding: 22,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800' },
+  modalSub:   { fontSize: 13, lineHeight: 19, marginBottom: 16 },
+  input: {
+    borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, fontWeight: '700', letterSpacing: 0.5,
+  },
+  primaryBtn: {
+    borderRadius: 12, paddingVertical: 13, alignItems: 'center', justifyContent: 'center',
+  },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  secondaryBtn: {
+    borderRadius: 12, borderWidth: 1.5, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  secondaryBtnText: { fontSize: 13, fontWeight: '700' },
 });

@@ -107,20 +107,7 @@ export default function AgentCustomersScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* KYC Warning banner if agent KYC is not verified */}
-      {agent?.kycStatus !== 'verified' && (
-        <TouchableOpacity
-          style={s.kycBanner}
-          onPress={() => router.push('/(agent)/kyc' as any)}
-          activeOpacity={0.9}
-        >
-          <Icon name="alert-circle" size={20} color="#78350F" />
-          <Text style={s.kycBannerText}>
-            KYC Pending: Upload identity proof to activate advisor privileges. Tap here.
-          </Text>
-          <Icon name="chevron-forward" size={16} color="#78350F" />
-        </TouchableOpacity>
-      )}
+
 
       {loading ? (
         <View style={s.center}>

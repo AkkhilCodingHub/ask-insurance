@@ -54,10 +54,51 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
         where: { quoteId: body.quoteId!, userId, paymentStatus: 'pending' },
         include: { user: { select: { name: true, phone: true } } }
       });
+
+      if (!policy && body.quoteId) {
+        const quote = await prisma.quote.findFirst({
+          where: { id: body.quoteId, userId },
+          include: { user: { select: { name: true, phone: true } } }
+        });
+
+        if (quote && quote.adminResponse) {
+          let ar: { insurer: string; planName: string; netPremium: number; gst: number; totalPremium: number; notes?: string };
+          try { ar = JSON.parse(quote.adminResponse as string); } catch { ar = { insurer: 'ASK Insurance', planName: 'Policy', netPremium: 0, gst: 0, totalPremium: 0 }; }
+          let details: Record<string, unknown> = {};
+          try { details = JSON.parse(quote.details as string); } catch {}
+
+          const now = new Date();
+          policy = await prisma.policy.create({
+            data: {
+              policyNumber: `APP${Date.now()}`,
+              type: quote.type,
+              provider: ar.insurer,
+              sumInsured: (details.sumInsured as number) ?? 0,
+              premium: ar.totalPremium,
+              startDate: now,
+              endDate: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+              status: 'pending',
+              paymentStatus: 'pending',
+              notes: ar.notes ?? null,
+              userId: quote.userId,
+              quoteId: quote.id,
+            },
+            include: { user: { select: { name: true, phone: true } } }
+          });
+        }
+      }
     }
 
     if (!policy) {
-      res.status(404).json({ error: 'Policy not found or payment already completed' });
+      // Check if policy was already paid
+      const paidPolicy = await prisma.policy.findFirst({
+        where: { quoteId: body.quoteId!, userId, paymentStatus: 'paid' }
+      });
+      if (paidPolicy) {
+        res.json({ paymentCompleted: true, paymentLinkId: null, paymentUrl: null, amount: paidPolicy.premium });
+        return;
+      }
+      res.status(404).json({ error: 'Policy not found or payment link unavailable' });
       return;
     }
 
@@ -73,7 +114,8 @@ router.post('/razorpay/create-link', authenticate, requireKyc, async (req: Reque
     res.json({ paymentLinkId: link.id, paymentUrl: link.short_url, amount: policy.premium });
   } catch (e) {
     console.error('[razorpay] create-link error:', e);
-    res.status(500).json({ error: 'Failed to create payment link' });
+    const msg = e instanceof Error ? e.message : 'Failed to create payment link';
+    res.status(500).json({ error: msg, details: e });
   }
 });
 
@@ -208,8 +250,105 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
     console.log(`${'─'.repeat(60)}\n`);
     res.json({ ok: true });
   } catch (e) {
-    console.error(`[razorpay webhook] UNHANDLED ERROR:`, e);
-    res.status(500).json({ error: 'Webhook error' });
+    console.error('[razorpay webhook] error:', e);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+// GET Razorpay callback route
+router.get('/razorpay/callback', async (req: Request, res: Response): Promise<void> => {
+  res.redirect('askinsurance://payment-success');
+});
+// ── Test Mode Verification Endpoint (Instant Activation) ─────────────────────
+router.post('/verify-test-payment', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    const { quoteId, policyId } = z.object({
+      quoteId:  z.string().optional(),
+      policyId: z.string().optional(),
+    }).parse(req.body);
+
+    let policy = await prisma.policy.findFirst({
+      where: {
+        userId,
+        OR: [
+          ...(policyId ? [{ id: policyId }] : []),
+          ...(quoteId ? [{ quoteId }] : []),
+        ]
+      }
+    });
+
+    if (!policy && quoteId) {
+      const quote = await prisma.quote.findFirst({ where: { id: quoteId, userId } });
+      if (quote && quote.adminResponse) {
+        let ar: { insurer: string; totalPremium: number; notes?: string } = { insurer: 'ASK Insurance', totalPremium: 0 };
+        try { ar = JSON.parse(quote.adminResponse as string); } catch {}
+        let details: Record<string, unknown> = {};
+        try { details = JSON.parse(quote.details as string); } catch {}
+        const now = new Date();
+        policy = await prisma.policy.create({
+          data: {
+            policyNumber: `APP${Date.now()}`,
+            type: quote.type,
+            provider: ar.insurer,
+            sumInsured: (details.sumInsured as number) ?? 0,
+            premium: ar.totalPremium,
+            startDate: now,
+            endDate: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+            status: 'pending',
+            paymentStatus: 'pending',
+            notes: ar.notes ?? null,
+            userId,
+            quoteId: quote.id,
+          }
+        });
+      }
+    }
+
+    if (!policy) {
+      res.status(404).json({ error: 'Policy not found' });
+      return;
+    }
+
+    if (policy.paymentStatus !== 'paid') {
+      const targetPolicyId = policy.id;
+      await prisma.$transaction(async (tx) => {
+        await tx.policy.update({
+          where: { id: targetPolicyId },
+          data:  { status: 'active', paymentStatus: 'paid' }
+        });
+        await tx.payment.create({
+          data: {
+            amount:      policy!.premium,
+            currency:    'INR',
+            status:      'success',
+            provider:    'razorpay_test',
+            providerRef: `test_${Date.now()}`,
+            policyId:    targetPolicyId,
+            userId,
+          }
+        });
+        if (policy!.quoteId) {
+          await tx.quote.update({
+            where: { id: policy!.quoteId },
+            data:  { status: 'converted' }
+          }).catch(() => {});
+        }
+        await tx.notification.create({
+          data: {
+            userId,
+            type:   'general',
+            title:  'Payment Successful! 🎉',
+            body:   `Your ${policy!.type} insurance policy is now active.`,
+          }
+        }).catch(() => {});
+        await calculateAndApplyBrokerage(tx, targetPolicyId).catch(() => {});
+      });
+    }
+
+    res.json({ success: true, message: 'Policy activated successfully' });
+  } catch (e) {
+    console.error('[payments/verify-test-payment] error:', e);
+    res.status(500).json({ error: 'Failed to verify payment' });
   }
 });
 

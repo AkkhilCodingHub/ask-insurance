@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { adminApi, AgentRecord } from "@/lib/api";
 import {
   UserCog, Plus, Trash2, Pencil, ShieldCheck, Shield,
-  ToggleLeft, ToggleRight, KeyRound, X, Eye, EyeOff, RefreshCw
+  ToggleLeft, ToggleRight, KeyRound, X, Eye, EyeOff, RefreshCw,
+  Upload, Download, CheckCircle, AlertCircle, FileText
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ function AgentModal({
   const [email,     setEmail]     = useState(state.agent?.email ?? "");
   const [password,  setPassword]  = useState("");
   const [loginMethod, setLoginMethod] = useState<"password" | "google">("password");
-  const [role,      setRole]      = useState<"admin" | "superadmin">(state.agent?.role ?? "admin");
+  const [role,      setRole]      = useState<"agent" | "superadmin">(state.agent?.role === "superadmin" ? "superadmin" : "agent");
   const [showPass,  setShowPass]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState("");
@@ -168,7 +169,7 @@ function AgentModal({
           <div>
             <label style={{ fontSize: 10, fontWeight: 800, color: "#64748B", letterSpacing: 0.8, display: "block", marginBottom: 8 }}>ROLE</label>
             <div style={{ display: "flex", gap: 10 }}>
-              {(["admin", "superadmin"] as const).map(r => (
+              {(["agent", "superadmin"] as const).map(r => (
                 <button key={r} onClick={() => setRole(r)} style={{
                   flex: 1, padding: "10px 0", borderRadius: 10, border: `2px solid ${role === r ? "#3B82F6" : "#E2E8F0"}`,
                   background: role === r ? "#EFF6FF" : "#F8FAFC",
@@ -181,7 +182,7 @@ function AgentModal({
               ))}
             </div>
             <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
-              {role === "superadmin" ? "Superadmin can create and manage other agents." : "Agent can manage quotes and policies only."}
+              {role === "superadmin" ? "Superadmin can manage all agents, settings, and full admin panel." : "Agent can manage assigned quotes and support chats."}
             </p>
           </div>
 
@@ -209,6 +210,146 @@ function AgentModal({
   );
 }
 
+// ── Bulk Import Modal ────────────────────────────────────────────────────────
+
+function BulkImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState("");
+  const [mode, setMode] = useState<"file" | "text">("file");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ importedCount: number; skippedCount: number; errors: string[] } | null>(null);
+
+  const handleDownloadSample = () => {
+    const sample = "name,email,phone,password,insurers,types\nJohn Doe,john.agent@example.com,9876543210,Agent@12345,HDFC ERGO;ICICI Lombard,health;motor\nJane Smith,jane.agent@example.com,9876543211,Agent@12345,Star Health,health";
+    const blob = new Blob([sample], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "agents_sample.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async () => {
+    setError("");
+    if (mode === "file" && !file) {
+      setError("Please select a CSV file to upload.");
+      return;
+    }
+    if (mode === "text" && !csvText.trim()) {
+      setError("Please paste CSV data.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await adminApi.bulkImportAgents(mode === "file" && file ? file : csvText);
+      setResult(res);
+      onDone();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Bulk import failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "var(--white)", borderRadius: 20, width: "100%", maxWidth: 520, boxShadow: "0 24px 64px rgba(0,0,0,0.3)", border: "1px solid var(--border)", overflow: "hidden" }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 1, margin: "0 0 4px" }}>CSV BULK IMPORT</p>
+            <h2 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", margin: 0 }}>Import Agents via CSV</h2>
+          </div>
+          <button onClick={onClose} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <X size={16} color="var(--text-muted)" />
+          </button>
+        </div>
+
+        <div style={{ padding: 24 }}>
+          {result ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, background: "#ECFDF5", borderRadius: 12, border: "1px solid #A7F3D0", marginBottom: 16 }}>
+                <CheckCircle size={22} color="#059669" />
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 800, color: "#065F46", margin: 0 }}>Import Complete!</p>
+                  <p style={{ fontSize: 13, color: "#047857", margin: "2px 0 0" }}>
+                    Successfully imported <strong>{result.importedCount}</strong> new agents. {result.skippedCount > 0 && `(${result.skippedCount} skipped — already existed)`}
+                  </p>
+                </div>
+              </div>
+
+              {result.errors.length > 0 && (
+                <div style={{ padding: 12, background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA", maxHeight: 120, overflowY: "auto" }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", margin: "0 0 6px", textTransform: "uppercase" }}>Row Errors:</p>
+                  {result.errors.map((err, i) => (
+                    <p key={i} style={{ fontSize: 12, color: "#B91C1C", margin: "2px 0" }}>{err}</p>
+                  ))}
+                </div>
+              )}
+
+              <button onClick={onClose} style={{ width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 12, border: "none", background: "#3B82F6", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+                Done
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setMode("file")} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "1px solid", borderColor: mode === "file" ? "#3B82F6" : "var(--border)", background: mode === "file" ? "#EFF6FF" : "#fff", color: mode === "file" ? "#1D4ED8" : "var(--text-muted)", cursor: "pointer" }}>Upload File</button>
+                  <button onClick={() => setMode("text")} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "1px solid", borderColor: mode === "text" ? "#3B82F6" : "var(--border)", background: mode === "text" ? "#EFF6FF" : "#fff", color: mode === "text" ? "#1D4ED8" : "var(--text-muted)", cursor: "pointer" }}>Paste CSV</button>
+                </div>
+                <button onClick={handleDownloadSample} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "#3B82F6", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  <Download size={13} /> Sample CSV
+                </button>
+              </div>
+
+              {mode === "file" ? (
+                <div style={{ border: "2px dashed var(--border)", borderRadius: 14, padding: "28px 20px", textAlign: "center", background: "var(--bg)", cursor: "pointer" }}>
+                  <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ display: "none" }} id="csv-file-input" />
+                  <label htmlFor="csv-file-input" style={{ cursor: "pointer", display: "block" }}>
+                    <Upload size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>
+                      {file ? file.name : "Click to select .CSV file"}
+                    </p>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+                      {file ? `${(file.size / 1024).toFixed(1)} KB` : "Supports standard CSV with headers: name, email, phone, password"}
+                    </p>
+                  </label>
+                </div>
+              ) : (
+                <textarea
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  placeholder="name,email,phone,password&#10;John Doe,john@example.com,9876543210,Agent@123"
+                  rows={6}
+                  style={{ width: "100%", padding: 12, border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 13, fontFamily: "monospace", outline: "none", resize: "vertical", boxSizing: "border-box" }}
+                />
+              )}
+
+              {error && (
+                <div style={{ display: "flex", gap: 8, padding: "10px 12px", background: "#FEF2F2", borderRadius: 8, border: "1px solid #FECACA", marginTop: 14 }}>
+                  <AlertCircle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "#DC2626" }}>{error}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handleImport}
+                disabled={loading}
+                style={{ width: "100%", marginTop: 20, padding: "12px 0", borderRadius: 12, border: "none", background: loading ? "#93C5FD" : "#3B82F6", color: "#fff", fontSize: 14, fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }}
+              >
+                {loading ? "Importing Agents..." : "Start Bulk Import"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AgentsPage() {
@@ -216,10 +357,9 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"accounts" | "kyc">("accounts");
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true); setError("");
@@ -258,34 +398,8 @@ export default function AgentsPage() {
     setModal(null);
   };
 
-  const handleVerifyKyc = async (id: string, action: "approve" | "reject") => {
-    let reason: string | undefined;
-    if (action === "reject") {
-      const input = prompt("Please enter the reason for rejecting KYC:");
-      if (input === null) return; // Cancelled
-      if (!input.trim()) { alert("Rejection reason is required."); return; }
-      reason = input.trim();
-    } else {
-      if (!confirm("Approve this advisor's KYC?")) return;
-    }
-
-    setVerifyingId(id);
-    try {
-      await adminApi.verifyAgentKyc(id, action, reason);
-      alert(`KYC ${action === "approve" ? "approved" : "rejected"} successfully!`);
-      load(); // Reload to get updated KYC fields
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "KYC action failed.");
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
   const active   = agents.filter(a => a.isActive).length;
   const superadmins = agents.filter(a => a.role === "superadmin").length;
-  const submittedKyc = agents.filter(a => a.kycStatus === "submitted").length;
-
-  const kycAgents = agents.filter(a => a.kycStatus && a.kycStatus !== "pending");
 
   return (
     <div style={{ padding: 32, minHeight: "100vh", background: "var(--bg)" }}>
@@ -298,12 +412,22 @@ export default function AgentsPage() {
             </div>
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>Agents</h1>
           </div>
-          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>Manage advisor accounts and verify onboarding credentials.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>Manage advisor accounts and system access.</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={load}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 16px", background: "var(--white)", border: "1.5px solid var(--border)", borderRadius: 12, color: "var(--text-muted)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             <RefreshCw size={14} /> Refresh
+          </button>
+          <button
+            onClick={() => setShowBulkModal(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "11px 16px", background: "#EFF6FF", border: "1.5px solid #BFDBFE",
+              borderRadius: 12, color: "#1D4ED8", fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            <Upload size={14} /> Bulk Import CSV
           </button>
           <button
             onClick={() => setModal({ mode: "create" })}
@@ -317,30 +441,6 @@ export default function AgentsPage() {
           </button>
         </div>
       </div>
-
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 10, borderBottom: "1.5px solid var(--border)", marginBottom: 24 }}>
-        {[
-          { id: "accounts", label: "Advisor Accounts", count: agents.length },
-          { id: "kyc", label: "Advisor Verification (KYC)", count: submittedKyc, countColor: "#DC2626" },
-        ].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id as any)} style={{
-            padding: "10px 16px", border: "none", background: "none", fontSize: 14, fontWeight: activeTab === t.id ? 800 : 500,
-            color: activeTab === t.id ? "#3B82F6" : "var(--text-muted)", borderBottom: activeTab === t.id ? "3px solid #3B82F6" : "none",
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 8, marginBottom: -1.5
-          }}>
-            {t.label}
-            {t.count > 0 && (
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: t.countColor ? t.countColor + "18" : "var(--border)", color: t.countColor ?? "var(--text-muted)" }}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "accounts" ? (
-        <>
           {/* Stats */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
             {[
@@ -359,8 +459,8 @@ export default function AgentsPage() {
           {/* Table */}
           <div style={{ background: "var(--white)", borderRadius: 20, border: "1px solid var(--border)", overflow: "hidden" }}>
             {/* Table header */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-              {["Name", "Email", "Role", "Status", "Created", "Actions"].map(h => (
+            <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1.2fr 2fr 1fr 1fr 1fr 120px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+              {["Name", "Code", "Email", "Role", "Status", "Created", "Actions"].map(h => (
                 <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
               ))}
             </div>
@@ -389,7 +489,7 @@ export default function AgentsPage() {
               <div
                 key={agent.id}
                 style={{
-                  display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr 120px",
+                  display: "grid", gridTemplateColumns: "1.8fr 1.2fr 2fr 1fr 1fr 1fr 120px",
                   padding: "14px 20px", alignItems: "center",
                   borderBottom: i < agents.length - 1 ? "1px solid var(--border)" : "none",
                   background: "var(--white)",
@@ -406,6 +506,13 @@ export default function AgentsPage() {
                     {agent.name.slice(0, 2).toUpperCase()}
                   </div>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{agent.name}</span>
+                </div>
+
+                {/* Code */}
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "monospace", color: "#6D28D9", background: "#F5F3FF", padding: "3px 8px", borderRadius: 6, border: "1px solid #DDD6FE" }}>
+                    {agent.agentCode || "—"}
+                  </span>
                 </div>
 
                 {/* Email */}
@@ -430,7 +537,7 @@ export default function AgentsPage() {
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fmtDate(agent.createdAt)}</span>
 
                 {/* Actions */}
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <button
                     onClick={() => setModal({ mode: "edit", agent })}
                     title="Edit agent"
@@ -450,90 +557,8 @@ export default function AgentsPage() {
               </div>
             ))}
           </div>
-        </>
-      ) : (
-        /* KYC Verification Tab */
-        <div style={{ background: "var(--white)", borderRadius: 20, border: "1px solid var(--border)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-            {["Agent", "Doc Type", "Submitted On", "Document URL", "KYC Status", "Actions"].map(h => (
-              <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
-            ))}
-          </div>
-
-          {loading && <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>Loading submissions…</div>}
-
-          {!loading && kycAgents.length === 0 && (
-            <div style={{ padding: 64, textAlign: "center" }}>
-              <ShieldCheck size={40} color="var(--text-muted)" style={{ marginBottom: 12 }} />
-              <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", margin: "0 0 6px" }}>No verification requests</p>
-              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>No agent KYC uploads are currently pending verification.</p>
-            </div>
-          )}
-
-          {!loading && kycAgents.map((agent, i) => {
-            const isSub = agent.kycStatus === "submitted";
-            const badgeBg = agent.kycStatus === "verified" ? "rgba(16, 185, 129, 0.15)" : isSub ? "rgba(217, 119, 6, 0.15)" : "rgba(220, 38, 38, 0.15)";
-            const badgeColor = agent.kycStatus === "verified" ? "#10B981" : isSub ? "#F59E0B" : "#EF4444";
-            return (
-              <div key={agent.id} style={{
-                display: "grid", gridTemplateColumns: "1.5fr 1.2fr 1.2fr 1.5fr 1.2fr 160px",
-                padding: "14px 20px", alignItems: "center",
-                borderBottom: i < kycAgents.length - 1 ? "1px solid var(--border)" : "none",
-                background: "var(--white)",
-              }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 2px" }}>{agent.name}</p>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>{agent.email}</p>
-                </div>
-
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textTransform: "capitalize" }}>
-                  {agent.kycDocType?.replace("_", " ") ?? "—"}
-                </span>
-
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {agent.kycSubmittedAt ? fmtDate(agent.kycSubmittedAt) : "—"}
-                </span>
-
-                <div>
-                  {agent.kycDocUrl ? (
-                    <a href={agent.kycDocUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 700, color: "#3B82F6", textDecoration: "none" }}>
-                      View Document ↗
-                    </a>
-                  ) : "—"}
-                </div>
-
-                <div>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: badgeBg, color: badgeColor, textTransform: "capitalize" }}>
-                    {agent.kycStatus}
-                  </span>
-                  {agent.kycStatus === "rejected" && agent.kycRejectionReason && (
-                    <p style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>Reason: {agent.kycRejectionReason}</p>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", gap: 6 }}>
-                  {isSub ? (
-                    <>
-                      <button onClick={() => handleVerifyKyc(agent.id, "approve")} disabled={verifyingId === agent.id}
-                        style={{ flex: 1, padding: "6px 0", background: "#059669", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                        Approve
-                      </button>
-                      <button onClick={() => handleVerifyKyc(agent.id, "reject")} disabled={verifyingId === agent.id}
-                        style={{ flex: 1, padding: "6px 0", background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                        Reject
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>No actions</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {modal && <AgentModal state={modal} onClose={() => setModal(null)} onSaved={handleSaved} />}
+      {showBulkModal && <BulkImportModal onClose={() => setShowBulkModal(false)} onDone={() => { setShowBulkModal(false); load(); }} />}
     </div>
   );
 }

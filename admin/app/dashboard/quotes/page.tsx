@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search, RefreshCw, Send, X, Link, CheckCircle, Clock,
   AlertCircle, Copy, ExternalLink, User, Phone, Mail,
-  FileText, ChevronRight, Zap,
+  FileText, ChevronRight, Zap, UserCog, ChevronDown,
 } from "lucide-react";
-import { adminApi, type AdminQuote, type AdminQuoteResponse } from "@/lib/api";
+import { adminApi, type AdminQuote, type AdminQuoteResponse, type AgentRecord } from "@/lib/api";
 
 // ── Types & constants ──────────────────────────────────────────────────────────
 
@@ -164,10 +164,10 @@ function RespondForm({ quote, onDone }: { quote: AdminQuote; onDone: () => void 
 // ── Payment link section ───────────────────────────────────────────────────────
 
 function PaymentLinkSection({ quote }: { quote: AdminQuote }) {
-  const [loading, setLoading]     = useState(false);
-  const [url, setUrl]             = useState<string | null>(null);
-  const [err, setErr]             = useState<string | null>(null);
-  const [copied, setCopied]       = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [url, setUrl]         = useState<string | null>(null);
+  const [err, setErr]         = useState<string | null>(null);
+  const [copied, setCopied]   = useState(false);
 
   const generate = async () => {
     setLoading(true); setErr(null);
@@ -190,14 +190,14 @@ function PaymentLinkSection({ quote }: { quote: AdminQuote }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ padding: "12px 14px", background: "#F5F3FF", borderRadius: 10, border: "1px solid #DDD6FE" }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#6D28D9", margin: 0 }}>Customer approved this quote</p>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 0" }}>
-          Generate a Razorpay payment link and share it with the customer. Policy activates automatically on payment.
+      <div style={{ padding: "14px 16px", background: "#F5F3FF", borderRadius: 12, border: "1px solid #DDD6FE" }}>
+        <p style={{ fontSize: 13, fontWeight: 800, color: "#6D28D9", margin: "0 0 4px" }}>Customer Approved Quote</p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: "18px" }}>
+          Generate a Razorpay payment link or QR payload here to share with the customer. Payment execution is completed strictly on the <strong>Customer Mobile App</strong>.
         </p>
         {quote.adminResponse && (
-          <p style={{ fontSize: 15, fontWeight: 900, color: "#6D28D9", margin: "8px 0 0" }}>
-            Amount: {fmt(quote.adminResponse.totalPremium)}/yr
+          <p style={{ fontSize: 16, fontWeight: 900, color: "#6D28D9", margin: "10px 0 0" }}>
+            Total Premium Due: {fmt(quote.adminResponse.totalPremium)}/yr
           </p>
         )}
       </div>
@@ -224,7 +224,7 @@ function PaymentLinkSection({ quote }: { quote: AdminQuote }) {
               <ExternalLink size={11} /> Open
             </a>
           </div>
-          <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>Share via WhatsApp or SMS. Policy activates once Razorpay confirms payment.</p>
+          <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>Share via WhatsApp or SMS. Customer will complete payment in their mobile app.</p>
         </div>
       )}
 
@@ -240,7 +240,7 @@ function PaymentLinkSection({ quote }: { quote: AdminQuote }) {
 
 // ── Side Drawer ────────────────────────────────────────────────────────────────
 
-function Drawer({ quote, onClose, onRefresh }: { quote: AdminQuote; onClose: () => void; onRefresh: () => void }) {
+function Drawer({ quote, agents, onClose, onRefresh }: { quote: AdminQuote; agents: AgentRecord[]; onClose: () => void; onRefresh: () => void }) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
 
@@ -396,9 +396,42 @@ function Drawer({ quote, onClose, onRefresh }: { quote: AdminQuote; onClose: () 
               </div>
             )}
 
+            {/* ── ASSIGN AGENT ── */}
+            <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <UserCog size={14} color="var(--text-muted)" />
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Assigned Agent</p>
+              </div>
+              <select
+                value={quote.agentId ?? ""}
+                disabled={updatingStatus}
+                onChange={async (e) => {
+                  const newAgentId = e.target.value || null;
+                  try {
+                    await adminApi.assignQuote(quote.id, newAgentId);
+                    onRefresh();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : "Failed to assign agent");
+                  }
+                }}
+                style={{
+                  width: "100%", padding: "9px 12px", border: "1.5px solid var(--border)",
+                  borderRadius: 8, fontSize: 13, color: "var(--text)", background: "#fff",
+                  outline: "none", cursor: "pointer"
+                }}
+              >
+                <option value="">Unassigned (Open / Auto-assign)</option>
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.agentCode || "Agent"}) — {a.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* ── STATUS CHANGE ── */}
             {quote.status !== "converted" && (
-              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+              <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid var(--border)" }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 10px" }}>Change Status</p>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {(["pending", "responded", "approved", "expired"] as const).map(s => {
@@ -436,6 +469,7 @@ function Drawer({ quote, onClose, onRefresh }: { quote: AdminQuote; onClose: () 
 
 export default function QuotesPage() {
   const [quotes, setQuotes]           = useState<AdminQuote[]>([]);
+  const [agents, setAgents]           = useState<AgentRecord[]>([]);
   const [total, setTotal]             = useState(0);
   const [page, setPage]               = useState(1);
   const [hasMore, setHasMore]         = useState(false);
@@ -451,8 +485,12 @@ export default function QuotesPage() {
     if (pg === 1) setLoading(true); else setLoadingMore(true);
     setError(null);
     try {
-      const res = await adminApi.getQuotes(pg, PAGE_SIZE);
+      const [res, agentList] = await Promise.all([
+        adminApi.getQuotes(pg, PAGE_SIZE),
+        adminApi.getAgents().catch(() => []),
+      ]);
       if (replace) setQuotes(res.quotes); else setQuotes(p => [...p, ...res.quotes]);
+      if (agentList) setAgents(agentList);
       setTotal(res.total);
       setHasMore(pg * PAGE_SIZE < res.total);
       setPage(pg);
@@ -651,6 +689,10 @@ export default function QuotesPage() {
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 100, background: tc + "15", color: tc, flexShrink: 0 }}>
                         {q.type.charAt(0).toUpperCase() + q.type.slice(1)}
                       </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: q.agent ? "#F1F5F9" : "#FFFBEB", color: q.agent ? "#475569" : "#B45309", border: `1px solid ${q.agent ? "#E2E8F0" : "#FDE68A"}`, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                        <UserCog size={10} />
+                        {q.agent ? q.agent.name : "Unassigned"}
+                      </span>
                     </div>
                     {/* Detail chips row */}
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -750,6 +792,7 @@ export default function QuotesPage() {
         <Drawer
           key={selected.id}
           quote={quotes.find(q => q.id === selected.id) ?? selected}
+          agents={agents}
           onClose={() => setSelected(null)}
           onRefresh={refresh}
         />

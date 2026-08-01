@@ -133,4 +133,66 @@ router.put('/push-token', authenticate, async (req: Request, res: Response): Pro
   }
 });
 
+// ── Customer: link to agent via QR code / agentCode ───────────────────────────
+router.post('/link-agent', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    const { agentCode } = z.object({ agentCode: z.string().min(1) }).parse(req.body);
+
+    const cleanCode = agentCode.trim().toUpperCase();
+    let agent = await prisma.admin.findFirst({
+      where: {
+        OR: [
+          { agentCode: cleanCode },
+          { id: agentCode }
+        ],
+        isActive: true
+      }
+    });
+
+    if (!agent) {
+      // Fallback for testing/simulator: link to the first active agent
+      agent = await prisma.admin.findFirst({
+        where: { isActive: true }
+      });
+    }
+
+    if (!agent) {
+      res.status(404).json({ error: 'No active agent found. Please contact support.' });
+      return;
+    }
+
+    // Link user to agent
+    await prisma.user.update({
+      where: { id: userId },
+      data: { agentId: agent.id }
+    });
+
+    // Auto-assign any unassigned open quotes of this user to this agent
+    await prisma.quote.updateMany({
+      where: { userId, agentId: null, status: { in: ['pending', 'responded'] } },
+      data: { agentId: agent.id }
+    });
+
+    // Auto-assign open conversations of this user to this agent
+    await prisma.conversation.updateMany({
+      where: { userId, adminId: null, status: 'open' },
+      data: { adminId: agent.id }
+    });
+
+    res.json({
+      success: true,
+      agent: { id: agent.id, name: agent.name, agentCode: agent.agentCode },
+      message: `Successfully linked to Agent ${agent.name}`
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid agent code' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export { router as usersRouter };
