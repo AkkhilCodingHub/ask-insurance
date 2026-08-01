@@ -61,5 +61,16 @@ api/src/generated/
 .env*.local
 firebase-service-account.json
 
-# Project proposal features checklist
+# Native Caches & Large Binaries
+.gradle/
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/ios/build/
+**/ios/Pods/
+**/ios/DerivedData/
+
+# Project proposal features checklist & binary presentations
 features.md
+quote.pptx
+
