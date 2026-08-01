@@ -23,7 +23,7 @@
     "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.2.4"
   },
   "engines": {
     "node": ">=20.0.0"
