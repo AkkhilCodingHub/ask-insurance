@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet, ViewStyle, BackHandler } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Icon } from './Icon';
 import { Colors } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 
 interface BackButtonProps {
   onPress?: () => void;
@@ -10,8 +11,10 @@ interface BackButtonProps {
   style?: ViewStyle;
 }
 
-export function BackButton({ onPress, color = Colors.text, style }: BackButtonProps) {
+export function BackButton({ onPress, color, style }: BackButtonProps) {
   const router = useRouter();
+  const colors = useThemeColors();
+  const iconColor = color ?? colors.text;
 
   const handlePress = () => {
     if (onPress) {
@@ -29,7 +32,7 @@ export function BackButton({ onPress, color = Colors.text, style }: BackButtonPr
       onPress={handlePress}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
-      <Icon name="arrow-back-outline" size={22} color={color} />
+      <Icon name="arrow-back-outline" size={22} color={iconColor} />
     </TouchableOpacity>
   );
 }

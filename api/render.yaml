@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ask-insurance-api
+    env: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000

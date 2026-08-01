@@ -5,17 +5,20 @@ import { Platform } from 'react-native';
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
   let url = process.env.EXPO_PUBLIC_API_URL;
+  if (Platform.OS === 'ios') {
+    return 'http://127.0.0.1:4000';
+  }
   if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {
       const host = hostUri.split(':')[0];
       url = `http://${host}:4000`;
     } else {
-      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
     }
   }
   if (!url) {
-    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
+    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
   }
   if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
     const hostUri = Constants.expoConfig?.hostUri;
@@ -374,31 +377,38 @@ export interface DashboardData {
   policies:        ApiPolicy[];
 }
 
+// ── HTTP Shorthands ───────────────────────────────────────────────────────────
+
+const post = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const put = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const patch = <T>(path: string, body?: unknown, auth = false) =>
+  request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+
+const del = <T>(path: string, auth = false) =>
+  request<T>(path, { method: 'DELETE' }, auth);
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const authApi = {
   sendOTP: (phone: string) =>
-    request<{ success: boolean; isNewUser: boolean }>('/api/auth/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone })
-    }),
+    post<{ success: boolean; isNewUser: boolean }>('/api/auth/send-otp', { phone }),
 
   verifyOTP: (phone: string, otp: string) =>
-    request<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-otp',
-      { method: 'POST', body: JSON.stringify({ phone, otp }) }
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/verify-otp', { phone, otp }
     ),
 
   verifyFirebase: (idToken: string) =>
-    request<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-firebase',
-      { method: 'POST', body: JSON.stringify({ idToken }) }
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/verify-firebase', { idToken }
     ),
 
   refresh: (refreshToken: string) =>
-    request<{ token: string; refreshToken: string }>('/api/auth/refresh', {
-      method: 'POST', body: JSON.stringify({ refreshToken })
-    }),
+    post<{ token: string; refreshToken: string }>('/api/auth/refresh', { refreshToken }),
 
   me: () =>
     request<{ user: ApiUser }>('/api/auth/me', {}, true)
@@ -416,11 +426,7 @@ export const usersApi = {
     city?:        string;
     state?:       string;
     pincode?:     string;
-  }) =>
-    request<{ user: ApiUser }>('/api/users/profile', {
-      method: 'PUT',
-      body:   JSON.stringify(data)
-    }, true),
+  }) => put<{ user: ApiUser }>('/api/users/profile', data, true),
 
   dashboard: () =>
     request<DashboardData>('/api/users/dashboard', {}, true)
@@ -448,48 +454,26 @@ export const plansApi = {
 // ── Policies ──────────────────────────────────────────────────────────────────
 
 export const policiesApi = {
-  list: () =>
-    request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
-  get: (id: string) =>
-    request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
-  renew: (id: string) =>
-    request<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {
-      method: 'PUT', body: JSON.stringify({})
-    }, true)
+  list: () => request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
+  get:  (id: string) => request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
+  renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
 };
 
 // ── Claims ────────────────────────────────────────────────────────────────────
 
 export const claimsApi = {
-  list: () =>
-    request<{ claims: ApiClaim[] }>('/api/claims', {}, true),
-  create: (data: {
-    policyId:     string;
-    type:         string;
-    amount:       number;
-    description:  string;
-    incidentDate: string;
-  }) =>
-    request<{ claim: ApiClaim }>('/api/claims', {
-      method: 'POST',
-      body:   JSON.stringify(data)
-    }, true)
+  list:   () => request<{ claims: ApiClaim[] }>('/api/claims', {}, true),
+  create: (data: { policyId: string; type: string; amount: number; description: string; incidentDate: string }) =>
+    post<{ claim: ApiClaim }>('/api/claims', data, true),
 };
 
 // ── Quotes ────────────────────────────────────────────────────────────────────
 
 export const quotesApi = {
-  create: (type: string, details: Record<string, unknown>, planId?: string) =>
-    request<{ quote: ApiQuote }>('/api/quotes', {
-      method: 'POST',
-      body:   JSON.stringify({ type, details, planId })
-    }, true),
-  list: () =>
-    request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true),
-  approve: (quoteId: string) =>
-    request<{ policy: ApiPolicy }>(`/api/quotes/${quoteId}/approve`, {
-      method: 'POST',
-    }, true),
+  create:  (type: string, details: Record<string, unknown>, planId?: string) =>
+    post<{ quote: ApiQuote }>('/api/quotes', { type, details, planId }, true),
+  list:    () => request<{ quotes: ApiQuote[] }>('/api/quotes', {}, true),
+  approve: (quoteId: string) => post<{ policy: ApiPolicy }>(`/api/quotes/${quoteId}/approve`, undefined, true),
 };
 
 export interface ApiApplication {
@@ -511,13 +495,16 @@ export interface ApiApplication {
 export const paymentsApi = {
   list: () => request<{ payments: ApiPayment[] }>('/api/payments', {}, true),
   createRazorpayLink: (policyId?: string, quoteId?: string) =>
-    request<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
-      '/api/payments/razorpay/create-link',
-      { method: 'POST', body: JSON.stringify({ policyId, quoteId }) },
-      true
+    post<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
+      '/api/payments/razorpay/create-link', { policyId, quoteId }, true
     ),
-  savePushToken: (token: string) =>
-    request<void>('/api/users/push-token', { method: 'PUT', body: JSON.stringify({ token }) }, true),
+  verifyTestPayment: (quoteId?: string, policyId?: string) =>
+    post<{ success: boolean; message: string }>('/api/payments/verify-test-payment', { quoteId, policyId }, true),
+  savePushToken: (token: string) => put<void>('/api/users/push-token', { token }, true),
+  linkAgent: (agentCode: string) =>
+    post<{ success: boolean; agent: { id: string; name: string; agentCode: string }; message: string }>(
+      '/api/users/link-agent', { agentCode }, true
+    ),
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -527,9 +514,10 @@ export interface ChatMessage {
   content:        string;
   senderType:     'user' | 'admin';
   senderId:       string;
-  readAt:         string | null;
+  readAt?:        string | null;
   createdAt:      string;
   conversationId: string;
+  isInternal?:    boolean;
 }
 
 /** User summary included on admin/agent conversation payloads */
@@ -557,32 +545,14 @@ export interface Conversation {
 }
 
 export const chatApi = {
-  getConversations: () =>
-    request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
-
-  getConversation: (id: string) =>
-    request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
-
-  getOrCreate: (subject?: string) =>
-    request<{ conversation: Conversation }>('/api/chat/conversations', {
-      method: 'POST',
-      body:   JSON.stringify({ subject: subject ?? 'Support' })
-    }, true),
-
-  getMessages: (conversationId: string, after?: string) => {
-    const qs = after ? `?after=${encodeURIComponent(after)}` : '';
-    return request<{ messages: ChatMessage[] }>(
-      `/api/chat/conversations/${conversationId}/messages${qs}`,
-      {},
-      true
-    );
-  },
-
-  sendMessage: (conversationId: string, content: string) =>
-    request<{ message: ChatMessage }>(`/api/chat/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      body:   JSON.stringify({ content })
-    }, true)
+  getConversations:   () => request<{ conversations: Conversation[] }>('/api/chat/conversations', {}, true),
+  getConversation:    (id: string) => request<{ conversation: Conversation }>(`/api/chat/conversations/${id}`, {}, true),
+  getOrCreate:        (subject?: unknown) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: typeof subject === 'string' ? subject : 'Support' }, true),
+  createConversation: (subject?: unknown, firstMsg?: unknown) => post<{ conversation: Conversation }>('/api/chat/conversations', { subject: typeof subject === 'string' ? subject : 'Support', firstMsg: typeof firstMsg === 'string' ? firstMsg : undefined }, true),
+  getMessages:        (conversationId: string, after?: string) =>
+    request<{ messages: ChatMessage[] }>(`/api/chat/conversations/${conversationId}/messages${after ? `?after=${encodeURIComponent(after)}` : ''}`, {}, true),
+  sendMessage:        (conversationId: string, content: string) =>
+    post<{ message: ChatMessage }>(`/api/chat/conversations/${conversationId}/messages`, { content }, true),
 };
 
 // ── Agent (admin) token storage ───────────────────────────────────────────────
@@ -599,21 +569,27 @@ export async function clearAgentToken(): Promise<void> {
   await SecureStore.deleteItemAsync(AGENT_TOKEN_KEY);
 }
 
-// ── Agent request wrapper (uses agent JWT → /api/admin/* routes) ──────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function agentRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getAgentToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  const headers = {
     ...(options.headers as Record<string, string> ?? {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  return request<T>(path, { ...options, headers }, false);
+}
+
+async function uploadForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
   let json: unknown;
   try { json = await res.json(); } catch { json = null; }
   if (!res.ok) {
-    const body = json as Record<string, unknown> | null;
-    throw new ApiError((body?.error as string) ?? 'Request failed', res.status);
+    throw new ApiError(((json as any)?.error as string) ?? 'Upload failed', res.status);
   }
   return json as T;
 }
@@ -625,6 +601,7 @@ export interface AgentAdmin {
   name:  string;
   email: string;
   role:  string;
+  agentCode?:          string | null;
   kycStatus?:          string;
   kycDocType?:         string | null;
   kycDocUrl?:          string | null;
@@ -762,14 +739,7 @@ export const agentApi = {
     form.append('issueDate',    data.issueDate);
     form.append('expiryDate',   data.expiryDate);
     if (data.notes) form.append('notes', data.notes);
-    const res = await fetch(`${BASE_URL}/api/admin/policies/${policyId}/upload-document`, {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${token ?? ''}` },
-      body:    form,
-    });
-    const json = await res.json();
-    if (!res.ok) throw new ApiError((json as any)?.error ?? 'Upload failed', res.status);
-    return json as { policy: AgentPolicy };
+    return uploadForm<{ policy: AgentPolicy }>(`/api/admin/policies/${policyId}/upload-document`, form, token);
   },
 
   // ── Chat ──────────────────────────────────────────────────────────────────
@@ -819,7 +789,7 @@ export const agentApi = {
     }),
 
   uploadKycDocument: async (
-    docType: 'aadhaar' | 'driving_license' | 'passport',
+    docType: 'appointment_letter' | 'aadhaar' | 'driving_license' | 'passport',
     fileUri: string,
     mimeType: string,
     fileName: string,
@@ -828,16 +798,7 @@ export const agentApi = {
     const form  = new FormData();
     form.append('docType', docType);
     form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
-
-    const url = `${BASE_URL}/api/admin/agents/kyc/upload`;
-    const resp = await fetch(url, {
-      method:  'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body:    form,
-    });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<{ success: boolean; kycStatus: string; docUrl: string }>('/api/admin/agents/kyc/upload', form, token);
   },
 
   // ── Renewals ──────────────────────────────────────────────────────────────
@@ -889,16 +850,7 @@ export const kycApi = {
     const form  = new FormData();
     form.append('docType', docType);
     form.append('document', { uri: fileUri, type: mimeType, name: fileName } as any);
-
-    const url = `${BASE_URL}/api/kyc/upload`;
-    const resp = await fetch(url, {
-      method:  'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body:    form,
-    });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<{ success: boolean; kycStatus: string; docUrl: string }>('/api/kyc/upload', form, token);
   },
 };
 
@@ -920,15 +872,7 @@ export const documentsApi = {
     form.append('file', { uri: fileUri, type: mimeType, name: fileName } as any);
     if (title) form.append('title', title);
     if (docType) form.append('docType', docType);
-
-    const res = await fetch(`${BASE_URL}/api/documents/upload`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-    return data;
+    return uploadForm<any>('/api/documents/upload', form, token);
   },
 
   deleteDocument: (id: string) =>

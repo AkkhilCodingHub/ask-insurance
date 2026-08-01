@@ -120,7 +120,7 @@ export default function FilesPage() {
       </div>
 
       {/* Storage gauge */}
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 22px", marginBottom: 20 }}>
+      <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "18px 22px", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <HardDrive size={16} color="var(--text-muted)" />
@@ -146,7 +146,7 @@ export default function FilesPage() {
 
       {/* Upload progress bar */}
       {uploading && (
-        <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
+        <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Uploading…</p>
           <div style={{ height: 6, background: "var(--bg)", borderRadius: 3, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${uploadProgress}%`, background: "var(--primary)", borderRadius: 3, transition: "width 0.3s" }} />
@@ -155,7 +155,7 @@ export default function FilesPage() {
       )}
 
       {/* File list */}
-      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
         {loading ? (
           <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--text-muted)" }}>Loading files…</div>
         ) : files.length === 0 ? (

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { quotesApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
@@ -15,11 +16,10 @@ import { BackButton } from '@/components/BackButton';
 
 const { width: W } = Dimensions.get('window');
 
-// If arriving from a plan, type is pre-filled so we skip step 0
-// Steps when type known:  0=personal, 1=coverage, 2=review
-// Steps when type unknown: 0=type, 1=personal, 2=coverage, 3=review
-const TOTAL_STEPS_WITH_TYPE    = 3;
-const TOTAL_STEPS_WITHOUT_TYPE = 4;
+// Steps when type known:  0=personal, 1=coverage, 2=documents, 3=review
+// Steps when type unknown: 0=type, 1=personal, 2=coverage, 3=documents, 4=review
+const TOTAL_STEPS_WITH_TYPE    = 4;
+const TOTAL_STEPS_WITHOUT_TYPE = 5;
 
 const INSURANCE_TYPES = [
   { id: 'life',   label: 'Life',   icon: '❤️', desc: 'Term & ULIP plans' },
@@ -120,6 +120,42 @@ export default function QuoteScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Required Document Upload State
+  const [panNumber, setPanNumber]     = useState('');
+  const [panDoc, setPanDoc]           = useState<{ uri: string; name: string } | null>(null);
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarDoc, setAadhaarDoc]   = useState<{ uri: string; name: string } | null>(null);
+
+  const pickPanDoc = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+        setPanDoc({ uri: asset.uri, name: asset.name });
+      }
+    } catch {
+      alert({ type: 'error', title: 'File Pick Error', message: 'Could not select PAN Card document.' });
+    }
+  };
+
+  const pickAadhaarDoc = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+        setAadhaarDoc({ uri: asset.uri, name: asset.name });
+      }
+    } catch {
+      alert({ type: 'error', title: 'File Pick Error', message: 'Could not select Aadhaar Card document.' });
+    }
+  };
+
   const coverLabel = cover?.label ?? '';
   const next = () => setStep(s => Math.min(s + 1, TOTAL_STEPS - 1));
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
@@ -127,6 +163,14 @@ export default function QuoteScreen() {
 
   const handleSubmit = async () => {
     if (!insuranceType || !cover) return;
+    if (!panNumber || !panDoc) {
+      alert({ type: 'warning', title: 'PAN Card Required', message: 'Please enter your PAN number and upload your PAN Card document.' });
+      return;
+    }
+    if (!aadhaarNumber || !aadhaarDoc) {
+      alert({ type: 'warning', title: 'Aadhaar Card Required', message: 'Please enter your Aadhaar number and upload your Aadhaar Card document.' });
+      return;
+    }
     setSubmitting(true);
     try {
       if (!user) {
@@ -135,11 +179,17 @@ export default function QuoteScreen() {
         return;
       }
       const details: Record<string, unknown> = {
-        age:        Number(age),
-        gender:     gender.toLowerCase(),
-        sumInsured: cover.value,
-        planId:     params.planId ?? null,
-        planName:   params.planName ?? null,
+        age:            Number(age),
+        gender:         gender.toLowerCase(),
+        sumInsured:     cover.value,
+        planId:         params.planId ?? null,
+        planName:       params.planName ?? null,
+        panNumber:      panNumber.trim().toUpperCase(),
+        panDocName:     panDoc?.name ?? null,
+        panDocUri:      panDoc?.uri ?? null,
+        aadhaarNumber:  aadhaarNumber.trim(),
+        aadhaarDocName: aadhaarDoc?.name ?? null,
+        aadhaarDocUri:  aadhaarDoc?.uri ?? null,
         ...(insuranceType === 'life' ? { smoker } : {}),
       };
 
@@ -380,8 +430,92 @@ export default function QuoteScreen() {
           </View>
         )}
 
-        {/* Step 3: Review & Submit */}
+        {/* Step 3: Required Identity Documents (PAN Card & Aadhaar Card) */}
         {contentStep === 3 && (
+          <View style={s.stepWrap}>
+            <Text style={s.stepTitle}>Upload Required Documents</Text>
+            <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 16 }}>
+              IRDAI guidelines require a valid PAN Card and Aadhaar Card to process your insurance application.
+            </Text>
+
+            {/* 1. PAN Card Section */}
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>1. PAN Card Details</Text>
+                <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary }}>REQUIRED</Text>
+                </View>
+              </View>
+
+              <Text style={s.label}>PAN NUMBER</Text>
+              <View style={[af.inputRow, { marginBottom: 12 }]}>
+                <TextInput
+                  style={af.input}
+                  placeholder="e.g. ABCDE1234F"
+                  placeholderTextColor={Colors.textLight}
+                  value={panNumber}
+                  onChangeText={t => setPanNumber(t.toUpperCase().slice(0, 10))}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: panDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: panDoc ? Colors.success : Colors.border }}
+                onPress={pickPanDoc}
+                activeOpacity={0.8}
+              >
+                <Icon name={panDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={panDoc ? Colors.success : Colors.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: panDoc ? Colors.success : Colors.primary }}>
+                  {panDoc ? `✓ ${panDoc.name.slice(0, 25)}` : 'Upload PAN Card Document'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2. Aadhaar Card Section */}
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>2. Aadhaar Card Details</Text>
+                <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary }}>REQUIRED</Text>
+                </View>
+              </View>
+
+              <Text style={s.label}>AADHAAR NUMBER</Text>
+              <View style={[af.inputRow, { marginBottom: 12 }]}>
+                <TextInput
+                  style={af.input}
+                  placeholder="e.g. 1234 5678 9012"
+                  placeholderTextColor={Colors.textLight}
+                  value={aadhaarNumber}
+                  onChangeText={t => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: aadhaarDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: aadhaarDoc ? Colors.success : Colors.border }}
+                onPress={pickAadhaarDoc}
+                activeOpacity={0.8}
+              >
+                <Icon name={aadhaarDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={aadhaarDoc ? Colors.success : Colors.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: aadhaarDoc ? Colors.success : Colors.primary }}>
+                  {aadhaarDoc ? `✓ ${aadhaarDoc.name.slice(0, 25)}` : 'Upload Aadhaar Card Document'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[s.nextBtn, (!panNumber || !panDoc || !aadhaarNumber || !aadhaarDoc) && { opacity: 0.4 }]}
+              onPress={next}
+              disabled={!panNumber || !panDoc || !aadhaarNumber || !aadhaarDoc}
+            >
+              <Text style={s.nextBtnText}>Next →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Step 4: Review & Submit */}
+        {contentStep === 4 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>Review & get quotes</Text>
 
@@ -404,9 +538,17 @@ export default function QuoteScreen() {
                 <Text style={s.summaryLabel}>Gender</Text>
                 <Text style={s.summaryValue}>{gender}</Text>
               </View>
-              <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+              <View style={s.summaryRow}>
                 <Text style={s.summaryLabel}>Cover</Text>
                 <Text style={[s.summaryValue, { color: Colors.primary }]}>{coverLabel}</Text>
+              </View>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>PAN Card</Text>
+                <Text style={s.summaryValue}>{panNumber} (✓ Uploaded)</Text>
+              </View>
+              <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+                <Text style={s.summaryLabel}>Aadhaar Card</Text>
+                <Text style={s.summaryValue}>{aadhaarNumber} (✓ Uploaded)</Text>
               </View>
             </View>
 

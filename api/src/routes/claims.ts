@@ -5,10 +5,10 @@ import { authenticate, requireKyc } from '../middleware/auth';
 
 const router = Router();
 
-const paramsSchema = z.object({ id: z.string().cuid() });
+const paramsSchema = z.object({ id: z.string().min(1) });
 
 const createClaimSchema = z.object({
-  policyId: z.string().cuid(),
+  policyId: z.string().min(1),
   type: z.string().min(3),
   amount: z.number().positive(),
   description: z.string().min(10),
@@ -19,11 +19,7 @@ const createClaimSchema = z.object({
 
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const userId = req.userId!;
 
     const claims = await prisma.claim.findMany({
       where: { userId },
@@ -41,21 +37,15 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
     });
 
     res.json({ claims });
-    return;
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const userId = req.userId!;
 
     const { id } = paramsSchema.parse(req.params);
     const claim = await prisma.claim.findFirst({
@@ -74,7 +64,6 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     }
 
     res.json({ claim });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid claim id' });
@@ -82,17 +71,12 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 
 router.post('/', authenticate, requireKyc, async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    const userId = req.userId!;
 
     const { policyId, type, amount, description, incidentDate } = createClaimSchema.parse(req.body);
 
@@ -131,7 +115,6 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     });
 
     res.status(201).json({ claim });
-    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
@@ -139,7 +122,6 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     }
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-    return;
   }
 });
 

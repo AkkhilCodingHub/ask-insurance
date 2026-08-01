@@ -137,10 +137,47 @@ function ProfileSection() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+import Link from "next/link";
+import { BookTemplate, ClipboardList, ArrowRight } from "lucide-react";
+
 export default function SettingsPage() {
   return (
     <div style={{ width: "100%", maxWidth: 820 }}>
       <ProfileSection />
+
+      {/* Additional Settings Quick Navigation */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 24 }}>
+        <Link href="/dashboard/settings/templates" style={{ textDecoration: "none" }}>
+          <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "transform 0.15s" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(124, 58, 237, 0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BookTemplate size={20} color="#7C3AED" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>Templates & Rate Charts</h4>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "3px 0 0" }}>Manage quote templates and GST rates</p>
+              </div>
+            </div>
+            <ArrowRight size={16} color="var(--text-muted)" />
+          </div>
+        </Link>
+
+        <Link href="/dashboard/logs" style={{ textDecoration: "none" }}>
+          <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "transform 0.15s" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(21, 128, 255, 0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ClipboardList size={20} color="#1580FF" />
+              </div>
+              <div>
+                <h4 style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>System & Audit Logs</h4>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "3px 0 0" }}>View security event history</p>
+              </div>
+            </div>
+            <ArrowRight size={16} color="var(--text-muted)" />
+          </div>
+        </Link>
+      </div>
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

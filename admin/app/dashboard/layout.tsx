@@ -117,8 +117,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !admin) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--sidebar-bg)" }}>
-        <div style={{ width: 44, height: 44, borderRadius: "50%", border: "3px solid #1580FF", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+      <div suppressHydrationWarning style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--sidebar-bg)" }}>
+        <div suppressHydrationWarning style={{ width: 44, height: 44, borderRadius: "50%", border: "3px solid #1580FF", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );

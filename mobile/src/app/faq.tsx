@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
+import { useThemeColors } from '@/context/agent';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -64,7 +65,7 @@ const FAQ_ITEMS = [
 
 // ── FAQ item component ────────────────────────────────────────────────────────
 
-function FAQItem({ q, a, isLast }: { q: string; a: string; isLast: boolean }) {
+function FAQItem({ q, a, isLast, colors }: { q: string; a: string; isLast: boolean; colors: any }) {
   const [open, setOpen] = useState(false);
 
   const toggle = () => {
@@ -73,21 +74,21 @@ function FAQItem({ q, a, isLast }: { q: string; a: string; isLast: boolean }) {
   };
 
   return (
-    <View style={[fi.wrap, !isLast && fi.border]}>
+    <View style={[fi.wrap, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
       <TouchableOpacity style={fi.header} onPress={toggle} activeOpacity={0.75}>
-        <View style={fi.qCircle}>
+        <View style={[fi.qCircle, { backgroundColor: colors.primaryLight }]}>
           <Text style={fi.qMark}>Q</Text>
         </View>
-        <Text style={fi.question}>{q}</Text>
+        <Text style={[fi.question, { color: colors.text }]}>{q}</Text>
         <Icon
           name={open ? 'chevron-up-outline' : 'chevron-down-outline'}
           size={16}
-          color={Colors.textMuted}
+          color={colors.textMuted}
         />
       </TouchableOpacity>
       {open && (
         <View style={fi.body}>
-          <Text style={fi.answer}>{a}</Text>
+          <Text style={[fi.answer, { color: colors.textMuted }]}>{a}</Text>
         </View>
       )}
     </View>
@@ -98,12 +99,13 @@ function FAQItem({ q, a, isLast }: { q: string; a: string; isLast: boolean }) {
 
 export default function FAQScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.header}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+      <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <BackButton />
-        <Text style={s.title}>Help & FAQ</Text>
+        <Text style={[s.title, { color: colors.text }]}>Help & FAQ</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -113,34 +115,35 @@ export default function FAQScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <View style={s.hero}>
-          <View style={s.heroIcon}>
+        <View style={[s.hero, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[s.heroIcon, { backgroundColor: colors.primaryLight }]}>
             <Icon name="help-circle-outline" size={32} color={Colors.primary} />
           </View>
-          <Text style={s.heroTitle}>Frequently Asked Questions</Text>
-          <Text style={s.heroSub}>
+          <Text style={[s.heroTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
+          <Text style={[s.heroSub, { color: colors.textMuted }]}>
             Everything you need to know about ASK Insurance, IRDAI regulations, and your policies.
           </Text>
         </View>
 
         {/* FAQ list */}
-        <View style={s.card}>
+        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {FAQ_ITEMS.map((item, i) => (
             <FAQItem
               key={i}
               q={item.q}
               a={item.a}
               isLast={i === FAQ_ITEMS.length - 1}
+              colors={colors}
             />
           ))}
         </View>
 
         {/* Support CTA */}
-        <View style={s.ctaCard}>
+        <View style={[s.ctaCard, { backgroundColor: colors.isDark ? 'rgba(21,128,255,0.15)' : Colors.primaryLight, borderColor: Colors.primary + '30' }]}>
           <Icon name="chatbubble-ellipses-outline" size={24} color={Colors.primary} />
           <View style={{ flex: 1 }}>
-            <Text style={s.ctaTitle}>Still have questions?</Text>
-            <Text style={s.ctaSub}>Our advisors are available 24×7</Text>
+            <Text style={[s.ctaTitle, { color: colors.text }]}>Still have questions?</Text>
+            <Text style={[s.ctaSub, { color: colors.textMuted }]}>Our advisors are available 24×7</Text>
           </View>
           <TouchableOpacity
             style={s.ctaBtn}
@@ -150,7 +153,7 @@ export default function FAQScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={s.footer}>
+        <Text style={[s.footer, { color: colors.textMuted }]}>
           ASK Insurance Broker · IRDAI Licensed{'\n'}
           Last updated: January 2025
         </Text>

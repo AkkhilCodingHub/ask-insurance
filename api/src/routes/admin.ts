@@ -11,7 +11,7 @@ import { uploadToR2, deleteFromR2, r2KeyFromUrl, sanitizeFilename } from '../lib
 import { logActivity } from '../lib/activity';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
-const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'hardilsingh87@gmail.com']);
+const SUPERADMIN_EMAILS = new Set(['neota.pvt.ltd@gmail.com', 'admin@ask-insurance.in']);
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const upload = multer({
@@ -930,19 +930,26 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
     const { page, limit, status } = schema.parse(req.query);
     const skip = (page - 1) * limit;
 
-    const whereStatus = status ? { status } : {};
+    const adminRole = (req as any).adminRole;
+    const adminId   = (req as any).adminId;
+
+    const where: any = status ? { status } : {};
+    if (adminRole === 'agent') {
+      where.agentId = adminId;
+    }
 
     const [rawQuotes, total] = await Promise.all([
       prisma.quote.findMany({
-        where: whereStatus,
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          user: { select: { id: true, name: true, phone: true, email: true } }
+          user: { select: { id: true, name: true, phone: true, email: true } },
+          agent: { select: { id: true, name: true, email: true, agentCode: true } }
         }
       }),
-      prisma.quote.count({ where: whereStatus })
+      prisma.quote.count({ where })
     ]);
 
     // Parse JSON fields so the frontend gets typed objects, not raw strings
@@ -961,6 +968,42 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
     return;
+  }
+});
+
+// ── Admin: manually assign a quote to an agent ──────────────────────────────
+router.post('/quotes/:id/assign', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { agentId } = z.object({ agentId: z.string().nullable() }).parse(req.body);
+
+    const quote = await prisma.quote.findUnique({ where: { id } });
+    if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
+
+    const updated = await prisma.quote.update({
+      where: { id },
+      data: { agentId },
+      include: {
+        user: { select: { id: true, name: true, phone: true, email: true } },
+        agent: { select: { id: true, name: true, email: true, agentCode: true } }
+      }
+    });
+
+    if (agentId) {
+      await prisma.user.update({
+        where: { id: quote.userId },
+        data: { agentId }
+      }).catch(() => {});
+    }
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'ASSIGN_QUOTE', { quoteId: id, agentId });
+
+    res.json({ quote: updated, message: 'Quote assigned successfully' });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -1312,7 +1355,17 @@ router.get('/chat/conversations', adminAuthenticate, async (req: Request, res: R
     });
     const { page, limit, status } = schema.parse(req.query);
     const skip = (page - 1) * limit;
-    const where = status ? { status } : {};
+
+    const adminRole = (req as any).adminRole;
+    const adminId   = (req as any).adminId;
+
+    const where: any = status ? { status } : {};
+    if (adminRole === 'agent') {
+      where.OR = [
+        { adminId },
+        { user: { agentId: adminId } }
+      ];
+    }
 
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
@@ -1832,7 +1885,7 @@ router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, r
       name:     z.string().min(2),
       email:    z.string().email(),
       password: z.string().min(8, 'Password must be at least 8 characters').optional(),
-      role:     z.enum(['admin', 'superadmin']).default('admin'),
+      role:     z.enum(['agent', 'superadmin']).default('agent'),
     }).parse(req.body);
 
     const existing = await prisma.admin.findUnique({ where: { email } });
@@ -1859,7 +1912,7 @@ router.patch('/agents/:id', adminAuthenticate, superadminOnly, async (req: Reque
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const body = z.object({
       name:     z.string().min(2).optional(),
-      role:     z.enum(['admin', 'superadmin']).optional(),
+      role:     z.enum(['agent', 'superadmin']).optional(),
       isActive: z.boolean().optional(),
       password: z.string().min(8).optional(),
     }).parse(req.body);
@@ -1895,6 +1948,75 @@ router.delete('/agents/:id', adminAuthenticate, superadminOnly, async (req: Requ
     const adminId = (req as any).adminId;
     await logActivity(adminId, 'DELETE_AGENT', { id });
     res.json({ ok: true });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/agents/kyc/upload — agent uploads official authorization letter / identity document
+router.post('/agents/kyc/upload', adminAuthenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminId = (req as Request & { adminId: string }).adminId;
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) { res.status(400).json({ error: 'No document file provided.' }); return; }
+
+    const body = z.object({
+      docType: z.enum(['appointment_letter', 'aadhaar', 'driving_license', 'passport']).default('appointment_letter'),
+    }).parse(req.body);
+
+    const safeName = sanitizeFilename(file.originalname);
+    const key = `agents/${adminId}/kyc_${Date.now()}_${safeName}`;
+    const docUrl = await uploadToR2(key, file.buffer, file.mimetype);
+
+    const updated = await prisma.admin.update({
+      where: { id: adminId },
+      data: {
+        kycDocType: body.docType,
+        kycDocUrl: docUrl,
+        kycStatus: 'submitted',
+        kycSubmittedAt: new Date(),
+        kycRejectionReason: null,
+      },
+      select: { id: true, name: true, kycStatus: true, kycDocType: true, kycDocUrl: true }
+    });
+
+    res.json({ success: true, kycStatus: updated.kycStatus, docUrl: updated.kycDocUrl });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/agents/:id/kyc/verify — superadmin approves or rejects agent's authorization letter
+router.post('/agents/:id/kyc/verify', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
+    const { action, reason } = z.object({
+      action: z.enum(['approve', 'reject']),
+      reason: z.string().optional(),
+    }).parse(req.body);
+
+    const agent = await prisma.admin.findUnique({ where: { id } });
+    if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
+
+    const isApprove = action === 'approve';
+    const updated = await prisma.admin.update({
+      where: { id },
+      data: {
+        kycStatus: isApprove ? 'verified' : 'rejected',
+        kycVerifiedAt: isApprove ? new Date() : null,
+        kycRejectionReason: isApprove ? null : (reason || 'Document requirements not met'),
+      },
+      select: { id: true, name: true, kycStatus: true }
+    });
+
+    const superadminId = (req as any).adminId;
+    await logActivity(superadminId, 'VERIFY_AGENT_KYC', { agentId: id, action, kycStatus: updated.kycStatus });
+
+    res.json({ success: true, kycStatus: updated.kycStatus });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
@@ -2655,7 +2777,55 @@ router.patch('/renewals/:id', adminAuthenticate, async (req: Request, res: Respo
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+// ── Claims Status Management ──────────────────────────────────────────────────
+router.patch('/claims/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = z.object({
+      status: z.enum(['pending', 'in_review', 'approved', 'rejected', 'paid', 'settled']),
+      notes: z.string().optional()
+    }).parse(req.body);
 
+    const claim = await prisma.claim.findUnique({ where: { id: id as string } });
+    if (!claim) { res.status(404).json({ error: 'Claim not found' }); return; }
+
+    const updatedClaim = await prisma.claim.update({
+      where: { id: id as string },
+      data: {
+        status,
+        ...(notes !== undefined ? { notes } : {}),
+        ...(status === 'approved' ? { approvedDate: new Date() } : {}),
+        ...(status === 'paid' || status === 'settled' ? { paidDate: new Date() } : {}),
+      }
+    });
+
+    // When claim is approved/paid/settled, update policy status to 'claimed' so it moves out of active policies
+    if (['approved', 'paid', 'settled'].includes(status) && claim.policyId) {
+      await prisma.policy.update({
+        where: { id: claim.policyId },
+        data: { status: 'claimed' }
+      }).catch(() => {});
+    }
+
+    await prisma.notification.create({
+      data: {
+        userId: claim.userId,
+        type:   'info',
+        title:  `Claim ${status.replace('_', ' ').toUpperCase()}! 🎉`,
+        body:   `Your claim #${claim.claimNumber} status has been updated to ${status}.`,
+      }
+    }).catch(() => {});
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'UPDATE_CLAIM', { id: claim.id, claimNumber: claim.claimNumber, status });
+
+    res.json({ success: true, claim: updatedClaim });
+  } catch (e) {
+    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // ── Communication Templates ──────────────────────────────────────────────────
 router.get('/communication-templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -2705,6 +2875,94 @@ router.post('/communication-templates', adminAuthenticate, async (req: Request, 
     res.json({ success: true, template });
   } catch (e) {
     if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── CSV Bulk Import Agents ───────────────────────────────────────────────────
+router.post('/agents/bulk-import', adminAuthenticate, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    let csvText = '';
+    if (req.file) {
+      csvText = req.file.buffer.toString('utf-8');
+    } else if (req.body?.csv) {
+      csvText = String(req.body.csv);
+    } else {
+      res.status(400).json({ error: 'No CSV file or data provided' });
+      return;
+    }
+
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length <= 1) {
+      res.status(400).json({ error: 'CSV file is empty or has no data rows' });
+      return;
+    }
+
+    const headerLine = lines[0] ?? '';
+    const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
+    const nameIdx     = headers.findIndex(h => h.includes('name'));
+    const emailIdx    = headers.findIndex(h => h.includes('email'));
+    const phoneIdx    = headers.findIndex(h => h.includes('phone'));
+    const passIdx     = headers.findIndex(h => h.includes('password') || h.includes('pass'));
+    const insurersIdx = headers.findIndex(h => h.includes('insurer'));
+    const typesIdx    = headers.findIndex(h => h.includes('type'));
+
+    if (nameIdx === -1 || emailIdx === -1) {
+      res.status(400).json({ error: 'CSV must contain at least "name" and "email" headers' });
+      return;
+    }
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    const errors: string[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const lineStr = lines[i] ?? '';
+      const row = lineStr.split(',').map(cell => cell.trim().replace(/^["']|["']$/g, ''));
+      if (row.length === 0 || !row[emailIdx]) continue;
+
+      const name = row[nameIdx] || 'Agent';
+      const email = row[emailIdx].toLowerCase();
+      const phone = phoneIdx !== -1 && row[phoneIdx] ? row[phoneIdx] : '';
+      const rawPassword = passIdx !== -1 && row[passIdx] ? row[passIdx] : 'Agent@12345';
+      const rawInsurers = insurersIdx !== -1 && row[insurersIdx] ? row[insurersIdx].split(';').map(s => s.trim()) : [];
+      const rawTypes = typesIdx !== -1 && row[typesIdx] ? row[typesIdx].split(';').map(s => s.trim()) : [];
+
+      try {
+        const existing = await prisma.admin.findUnique({ where: { email } });
+        if (existing) {
+          skippedCount++;
+          continue;
+        }
+
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        const agentCode = `AGT-${randomNum}`;
+
+        await prisma.admin.create({
+          data: {
+            email,
+            name,
+            password: hashedPassword,
+            role: 'agent',
+            agentCode,
+            assignedInsurers: JSON.stringify(rawInsurers),
+            assignedInsuranceTypes: JSON.stringify(rawTypes),
+            isActive: true,
+          }
+        });
+        importedCount++;
+      } catch (err: any) {
+        errors.push(`Row ${i + 1} (${email}): ${err.message || 'Error'}`);
+      }
+    }
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'BULK_IMPORT_AGENTS', { importedCount, skippedCount });
+
+    res.json({ success: true, importedCount, skippedCount, errors });
+  } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }

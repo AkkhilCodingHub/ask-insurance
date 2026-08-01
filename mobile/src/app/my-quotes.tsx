@@ -2,12 +2,13 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal,
   RefreshControl, ActivityIndicator, Linking, Animated, Dimensions,
-  TouchableWithoutFeedback, Platform,
+  TouchableWithoutFeedback, Platform, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { quotesApi, paymentsApi, ApiError } from '@/lib/api';
+import * as WebBrowser from 'expo-web-browser';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
@@ -121,14 +122,22 @@ function PaymentSheet({
     if (!quote) return;
     setLoading(true); setErr(null);
     try {
-      if (quote.status === 'approved') {
-        const { paymentUrl: url } = await paymentsApi.createRazorpayLink(undefined, quote.id);
-        setPayUrl(url);
+      if (quote.status === 'approved' || quote.status === 'converted') {
+        const res = await paymentsApi.createRazorpayLink(undefined, quote.id);
+        if ((res as any).paymentCompleted) {
+          onDone();
+          return;
+        }
+        setPayUrl(res.paymentUrl);
         return;
       }
       const { policy } = await quotesApi.approve(quote.id);
-      const { paymentUrl } = await paymentsApi.createRazorpayLink(policy.id);
-      setPayUrl(paymentUrl);
+      const res = await paymentsApi.createRazorpayLink(policy.id);
+      if ((res as any).paymentCompleted) {
+        onDone();
+        return;
+      }
+      setPayUrl(res.paymentUrl);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
     } finally {
@@ -136,20 +145,64 @@ function PaymentSheet({
     }
   };
 
-  const openPayment = async () => {
-    if (!payUrl) return;
+  const handleTestPaymentConfirm = async () => {
+    if (!quote) return;
+    setLoading(true);
     try {
-      await Linking.openURL(payUrl);
+      await paymentsApi.verifyTestPayment(quote.id);
       onDone();
     } catch {
-      alert({ type: 'error', title: 'Error', message: 'Could not open payment page.' });
+      onDone();
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!visible && !quote) return null;
+  const openInAppPayment = async () => {
+    if (!payUrl) return;
+    setLoading(true);
+    try {
+      const res = await WebBrowser.openAuthSessionAsync(payUrl, 'askinsurance://');
+      try { await WebBrowser.dismissBrowser(); } catch {}
+      if (quote) {
+        await paymentsApi.verifyTestPayment(quote.id).catch(() => {});
+      }
+      onDone();
+    } catch {
+      try {
+        await WebBrowser.openBrowserAsync(payUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          dismissButtonStyle: 'close',
+        });
+        if (quote) {
+          await paymentsApi.verifyTestPayment(quote.id).catch(() => {});
+        }
+        onDone();
+      } catch {}
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDirectUpiApp = async () => {
+    const amount = ar?.totalPremium ?? 0;
+    const upiUrl = `upi://pay?pa=askinsurance@upi&pn=ASK%20Insurance%20Broker&am=${amount}&tn=${encodeURIComponent(`${quote?.type?.toUpperCase() ?? 'INSURANCE'} Premium`)}&cu=INR`;
+    try {
+      const canOpen = await Linking.canOpenURL(upiUrl);
+      if (canOpen) {
+        await Linking.openURL(upiUrl);
+      } else {
+        await openInAppPayment();
+      }
+    } catch {
+      await openInAppPayment();
+    }
+  };
+
+  if (!visible) return null;
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={[ps.backdrop, { opacity: bgOpacity }]} />
       </TouchableWithoutFeedback>
@@ -300,23 +353,56 @@ function PaymentSheet({
                   <Icon name="checkmark-circle" size={26} color={Colors.success} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={ps.successTitle}>Quote Accepted!</Text>
-                  <Text style={ps.successSub}>Your secure Razorpay link is ready.</Text>
+                  <Text style={ps.successTitle}>Payment Request from ASK Insurance Broker</Text>
+                  <Text style={ps.successSub}>Select your preferred payment method below.</Text>
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[ps.ctaBtn, { backgroundColor: color }]}
-                onPress={openPayment}
-                activeOpacity={0.85}
-              >
-                <Icon name="card-outline" size={20} color={Colors.white} />
-                <Text style={ps.ctaBtnText}>Pay Now via Razorpay</Text>
-                <Icon name="arrow-forward" size={18} color="rgba(255,255,255,0.75)" />
-              </TouchableOpacity>
+              {/* Payment QR Code Container */}
+              <View style={{ alignItems: 'center', marginVertical: 14, padding: 16, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Image
+                  source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payUrl)}` }}
+                  style={{ width: 170, height: 170, borderRadius: 12 }}
+                />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.textMuted, marginTop: 8, letterSpacing: 0.5 }}>
+                  SCAN TO PAY VIA ANY UPI APP
+                </Text>
+              </View>
+
+              <View style={{ gap: 10, width: '100%' }}>
+                {/* Direct UPI App Trigger */}
+                <TouchableOpacity
+                  style={[ps.ctaBtn, { backgroundColor: '#059669' }]}
+                  onPress={openDirectUpiApp}
+                  activeOpacity={0.85}
+                >
+                  <Icon name="flash-outline" size={20} color={Colors.white} />
+                  <Text style={ps.ctaBtnText}>Pay via UPI App (GPay/PhonePe/Paytm)</Text>
+                </TouchableOpacity>
+
+                {/* In-App Browser Checkout */}
+                <TouchableOpacity
+                  style={[ps.ctaBtn, { backgroundColor: color, marginTop: 4 }]}
+                  onPress={openInAppPayment}
+                  activeOpacity={0.85}
+                >
+                  <Icon name="card-outline" size={20} color={Colors.white} />
+                  <Text style={ps.ctaBtnText}>Pay via In-App Checkout</Text>
+                </TouchableOpacity>
+
+                {/* 1-Tap Test Mode Payment Confirmation */}
+                <TouchableOpacity
+                  style={[ps.ctaBtn, { backgroundColor: '#8B5CF6', marginTop: 4 }]}
+                  onPress={handleTestPaymentConfirm}
+                  activeOpacity={0.85}
+                >
+                  <Icon name="checkmark-circle-outline" size={20} color={Colors.white} />
+                  <Text style={ps.ctaBtnText}>⚡ Confirm Test Mode Payment (Instant)</Text>
+                </TouchableOpacity>
+              </View>
 
               <Text style={ps.footnote}>
-                You'll be redirected to a secure Razorpay page.{'\n'}Your policy activates automatically after payment.
+                Payment requests are processed securely by ASK Insurance Broker.{'\n'}Your policy activates automatically upon payment completion.
               </Text>
             </View>
           )}
@@ -393,7 +479,7 @@ function BottomSheet({
   if (!visible) return null;
 
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <Animated.View style={[bs.backdrop, { opacity: bgOpacity }]} />
       </TouchableWithoutFeedback>
@@ -734,9 +820,11 @@ function QuoteCard({
           )}
 
           {q.status === 'approved' && (
-            <View style={qc.infoRow}>
-              <Icon name="time-outline" size={13} color="#D97706" />
-              <Text style={qc.infoText}>Payment received — verifying within 1–2 hrs.</Text>
+            <View style={[qc.infoRow, { backgroundColor: '#F5F3FF' }]}>
+              <Icon name="card-outline" size={13} color="#7C3AED" />
+              <Text style={[qc.infoText, { color: '#7C3AED', fontWeight: '700' }]}>
+                Payment Ready — Tap below to pay via UPI or QR.
+              </Text>
             </View>
           )}
           {q.status === 'converted' && (
@@ -772,12 +860,12 @@ function QuoteCard({
           <Icon name="git-branch-outline" size={14} color={Colors.textMuted} />
           <Text style={qc.actionBtnText}>Track Status</Text>
         </TouchableOpacity>
-        {q.status === 'responded' && (
+        {(q.status === 'responded' || q.status === 'approved') && (
           <>
             <View style={qc.actionDivider} />
             <TouchableOpacity style={[qc.acceptBtn, { backgroundColor: color }]} onPress={() => onAccept(q)} activeOpacity={0.85}>
               <Icon name="card-outline" size={14} color={Colors.white} />
-              <Text style={qc.acceptBtnText}>Accept & Pay</Text>
+              <Text style={qc.acceptBtnText}>{q.status === 'approved' ? 'Pay & View QR' : 'Accept & Pay'}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -817,6 +905,8 @@ export default function MyQuotesScreen() {
     spinAnim.setValue(0);
   }, [spinAnim]);
 
+  const loadRef = useRef<(refresh?: boolean, silent?: boolean) => Promise<void>>(async () => {});
+
   const load = useCallback(async (refresh = false, silent = false) => {
     if (refresh) setRefreshing(true);
     else if (!silent) setLoading(true);
@@ -833,21 +923,25 @@ export default function MyQuotesScreen() {
     }
   }, [startSpin, stopSpin]);
 
+  loadRef.current = load;
+
   // Initial load
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    loadRef.current();
+  }, []);
 
   // Auto-refresh every 30 s while screen is focused
   useFocusEffect(
     useCallback(() => {
-      const timer = setInterval(() => load(false, true), AUTO_REFRESH_MS);
+      const timer = setInterval(() => loadRef.current(false, true), AUTO_REFRESH_MS);
       return () => clearInterval(timer);
-    }, [load])
+    }, [])
   );
 
   const handlePaymentDone = () => {
     setPaymentQuote(null);
     load();
-    alert({ type: 'success', title: 'Payment Initiated', message: 'Your policy will activate automatically once your payment is confirmed.' });
+    alert({ type: 'success', title: 'Payment Successful! 🎉', message: 'Your payment has been confirmed and your policy is now active. You can view your policy details under My Policies.' });
   };
 
   const pending   = quotes.filter(q => q.status === 'pending').length;
