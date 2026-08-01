@@ -5,9 +5,6 @@ import { Platform } from 'react-native';
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
   let url = process.env.EXPO_PUBLIC_API_URL;
-  if (Platform.OS === 'ios') {
-    return 'http://127.0.0.1:4000';
-  }
   if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
     const hostUri = Constants.expoConfig?.hostUri;
     if (hostUri) {

@@ -164,20 +164,16 @@ function PaymentSheet({
     try {
       const res = await WebBrowser.openAuthSessionAsync(payUrl, 'askinsurance://');
       try { await WebBrowser.dismissBrowser(); } catch {}
-      if (quote) {
+      if (res.type === 'success' && quote) {
         await paymentsApi.verifyTestPayment(quote.id).catch(() => {});
+        onDone();
       }
-      onDone();
     } catch {
       try {
         await WebBrowser.openBrowserAsync(payUrl, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
           dismissButtonStyle: 'close',
         });
-        if (quote) {
-          await paymentsApi.verifyTestPayment(quote.id).catch(() => {});
-        }
-        onDone();
       } catch {}
     } finally {
       setLoading(false);
