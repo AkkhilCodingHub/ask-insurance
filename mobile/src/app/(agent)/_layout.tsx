@@ -49,6 +49,7 @@ export default function AgentLayout() {
             claims:    { on: 'clipboard',         off: 'clipboard-outline'         },
             chat:      { on: 'chatbubbles',       off: 'chatbubbles-outline'       },
             renewals:  { on: 'refresh-circle',    off: 'refresh-circle-outline'    },
+            qr:        { on: 'qr-code',           off: 'qr-code-outline'           },
           };
           const set  = icons[route.name] ?? { on: 'grid', off: 'grid-outline' };
           const name = focused ? set.on : set.off;
@@ -62,6 +63,7 @@ export default function AgentLayout() {
       <Tabs.Screen name="renewals"  options={{ title: 'Renewals'  }} />
       <Tabs.Screen name="claims"    options={{ title: 'Claims'    }} />
       <Tabs.Screen name="chat"      options={{ title: 'Chat'      }} />
+      <Tabs.Screen name="qr"        options={{ title: 'My QR'     }} />
       <Tabs.Screen name="kyc"      options={{ title: 'KYC', tabBarButton: () => null }} />
       <Tabs.Screen
         name="logout"

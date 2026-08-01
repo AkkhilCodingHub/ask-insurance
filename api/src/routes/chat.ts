@@ -25,8 +25,15 @@ router.post('/conversations', authenticate, async (req: Request, res: Response):
       return;
     }
 
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { agentId: true } });
+
     const conversation = await prisma.conversation.create({
-      data: { userId, subject: subject ?? null, status: 'open' },
+      data: {
+        userId,
+        subject: subject ?? null,
+        status: 'open',
+        adminId: user?.agentId ?? null,
+      },
       include: {
         messages: true,
         admin: { select: { id: true, name: true } }
