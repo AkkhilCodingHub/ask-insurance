@@ -50,7 +50,7 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
 // ── POST / — submit a quote request (lead) ────────────────────────────────────
 const createQuoteSchema = z.object({
   type:    z.string().min(1),
-  details: z.record(z.any()),   // age, gender, sumInsured, smoker, planId, planName, etc.
+  details: z.record(z.string(), z.any()),   // age, gender, sumInsured, smoker, planId, planName, etc.
 });
 
 async function getAssignedAgentForUser(userId: string): Promise<string | null> {
@@ -124,7 +124,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
     });
   } catch (e) {
     if (e instanceof z.ZodError) {
-      res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(e);
@@ -233,7 +233,7 @@ router.post('/:id/approve', authenticate, async (req: Request, res: Response): P
       }
     });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }

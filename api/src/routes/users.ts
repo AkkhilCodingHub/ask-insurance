@@ -46,7 +46,7 @@ router.put('/profile', authenticate, async (req: Request, res: Response): Promis
     res.json({ user });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -125,7 +125,7 @@ router.put('/push-token', authenticate, async (req: Request, res: Response): Pro
     res.json({ success: true, userId: user.id });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);

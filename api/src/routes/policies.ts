@@ -63,7 +63,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     res.json({ policy });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid policy id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid policy id' });
       return;
     }
     console.error(error);
@@ -94,7 +94,7 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     res.status(201).json({ policy });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -125,7 +125,7 @@ router.put('/:id/cancel', authenticate, async (req: Request, res: Response): Pro
     res.json({ policy: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid policy id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid policy id' });
       return;
     }
     console.error(error);
@@ -163,7 +163,7 @@ router.put('/:id/renew', authenticate, async (req: Request, res: Response): Prom
     res.json({ policy: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);

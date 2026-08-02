@@ -6,6 +6,8 @@ import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
 import { getFirebaseAdmin } from '../lib/firebase';
 import { authenticate } from '../middleware/auth';
 
+import { getAuth } from 'firebase-admin/auth';
+
 const router = Router();
 
 const sendOtpSchema = z.object({
@@ -35,7 +37,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -78,7 +80,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -169,7 +171,7 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const decoded = await getFirebaseAdmin().auth().verifyIdToken(idToken);
+    const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
     const rawPhone = decoded.phone_number;
     if (!rawPhone) {
       res.status(400).json({ error: 'Firebase token does not contain a phone number' });

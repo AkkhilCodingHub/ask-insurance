@@ -78,7 +78,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid id' });
       return;
     }
     console.error(error);

@@ -80,7 +80,7 @@ router.post('/auth/login', async (req: Request, res: Response): Promise<void> =>
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -135,7 +135,7 @@ router.post('/auth/google', async (req: Request, res: Response): Promise<void> =
     res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role } });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error('Google auth error:', error);
@@ -286,7 +286,7 @@ router.put('/claims/:id/status', adminAuthenticate, async (req: Request, res: Re
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -483,7 +483,7 @@ router.get('/insurers/:id', adminAuthenticate, async (req: Request, res: Respons
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid insurer id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid insurer id' });
       return;
     }
     console.error(error);
@@ -534,7 +534,7 @@ router.post('/insurers', adminAuthenticate, async (req: Request, res: Response):
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -588,7 +588,7 @@ router.put('/insurers/:id', adminAuthenticate, async (req: Request, res: Respons
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -695,7 +695,7 @@ router.post('/plans', adminAuthenticate, async (req: Request, res: Response): Pr
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -737,7 +737,7 @@ router.put('/plans/:id', adminAuthenticate, async (req: Request, res: Response):
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -891,7 +891,7 @@ router.put('/policies/:id', adminAuthenticate, async (req: Request, res: Respons
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -962,7 +962,7 @@ router.get('/quotes', adminAuthenticate, async (req: Request, res: Response): Pr
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -1052,7 +1052,7 @@ router.post('/quotes/:id/respond', adminAuthenticate, async (req: Request, res: 
 
     res.json({ quote: updated });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1095,7 +1095,7 @@ router.patch('/quotes/:id/status', adminAuthenticate, async (req: Request, res: 
     };
     res.json({ quote: parsed });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1220,7 +1220,7 @@ router.post('/policies/:id/confirm-payment', adminAuthenticate, async (req: Requ
 
     res.json({ policy: updated });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1399,7 +1399,7 @@ router.get('/chat/conversations', adminAuthenticate, async (req: Request, res: R
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -1481,7 +1481,7 @@ router.post('/chat/conversations', adminAuthenticate, async (req: Request, res: 
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -1534,7 +1534,7 @@ router.post('/chat/conversations/:id/messages', adminAuthenticate, async (req: R
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -1588,7 +1588,7 @@ router.put('/chat/conversations/:id/status', adminAuthenticate, async (req: Requ
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -1843,7 +1843,7 @@ router.post(
 
       res.json({ policy: updated });
     } catch (e) {
-      if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+      if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
       console.error(e);
       res.status(500).json({ error: 'Internal server error' });
     }
@@ -1900,7 +1900,7 @@ router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, r
     await logActivity(adminId, 'CREATE_AGENT', { id: agent.id, name: agent.name, role: agent.role });
     res.status(201).json({ agent });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1932,7 +1932,7 @@ router.patch('/agents/:id', adminAuthenticate, superadminOnly, async (req: Reque
     await logActivity(adminId, 'UPDATE_AGENT', { id: agent.id, name: agent.name, role: agent.role, isActive: agent.isActive });
     res.json({ agent });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1949,7 +1949,7 @@ router.delete('/agents/:id', adminAuthenticate, superadminOnly, async (req: Requ
     await logActivity(adminId, 'DELETE_AGENT', { id });
     res.json({ ok: true });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -1984,7 +1984,7 @@ router.post('/agents/kyc/upload', adminAuthenticate, upload.single('document'), 
 
     res.json({ success: true, kycStatus: updated.kycStatus, docUrl: updated.kycDocUrl });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2018,7 +2018,7 @@ router.post('/agents/:id/kyc/verify', adminAuthenticate, superadminOnly, async (
 
     res.json({ success: true, kycStatus: updated.kycStatus });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2091,7 +2091,7 @@ router.put('/me', adminAuthenticate, async (req: Request, res: Response): Promis
     });
     res.json({ admin: updated });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2232,7 +2232,7 @@ router.post('/brokerage/slabs', adminAuthenticate, async (req: Request, res: Res
 
     res.status(201).json({ slab });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2288,7 +2288,7 @@ router.post('/brokerage/release/:policyId', adminAuthenticate, async (req: Reque
 
     res.json({ policy });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2312,7 +2312,7 @@ router.patch('/quotes/:id/stage', adminAuthenticate, async (req: Request, res: R
 
     res.json({ quote });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2382,7 +2382,7 @@ router.post('/agents/:id/kyc/verify', adminAuthenticate, async (req: Request, re
 
     res.json({ success: true, agent });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2455,7 +2455,7 @@ router.post('/customers', adminAuthenticate, async (req: Request, res: Response)
 
     res.status(201).json({ customer });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2538,7 +2538,7 @@ router.post('/templates', adminAuthenticate, async (req: Request, res: Response)
 
     res.json({ success: true, template });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2612,7 +2612,7 @@ router.post('/rate-charts', adminAuthenticate, async (req: Request, res: Respons
 
     res.json({ success: true, chart });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2772,7 +2772,7 @@ router.patch('/renewals/:id', adminAuthenticate, async (req: Request, res: Respo
 
     res.json({ success: true, renewal });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2821,7 +2821,7 @@ router.patch('/claims/:id', adminAuthenticate, async (req: Request, res: Respons
 
     res.json({ success: true, claim: updatedClaim });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -2874,7 +2874,7 @@ router.post('/communication-templates', adminAuthenticate, async (req: Request, 
 
     res.json({ success: true, template });
   } catch (e) {
-    if (e instanceof z.ZodError) { res.status(400).json({ error: e.errors?.[0]?.message ?? 'Invalid request' }); return; }
+    if (e instanceof z.ZodError) { res.status(400).json({ error: (e.issues || (e as any).errors)?.[0]?.message ?? 'Invalid request' }); return; }
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
   }
