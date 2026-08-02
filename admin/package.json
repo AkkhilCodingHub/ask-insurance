@@ -12,9 +12,9 @@
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.19.0",
-    "lucide-react": "^1.27.0",
-    "next": "16.2.11",
-    "react": "19.2.8",
+    "lucide-react": "^0.484.0",
+    "next": "16.2.12",
+    "react": "19.2.4",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1"
   },
@@ -24,8 +24,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.3",
-    "tailwindcss": "^4",
+    "eslint-config-next": "16.2.12",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5"
   }
 }
