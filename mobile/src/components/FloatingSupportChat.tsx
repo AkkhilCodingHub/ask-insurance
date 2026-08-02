@@ -28,7 +28,7 @@ function useShowFloatingChat(): boolean {
     if (!segments.length) return false;
     const root = segments[0];
     if (root === '(agent)') return false;
-    if (root === '(tabs)' && segments[1] === 'chat') return false;
+    if (root === '(tabs)' && (segments as string[])[1] === 'chat') return false;
     const hideRoots = new Set([
       'login', 'otp', 'onboarding', 'welcome', 'register', 'agent-login', 'index',
     ]);
