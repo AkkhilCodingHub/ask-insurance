@@ -31,7 +31,7 @@ jobs:
       - name: Generate Prisma Client
         working-directory: api
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mysql://root:rootpassword@127.0.0.1:3306/ask_insurance' }}
         run: npx prisma generate
 
       - name: Typecheck API Backend
