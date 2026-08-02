@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
       } catch (localErr) {
-        console.error('[Auth] Local API fallback also failed:', localErr);
+        console.warn('[Auth] Local API fallback also failed:', localErr);
       }
       throw firebaseErr;
     }
