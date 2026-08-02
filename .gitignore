@@ -46,7 +46,7 @@ Thumbs.db
 web-build/
 
 # Firebase / Google credentials
-# google-services.json tracked intentionally for EAS Build
+**/google-services.json
 **/GoogleService-Info.plist
 **/*firebase-adminsdk*.json
 
