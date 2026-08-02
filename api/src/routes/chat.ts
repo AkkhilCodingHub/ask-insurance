@@ -44,7 +44,7 @@ router.post('/conversations', authenticate, async (req: Request, res: Response):
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);
@@ -169,7 +169,7 @@ router.post('/conversations/:id/messages', authenticate, async (req: Request, re
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);

@@ -49,7 +49,7 @@ router.put('/:id/read', authenticate, async (req: Request, res: Response): Promi
     res.json({ notification: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid notification id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid notification id' });
       return;
     }
     console.error(error);

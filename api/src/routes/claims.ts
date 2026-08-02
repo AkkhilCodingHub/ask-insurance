@@ -66,7 +66,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     res.json({ claim });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid claim id' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid claim id' });
       return;
     }
     console.error(error);
@@ -117,7 +117,7 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     res.status(201).json({ claim });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.errors?.[0]?.message ?? 'Invalid request' });
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
     console.error(error);

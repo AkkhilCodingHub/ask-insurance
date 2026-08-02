@@ -1,11 +1,14 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps, App } from 'firebase-admin/app';
 import path from 'path';
 import fs from 'fs';
 
-let app: admin.app.App | undefined;
+let app: App | undefined;
 
-export function getFirebaseAdmin(): admin.app.App {
+export function getFirebaseAdmin(): App {
   if (app) return app;
+  if (getApps().length > 0) {
+    return getApps()[0]!;
+  }
 
   let serviceAccount: any;
 
@@ -32,8 +35,8 @@ export function getFirebaseAdmin(): admin.app.App {
     serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
   }
 
-  app = admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  app = initializeApp({
+    credential: cert(serviceAccount),
   });
 
   return app;
