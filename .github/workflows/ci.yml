@@ -41,7 +41,7 @@ jobs:
         run: cd admin && npx tsc --noEmit
 
       - name: Typecheck Mobile App
-        run: cd mobile && npx tsc --noEmit
+        run: cd mobile && npm install --legacy-peer-deps && npx tsc --noEmit
 
       - name: Typecheck Customer Web App
         run: cd web && npx tsc --noEmit
