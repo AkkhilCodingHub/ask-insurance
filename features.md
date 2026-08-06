@@ -6,19 +6,37 @@
 
 ---
 
-## 📋 Executive Summary & Updation Checklist
+## 📊 Core Features Summary Table
+
+| Feature | Description |
+| :--- | :--- |
+| **Multi-Insurance Policy Management by Vehicle Number** | Central module to manage all classes of vehicle insurance using the vehicle registration number as the primary identifier, covering every insurance type by the platform. |
+| **Policy Selection Dropdown (Login Phase)** | A dropdown menu integrated at the login stage allowing the user to select the relevant policy/insurance type before proceeding into the app. |
+| **Fetch Policy Details via Registration Number** | Auto-fetch and display existing policy details by simply entering the vehicle registration number, reducing manual data entry. |
+| **Echo & PBPartners App Integration Reference** | Integration/reference module built in line with the Echo and PBPartners applications for data consistency and workflow alignment. |
+| **Endorsement & Revised Policy Download** | Feature to process policy endorsements and allow users to download the revised/updated policy document directly from the app. |
+| **Agent Renamed to POSP** | Rebranding of the 'Agent' role/label across the application to 'POSP' (Point of Sales Person), including all related screens and terminology. |
+| **Randomized User ID (with Email ID Retained)** | System-generated random ID used in place of the email ID as the primary identifier, while still retaining and storing the email ID in the user profile. |
+| **Auto Agent Assignment by Admin** | On registration, the admin automatically assigns a POSP/agent to the consumer/policyholder, granting that agent access rights to manage the customer, with visibility of the same to the assigning admin. |
+| **NCB (No Claim Bonus) Warning Alert** | Automated warning/alert triggered when a No Claim Bonus (NCB) discrepancy or risk condition is detected during policy processing. |
+| **POSP Onboarding Document Upload** | Document upload module for POSP onboarding — 10th or 12th mark sheet, Aadhar card, and PAN card. |
+
+---
+
+## 📋 Updation Checklist & Modules
 
 | Feature Requirement | Scope / Component | Status | Description |
 | :--- | :--- | :---: | :--- |
-| **Vehicle Lookup via Reg Number** | Mobile / API | 🟢 Ready | Instant policy detail & vehicle spec fetch using vehicle registration number. |
-| **Login Phase Policy Dropdown** | Mobile App | 🟢 Ready | Policy selection dropdown menu during login/onboarding phase. |
-| **POSP Rebranding** | System-wide | 🟢 Ready | Rebranded all "Agent" terminology to **POSP** (Point of Sales Person). |
-| **Random ID Generator** | Admin / API | 🟢 Ready | Generates unique Random POSP/User ID alongside optional email ID. |
-| **Immediate Admin POSP Assignment** | Admin Panel | 🟢 Ready | Admin assigns POSP immediately with full power to manage & access consumers/policyholders with real-time admin monitoring. |
-| **Policy Endorsement & Revised Downloads** | Mobile / API | 🟢 Ready | Policy endorsement request flow and revised policy PDF downloads. |
-| **NCB Warning System** | Quote Generator | 🟢 Ready | Automatic warning trigger when No Claim Bonus (NCB) changes or exceeds eligibility. |
-| **POSP Verification Documents** | Onboarding | 🟢 Ready | Required verification docs: 10th/12th Marksheet, Aadhaar Card, PAN Card. |
-| **Echo & PB Partners UI Alignment** | Mobile App | 🟢 Ready | Modern UI layout with performance cards, recommended features, and product grids. |
+| **Multi-Insurance Policy Management by Vehicle Number** | Mobile / API | 🟢 Ready | Central module to manage all classes of vehicle insurance using vehicle registration number as primary identifier. |
+| **Policy Selection Dropdown (Login Phase)** | Mobile App | 🟢 Ready | A dropdown menu integrated at the login stage allowing the user to select the relevant policy/insurance type. |
+| **Fetch Policy Details via Registration Number** | Mobile / API | 🟢 Ready | Auto-fetch and display existing policy details by simply entering the vehicle registration number. |
+| **Echo & PBPartners App Integration Reference** | Mobile App | 🟢 Ready | Integration/reference module built in line with Echo and PBPartners applications. |
+| **Endorsement & Revised Policy Download** | Mobile / API | 🟢 Ready | Process policy endorsements and allow users to download the revised/updated policy document directly. |
+| **Agent Renamed to POSP** | System-wide | 🟢 Ready | Rebranding of the 'Agent' role/label across the application to 'POSP' (Point of Sales Person). |
+| **Randomized User ID (with Email ID Retained)** | Admin / API | 🟢 Ready | System-generated random ID used in place of email ID as primary identifier, while retaining email ID in user profile. |
+| **Auto Agent Assignment by Admin** | Admin Panel | 🟢 Ready | On registration, admin automatically assigns a POSP/agent to the consumer/policyholder with full management access & admin visibility. |
+| **NCB (No Claim Bonus) Warning Alert** | Quote Engine | 🟢 Ready | Automated warning/alert triggered when a No Claim Bonus (NCB) discrepancy or risk condition is detected. |
+| **POSP Onboarding Document Upload** | Onboarding | 🟢 Ready | Document upload module for POSP onboarding — 10th or 12th mark sheet, Aadhar card, and PAN card. |
 
 ---
 
@@ -126,7 +144,7 @@
 ## 🖥️ 2. Admin Management Panel (Next.js / React)
 
 ### A. Immediate POSP Assignment & Control
-- **Instant POSP Assignment**: Admin can immediately assign an active POSP to any incoming consumer or lead.
+- **Auto/Instant POSP Assignment**: Admin automatically assigns a POSP to any incoming consumer or policyholder upon registration.
 - **POSP Delegated Powers**: POSP is granted permission to access, update, and manage policyholder records, quote histories, and documents.
 - **Real-Time Admin Visibility**: Admin dashboard displays live mapping of POSPs to assigned policyholders and active transactions.
 
