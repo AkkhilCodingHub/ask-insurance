@@ -54,7 +54,7 @@ function NavRow({ icon, label, sub, onPress, danger, badge }: NavRowProps) {
 export default function SettingsScreen() {
   const router             = useRouter();
   const colors             = useThemeColors();
-  const { logout }         = useAuth();
+  const { logout, user }   = useAuth();
   const { alert, confirm } = useDialog();
   const { t, currentLangMeta, darkMode, setDarkMode } = useLanguage();
   const [langModalVisible, setLangModalVisible] = React.useState(false);
@@ -102,6 +102,31 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
+
+        {/* ── User Account & Randomized Customer ID ── */}
+        <Text style={[s.sectionLabel, { color: colors.textMuted }]}>ACCOUNT PROFILE</Text>
+        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 16, marginBottom: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="person" size={22} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                {user?.name || 'Valued Policyholder'}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                {user?.email ? `${user.email} • ` : ''}{user?.phone ? `+91 ${user.phone}` : ''}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>
+                    Customer ID: {(user as any)?.customerCode || `ASK-CUST-${user?.id?.slice(-6)?.toUpperCase() || '849201'}`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* ── Preferences ───────────────────────────────── */}
         <Text style={[s.sectionLabel, { color: colors.textMuted }]}>PREFERENCES</Text>

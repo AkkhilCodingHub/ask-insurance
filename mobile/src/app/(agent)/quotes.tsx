@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, TextInput, ActivityIndicator,
-  Animated, Dimensions, Pressable, Modal, Linking, Share, Platform,
+  Animated, Dimensions, Pressable, Modal, Linking, Share, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { agentApi, AgentQuote } from '@/lib/api';
@@ -631,6 +631,11 @@ export default function AgentQuotesScreen() {
   const [selectedQuote, setSelectedQuote] = useState<AgentQuote | null>(null);
   const [search,       setSearch]       = useState('');
 
+  // POSP Dashboard Section 1.B states
+  const [timeframe, setTimeframe]             = useState<'This Month' | 'Today' | 'Custom'>('This Month');
+  const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+  const [showAllProductsModal, setShowAllProductsModal] = useState(false);
+
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
@@ -663,10 +668,30 @@ export default function AgentQuotesScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <View>
-          <Text style={s.kicker}>Advisor</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.kicker}>POSP Advisor</Text>
           <Text style={s.title}>Quotes</Text>
           <Text style={s.sub}>{agent?.name} · {counts.pending} pending</Text>
+        </View>
+
+        {/* Rewards & Gifts Widget + Help & Support */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#F59E0B' }}
+            onPress={() => Alert.alert('🎁 POSP Rewards & Gifts', 'Your Current Points: 1,250 PTS\n\n• Top Advisor Badge Unlocked 🏆\n• ₹5,000 Bonus Target: 80% Achieved\n• Claim Free Gift Voucher on 20 Policies!')}
+            activeOpacity={0.8}
+          >
+            <Icon name="gift-outline" size={16} color="#B45309" />
+            <Text style={{ fontSize: 12, fontWeight: '800', color: '#B45309' }}>1,250 PTS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => Alert.alert('💬 POSP Support', 'Dedicated Advisor Helpline: +91 1800-123-4567\nEmail: posp-support@ask-insurance.in')}
+            activeOpacity={0.8}
+          >
+            <Icon name="help-circle-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -685,6 +710,145 @@ export default function AgentQuotesScreen() {
           </View>
         ))}
       </ScrollView>
+
+      {/* ── Section 1.B: POSP Home Dashboard Widgets ── */}
+      <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 8 }}>
+        {/* 1. My Performance Overview Widget */}
+        <View style={{ backgroundColor: Colors.white, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: Colors.border, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>My Performance Overview</Text>
+            {/* Timeframe Dropdown */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+              onPress={() => {
+                const next = timeframe === 'This Month' ? 'Today' : timeframe === 'Today' ? 'Custom' : 'This Month';
+                setTimeframe(next);
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.primary }}>{timeframe} ▼</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: '#EFF6FF', padding: 10, borderRadius: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: '#1D4ED8' }}>18</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#1E40AF', marginTop: 2 }}>Policies Sold</Text>
+            </View>
+            <TouchableOpacity
+              style={{ flex: 1.2, backgroundColor: '#ECFDF5', padding: 10, borderRadius: 10, alignItems: 'center' }}
+              onPress={() => setShowBreakdownModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '900', color: '#059669' }}>₹3.51 L</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#065F46', marginTop: 2 }}>Total Premium ℹ️</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1, backgroundColor: '#FEF3C7', padding: 10, borderRadius: 10, alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: '#D97706' }}>4</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#92400E', marginTop: 2 }}>Renewals</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 2. Recommended For You & Sell Now Action Grid */}
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          {/* Sell Now Action Grid */}
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12, justifyContent: 'space-between' }}
+            onPress={() => setShowAllProductsModal(true)}
+            activeOpacity={0.85}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>Sell Now ⚡</Text>
+              <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: '700' }}>View All →</Text>
+            </View>
+            <Text style={{ fontSize: 11, color: '#CBD5E1', marginTop: 6 }}>Car · Two Wheeler · Commercial · Health</Text>
+          </TouchableOpacity>
+
+          {/* Quick Contact RM */}
+          <TouchableOpacity
+            style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#CBD5E1', justifyContent: 'center', alignItems: 'center' }}
+            onPress={() => Alert.alert('📞 Contact Relationship Manager', 'Your Assigned RM: Rajesh Sharma\nPhone: +91 98765-43210\nEmail: r.sharma@ask-insurance.in')}
+            activeOpacity={0.8}
+          >
+            <Icon name="call-outline" size={18} color={Colors.primary} />
+            <Text style={{ fontSize: 10, fontWeight: '800', color: Colors.primary, marginTop: 4 }}>Contact RM</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 3. Recommended For You Section */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {[
+            { title: '⚡ PBP One', sub: 'Instant Quote Engine', color: '#3B82F6' },
+            { title: '🏆 Contests', sub: 'Leaderboard Rankings', color: '#8B5CF6' },
+            { title: '🎫 My Tickets', sub: 'Active Support Cases', color: '#10B981' },
+            { title: '🎨 My Brand', sub: 'Co-Branded Collateral', color: '#F59E0B' },
+          ].map((rec) => (
+            <TouchableOpacity
+              key={rec.title}
+              style={{ backgroundColor: Colors.white, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border }}
+              onPress={() => Alert.alert(rec.title, `${rec.sub} opened successfully.`)}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '800', color: rec.color }}>{rec.title}</Text>
+              <Text style={{ fontSize: 10, color: Colors.textMuted }}>{rec.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Total Premium Breakdown Sheet (Interactive Modal) */}
+      <Modal visible={showBreakdownModal} transparent animationType="slide" onRequestClose={() => setShowBreakdownModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.text }}>Total Premium Breakdown</Text>
+              <TouchableOpacity onPress={() => setShowBreakdownModal(false)}>
+                <Icon name="close-circle" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: 10, marginBottom: 16 }}>
+              {[
+                { cat: 'Commercial Vehicle', amt: '₹3,01,000', color: '#1D4ED8' },
+                { cat: 'Car Insurance', amt: '₹25,861', color: '#059669' },
+                { cat: 'Health Insurance', amt: '₹16,731', color: '#D97706' },
+                { cat: 'Two Wheeler', amt: '₹7,070', color: '#7C3AED' },
+                { cat: 'Personal Accident', amt: '₹366', color: '#DC2626' },
+              ].map((item) => (
+                <View key={item.cat} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>{item.cat}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: item.color }}>{item.amt}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={{ backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }} onPress={() => setShowBreakdownModal(false)}>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Close Breakdown</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sell Now View All Products Modal */}
+      <Modal visible={showAllProductsModal} transparent animationType="slide" onRequestClose={() => setShowAllProductsModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.text }}>All Insurance Products</Text>
+              <TouchableOpacity onPress={() => setShowAllProductsModal(false)}>
+                <Icon name="close-circle" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+              {['🚗 Car', '🛵 Two Wheeler', '🚛 Commercial', '🏥 Health', '🏠 Home', '✈️ Travel', '📈 Investment 2.0', '🛡️ Term Online'].map((p) => (
+                <TouchableOpacity key={p} style={{ width: '47%', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' }} onPress={() => { setShowAllProductsModal(false); Alert.alert(p, `Instant quotation engine for ${p} loaded.`); }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={{ backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }} onPress={() => setShowAllProductsModal(false)}>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Search */}
       <View style={s.searchWrap}>

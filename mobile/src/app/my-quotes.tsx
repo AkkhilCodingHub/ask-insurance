@@ -581,6 +581,12 @@ const DETAIL_LABEL: Record<string, string> = {
   makeModel: 'Make / Model', year: 'Year', destination: 'Destination',
   travelDays: 'Travel Days', travellers: 'Travellers', propertyType: 'Property Type',
   city: 'City', pincode: 'Pincode', industry: 'Industry', employees: 'Employees',
+  registrationNumber: 'Reg Number', make: 'Make', model: 'Model', variant: 'Variant',
+  registrationYear: 'Reg Year', registrationDate: 'Reg Date', cubicCapacity: 'Engine (CC)',
+  seatingCapacity: 'Seating Capacity', engineNumber: 'Engine No.', chassisNumber: 'Chassis No.',
+  rtoLocation: 'RTO Location', vehicleClass: 'Vehicle Class', previousInsurer: 'Past Insurer',
+  previousPolicyNumber: 'Past Policy No.', policyExpiryDate: 'Expiry Date', ncbPercentage: 'NCB %',
+  hasPreviousClaim: 'Past Claim',
 };
 
 function DetailsSheet({ visible, quote, onClose }: {

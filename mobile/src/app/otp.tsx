@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
@@ -15,6 +15,7 @@ const OTP_LEN = 6;
 
 export default function OTPScreen() {
   const router              = useRouter();
+  const params              = useLocalSearchParams<{ phone?: string; policyId?: string; policyType?: string }>();
   const { pendingPhone, verifyOTP, sendOTP, autoVerified } = useAuth();
   const { alert }           = useDialog();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
@@ -38,18 +39,28 @@ export default function OTPScreen() {
     autoVerifiedRef.current = true;
     if (autoVerified.isNewUser) {
       router.replace('/onboarding');
+    } else if (params.policyType) {
+      router.replace({ pathname: '/quote', params: { type: params.policyType } });
     } else {
       router.replace('/(tabs)');
     }
-  }, [autoVerified]);
+  }, [autoVerified, params.policyType]);
 
-  const phone = pendingPhone ?? '';
+  const rawPhoneParam = typeof params.phone === 'string' ? params.phone.replace(/\D/g, '').slice(-10) : '';
+  const phone = pendingPhone || rawPhoneParam || '9876543210';
   const masked = phone.length === 10
     ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}`
     : '+91 ••••• •••••';
 
   const handleChange = (text: string, i: number) => {
-    const d = text.replace(/\D/g, '').slice(-1);
+    const cleaned = text.replace(/\D/g, '');
+    if (cleaned.length >= OTP_LEN) {
+      const next = cleaned.slice(0, OTP_LEN).split('');
+      setDigits(next);
+      handleVerify(next.join(''));
+      return;
+    }
+    const d = cleaned.slice(-1);
     const next = [...digits];
     next[i] = d;
     setDigits(next);
@@ -66,22 +77,29 @@ export default function OTPScreen() {
     }
   };
 
+  const verifyingRef = useRef(false);
+
   const handleVerify = async (otp: string) => {
+    if (verifyingRef.current) return;
+    verifyingRef.current = true;
     setLoading(true);
     try {
       const { isNewUser } = await verifyOTP(otp);
       if (isNewUser) {
         router.replace('/onboarding');
+      } else if (params.policyType) {
+        router.replace({ pathname: '/quote', params: { type: params.policyType } });
       } else {
         router.replace('/(tabs)');
       }
-    } catch {
+    } catch (err: any) {
       if (autoVerifiedRef.current) return;
-      alert({ type: 'error', title: 'Invalid OTP', message: 'The code you entered is incorrect. Please try again.' });
+      alert({ type: 'error', title: 'Verification Failed', message: err?.message || 'Invalid OTP. Please try again.' });
       setDigits(Array(OTP_LEN).fill(''));
       refs.current[0]?.focus();
     } finally {
       setLoading(false);
+      verifyingRef.current = false;
     }
   };
 

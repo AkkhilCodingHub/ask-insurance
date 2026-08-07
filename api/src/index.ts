@@ -17,6 +17,8 @@ import { plansRouter } from './routes/plans';
 import { paymentsRouter } from './routes/payments';
 import { kycRouter } from './routes/kyc';
 import { documentsRouter } from './routes/documents';
+import vehiclesRouter from './routes/vehicles';
+import endorsementsRouter from './routes/endorsements';
 
 dotenv.config();
 
@@ -96,6 +98,8 @@ app.use('/api/plans', plansRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/kyc', kycRouter);
 app.use('/api/documents', documentsRouter);
+app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/endorsements', endorsementsRouter);
 
 app.use('*', (_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });

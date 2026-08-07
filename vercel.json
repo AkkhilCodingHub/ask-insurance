@@ -1,11 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "web/package.json",
-      "use": "@vercel/next"
-    }
-  ],
+  "buildCommand": "cd admin && npm run build",
   "installCommand": "npm install",
-  "buildCommand": "cd web && npm run build"
+  "outputDirectory": "admin/.next"
 }

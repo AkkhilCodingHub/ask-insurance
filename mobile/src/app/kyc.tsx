@@ -130,7 +130,7 @@ export default function KycScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top', 'bottom']}>
       <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={[s.backBtn, { backgroundColor: colors.bg }]} onPress={() => router.back()}>
+        <TouchableOpacity style={[s.backBtn, { backgroundColor: colors.bg }]} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)' as any)}>
           <Icon name="arrow-back-outline" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: colors.text }]}>KYC Verification</Text>

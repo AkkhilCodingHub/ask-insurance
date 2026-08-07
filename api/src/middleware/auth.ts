@@ -20,6 +20,19 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
 };
 
+export const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '')?.trim();
+    if (token) {
+      const decoded = verifyAuthToken(token);
+      req.userId = decoded.userId;
+    }
+  } catch {
+    // Ignore invalid token for optional auth
+  }
+  return next();
+};
+
 // Must be used after authenticate (relies on req.userId being set).
 export const requireKyc = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

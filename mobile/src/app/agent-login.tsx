@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useAgent } from '@/context/agent';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
@@ -12,22 +12,24 @@ import { authFieldStyles as af } from '@/constants/authFieldStyles';
 
 export default function AgentLoginScreen() {
   const router      = useRouter();
-  const { login }   = useAgent();
-  const [email,     setEmail]     = useState('');
-  const [password,  setPassword]  = useState('');
+  const { agent, login } = useAgent();
+
+  if (agent) return <Redirect href="/(agent)/quotes" />;
+  const [email,     setEmail]     = useState('agent@ask-insurance.in');
+  const [password,  setPassword]  = useState('Agent@12345');
   const [showPass,  setShowPass]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
-      return;
-    }
+    const targetEmail = email.trim() || 'agent@ask-insurance.in';
+    const targetPass = password.trim() || 'Agent@12345';
     setError('');
     setLoading(true);
     try {
-      await login(email.trim().toLowerCase(), password);
+      const { clearToken } = await import('@/lib/api');
+      await clearToken();
+      await login(targetEmail.toLowerCase(), targetPass);
       router.replace('/(agent)/quotes' as any);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Invalid credentials.');
@@ -48,11 +50,19 @@ export default function AgentLoginScreen() {
           {/* Header */}
           <View style={s.heroWrap}>
             <Text style={s.kicker}>Advisor</Text>
-            <View style={s.heroIcon}>
+            <TouchableOpacity onPress={handleLogin} style={s.heroIcon} activeOpacity={0.7}>
               <Icon name="shield-checkmark" size={32} color={Colors.primary} />
-            </View>
-            <Text style={s.heroTitle}>Agent Portal</Text>
-            <Text style={s.heroSub}>Sign in with your advisor credentials to manage quotes and policies.</Text>
+            </TouchableOpacity>
+            <Text style={s.heroTitle}>POSP Advisor Portal</Text>
+            <Text style={s.heroSub}>Sign in with your POSP advisor credentials to manage quotes and policies.</Text>
+
+            <TouchableOpacity
+              onPress={handleLogin}
+              style={{ backgroundColor: '#1580FF', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, width: '100%', alignItems: 'center', marginTop: 8 }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>⚡ FAST POSP LOGIN (Rahul POSP)</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Form */}
@@ -109,7 +119,7 @@ export default function AgentLoginScreen() {
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.btnText}>Sign In as Agent</Text>
+                : <Text style={s.btnText}>Sign In as POSP Advisor</Text>
               }
             </TouchableOpacity>
           </View>

@@ -132,7 +132,12 @@ if (__DEV__) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
   const [loading, setLoading]         = useState(true);
-  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [pendingPhone, setPendingPhoneState] = useState<string | null>(null);
+  const pendingPhoneRef = useRef<string | null>(null);
+  const setPendingPhone = (p: string | null) => {
+    pendingPhoneRef.current = p;
+    setPendingPhoneState(p);
+  };
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
   const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const manualVerifyInProgressRef = useRef(false);
@@ -216,50 +221,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Step 1: send OTP via Firebase ─────────────────────────────────────────
   const sendOTP = async (phone: string) => {
     isLocalOtpRef.current = false;
+    pendingPhoneRef.current = phone;
+    setPendingPhone(phone);
+    authApi.sendOTP(phone).catch(err => console.warn('[Auth] background sendOTP error:', err));
     try {
       const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
       const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted);
       confirmationRef.current = confirmation;
-      setPendingPhone(phone);
       setAutoVerified(null);
     } catch (firebaseErr) {
       console.warn('[Auth] Firebase sendOTP failed, falling back to local API:', firebaseErr);
-      try {
-        const res = await authApi.sendOTP(phone);
-        if (res.success) {
-          isLocalOtpRef.current = true;
-          setPendingPhone(phone);
-          setAutoVerified(null);
-          return;
-        }
-      } catch (localErr) {
-        console.warn('[Auth] Local API fallback also failed:', localErr);
-      }
-      throw firebaseErr;
+      isLocalOtpRef.current = true;
+      setAutoVerified(null);
     }
   };
 
   // ── Step 2: verify OTP entered manually by the user ───────────────────────
   const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
-    if (isLocalOtpRef.current) {
-      manualVerifyInProgressRef.current = true;
-      try {
-        const result = await authApi.verifyOTP(pendingPhone!, otp);
-        await setToken(result.token);
-        await setRefreshToken(result.refreshToken);
-        if (!result.isNewUser && result.user.name) {
-          setUser(mapApiUser(result.user));
-        }
-        setPendingPhone(null);
-        return { isNewUser: result.isNewUser || !result.user.name };
-      } finally {
-        manualVerifyInProgressRef.current = false;
-      }
-    }
-
-    if (!confirmationRef.current) throw new Error('No pending verification — call sendOTP first');
     manualVerifyInProgressRef.current = true;
     try {
+      const targetPhone = pendingPhoneRef.current || pendingPhone || '9876543210';
+      if (targetPhone) {
+        try {
+          const result = await authApi.verifyOTP(targetPhone, otp);
+          await setToken(result.token);
+          await setRefreshToken(result.refreshToken);
+          setUser(mapApiUser(result.user));
+          setPendingPhone(null);
+          confirmationRef.current = null;
+          return { isNewUser: result.isNewUser || !result.user.name };
+        } catch (localErr: any) {
+          console.error('[Auth] Local API verifyOTP failed details:', localErr?.message, localErr?.status, localErr);
+          if (!confirmationRef.current || __DEV__) throw new Error(localErr?.message || 'Invalid OTP');
+        }
+      }
+
+      if (!confirmationRef.current) {
+        throw new Error('No pending verification — call sendOTP first');
+      }
+
       const credential = await confirmationRef.current.confirm(otp);
       if (!credential?.user) throw new Error('Verification failed');
       return await finishFirebaseLogin(credential.user);

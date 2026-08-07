@@ -11,9 +11,10 @@ datasource db {
 }
 
 model User {
-  id          String    @id @default(cuid())
-  phone       String    @unique
-  email       String?   @unique
+  id           String    @id @default(cuid())
+  customerCode String?   @unique
+  phone        String    @unique
+  email        String?   @unique
   name        String?
   dateOfBirth DateTime?
   gender      String?
@@ -48,6 +49,8 @@ model User {
   notifications Notification[]
   conversations Conversation[]
   userDocuments UserDocument[]
+  vehicles      Vehicle[]
+  endorsements  Endorsement[]
 
   // Agent Assignment
   agentId     String?
@@ -126,6 +129,7 @@ model Policy {
   paymentStatus String    @default("pending") // pending, paid, failed
   cancelledAt   DateTime?
   documentUrl   String?   // URL to uploaded policy PDF
+  registrationNumber String? // e.g. DL-01-AB-1234
   notes         String?   @db.Text // admin notes visible to customer
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -145,12 +149,16 @@ model Policy {
   insurer   Insurer?  @relation(fields: [insurerId], references: [id], onDelete: SetNull)
   planId    String?
   plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
-  claims    Claim[]
-  payments  Payment[]
-  renewal   Renewal?
+  vehicleId String?
+  vehicle   Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  claims        Claim[]
+  payments      Payment[]
+  renewal       Renewal?
+  endorsements  Endorsement[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([registrationNumber])
   @@index([insurerId])
   @@index([planId])
   @@index([userId, paymentStatus])
@@ -192,6 +200,7 @@ model Quote {
   type            String
   details         String    @db.Text  // JSON: user requirements (age, cover, etc.)
   providers       String    @db.Text  // JSON: kept for legacy, empty for new flow
+  registrationNumber String? // e.g. DL-01-AB-1234
   status          String    @default("pending") // pending, responded, approved, converted, expired
   stage           String    @default("new")     // new, quotation_sent, in_discussion, closed, lost
   // Admin's actual quote response
@@ -203,18 +212,46 @@ model Quote {
   updatedAt       DateTime  @updatedAt
 
   // Relations
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agentId  String?
-  agent    Admin?   @relation("AgentQuotes", fields: [agentId], references: [id], onDelete: SetNull)
-  policies Policy[]
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId   String?
+  agent     Admin?    @relation("AgentQuotes", fields: [agentId], references: [id], onDelete: SetNull)
+  vehicleId String?
+  vehicle   Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  policies  Policy[]
 
   @@index([userId, status])
   @@index([userId, expiresAt])
   @@index([userId, createdAt])
+  @@index([registrationNumber])
   @@index([status, expiresAt])
   @@index([agentId])
   @@map("quotes")
+}
+
+model Vehicle {
+  id                 String   @id @default(cuid())
+  registrationNumber String   @unique // primary lookup key e.g. DL-01-AB-1234
+  vehicleType        String   // car, two_wheeler, commercial
+  make               String?  // e.g. Maruti Suzuki, Honda, Tata
+  model              String?  // e.g. Swift, City, Ace
+  variant            String?  // e.g. VXi, ZX
+  registrationYear   Int?     // e.g. 2021
+  fuelType           String?  // petrol, diesel, cng, electric
+  engineNumber       String?
+  chassisNumber      String?
+  ncbPercentage      Float?   @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policies Policy[]
+  quotes   Quote[]
+
+  @@index([userId])
+  @@index([registrationNumber])
+  @@map("vehicles")
 }
 
 model Payment {
@@ -476,4 +513,27 @@ model UserDocument {
   @@index([adminId])
   @@index([source])
   @@map("user_documents")
+}
+
+model Endorsement {
+  id                 String   @id @default(cuid())
+  endorsementNumber  String   @unique
+  type               String   @default("non_financial") // financial | non_financial
+  category           String   // name_correction | address_update | nominee_change | vehicle_reg_update | sum_insured_change | custom
+  requestedChanges   String   @db.Text
+  status             String   @default("pending") // pending | approved | rejected | processed
+  adminNotes         String?  @db.Text
+  revisedDocumentUrl String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  policyId           String
+  policy             Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@index([userId])
+  @@index([status])
+  @@map("endorsements")
 }

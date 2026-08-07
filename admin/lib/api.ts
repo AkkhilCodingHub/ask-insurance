@@ -60,9 +60,12 @@ export interface Plan {
 // ── User Types ─────────────────────────────────────────────────────────────
 export interface AdminUser {
   id: string;
+  customerCode?: string;
   phone: string;
   name: string;
   email?: string;
+  agentId?: string;
+  agent?: { id: string; name: string; email?: string; agentCode?: string };
   createdAt: string;
   updatedAt: string;
   _count?: { policies: number; claims: number; payments: number };
@@ -814,6 +817,12 @@ class AdminApiClient {
   // ── Admin list (for renewals assignment) ────────────────────────────────────
   async getAdminList(): Promise<any> {
     const { data } = await this.instance.get('/agents');
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async assignAgentToUser(userId: string, agentId: string): Promise<any> {
+    const { data } = await this.instance.post(`/users/${userId}/assign-agent`, { agentId });
     if (data.error) throw new Error(data.error);
     return data;
   }

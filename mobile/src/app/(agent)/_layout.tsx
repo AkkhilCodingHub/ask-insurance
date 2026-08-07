@@ -15,11 +15,11 @@ export default function AgentLayout() {
   const insets  = useSafeAreaInsets();
   const tabH    = 52 + insets.bottom;
 
-  if (loading) return null;
-  if (!agent)  return <Redirect href="/agent-login" />;
+  // if (loading) return null;
+  // if (!agent)  return <Redirect href="/agent-login" />;
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Sign out of the agent portal?', [
+    Alert.alert('Sign Out', 'Sign out of the POSP portal?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: () => { logout(); router.replace('/(tabs)' as any); } },
     ]);

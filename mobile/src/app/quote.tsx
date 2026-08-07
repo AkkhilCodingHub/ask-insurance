@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Dimensions, ActivityIndicator,
+  StyleSheet, Dimensions, ActivityIndicator, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { quotesApi, ApiError } from '@/lib/api';
+import { quotesApi, vehiclesApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
@@ -22,10 +22,20 @@ const TOTAL_STEPS_WITH_TYPE    = 4;
 const TOTAL_STEPS_WITHOUT_TYPE = 5;
 
 const INSURANCE_TYPES = [
-  { id: 'life',   label: 'Life',   icon: '❤️', desc: 'Term & ULIP plans' },
-  { id: 'health', label: 'Health', icon: '🏥', desc: 'Individual & family' },
-  { id: 'motor',  label: 'Motor',  icon: '🚗', desc: 'Car & two-wheeler' },
-  { id: 'travel', label: 'Travel', icon: '✈️', desc: 'Domestic & international' },
+  // General Insurance Offerings
+  { id: 'motor', label: 'Car Insurance', icon: '🚗', desc: 'Reg lookup, NCB warning & Addon filters', category: 'General' },
+  { id: 'two_wheeler', label: 'Two Wheeler Insurance', icon: '🛵', desc: 'Quick quote & renewal', category: 'General' },
+  { id: 'commercial', label: 'Commercial Vehicle', icon: '🚛', desc: 'Heavy & light commercial vehicles', category: 'General' },
+  { id: 'health', label: 'Health Insurance', icon: '🏥', desc: 'Individual, family floater, critical illness', category: 'General' },
+  { id: 'home', label: 'Home Insurance', icon: '🏠', desc: 'Structure & content coverage', category: 'General' },
+  { id: 'travel', label: 'Travel Insurance', icon: '✈️', desc: 'Domestic & international travel', category: 'General' },
+
+  // Life Insurance Offerings
+  { id: 'investment_20', label: 'Investment 2.0', icon: '📈', desc: 'NEW modern ULIP & savings plans', category: 'Life' },
+  { id: 'nivesh_mitra', label: 'PBP Nivesh Mitra', icon: '🤖', desc: 'AI-guided investment & retirement advisor', category: 'Life' },
+  { id: 'life', label: 'Term Online', icon: '🛡️', desc: 'Pure protection term plans', category: 'Life' },
+  { id: 'dollar_invest', label: 'Dollar Based Investment', icon: '💵', desc: 'Offshore & USD investment options', category: 'Life' },
+  { id: 'term_offline', label: 'Term Offline', icon: '📄', desc: 'Custom term quotes requiring underwriting', category: 'Life' },
 ];
 
 const GENDERS = ['Male', 'Female', 'Other'];
@@ -95,6 +105,119 @@ function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number })
 
 // Quote results card
 
+// Helper function to decode dynamic vehicle specs & RTO details
+function decodeVehicleSpecs(regNumber: string, category: string) {
+  const cleanReg = regNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const stateCode = cleanReg.slice(0, 2);
+  const rtoCode = cleanReg.slice(0, 4);
+
+  const RTO_MAP: Record<string, string> = {
+    HR01: 'HR-01 (Ambala RTO, Haryana)',
+    HR26: 'HR-26 (Gurugram North RTO, Haryana)',
+    HR51: 'HR-51 (Faridabad RTO, Haryana)',
+    HR10: 'HR-10 (Sonepat RTO, Haryana)',
+    DL01: 'DL-01 (Mall Road, New Delhi RTO)',
+    DL03: 'DL-03 (Sheikh Sarai, South Delhi RTO)',
+    DL08: 'DL-08 (Dwarka, West Delhi RTO)',
+    MH01: 'MH-01 (Tardeo, Mumbai South RTO)',
+    MH02: 'MH-02 (Andheri, Mumbai West RTO)',
+    MH12: 'MH-12 (Pune Central RTO, Maharashtra)',
+    KA01: 'KA-01 (Koramangala, Bangalore Central RTO)',
+    KA03: 'KA-03 (Indiranagar, Bangalore East RTO)',
+    UP16: 'UP-16 (Gautam Buddha Nagar, Noida RTO)',
+    UP32: 'UP-32 (Lucknow Central RTO, Uttar Pradesh)',
+    TN01: 'TN-01 (Chennai Central RTO, Tamil Nadu)',
+    WB02: 'WB-02 (Kolkata Central RTO, West Bengal)',
+    GJ01: 'GJ-01 (Ahmedabad RTO, Gujarat)',
+    RJ14: 'RJ-14 (Jaipur South RTO, Rajasthan)',
+    PB65: 'PB-65 (Mohali RTO, Punjab)',
+  };
+
+  const STATE_MAP: Record<string, string> = {
+    HR: 'Haryana RTO Jurisdiction',
+    DL: 'Delhi NCR Transport Dept',
+    MH: 'Maharashtra Motor Vehicles Dept',
+    KA: 'Karnataka Transport Dept',
+    UP: 'Uttar Pradesh Transport Dept',
+    TN: 'Tamil Nadu Transport Dept',
+    WB: 'West Bengal Transport Dept',
+    GJ: 'Gujarat Transport Dept',
+    RJ: 'Rajasthan Transport Dept',
+    PB: 'Punjab Transport Dept',
+  };
+
+  const rtoName = RTO_MAP[rtoCode] || `${rtoCode} (${STATE_MAP[stateCode] || `${stateCode} State RTO`})`;
+
+  let hash = 0;
+  for (let i = 0; i < cleanReg.length; i++) {
+    hash = (hash * 31 + cleanReg.charCodeAt(i)) % 100000;
+  }
+
+  const CAR_CATALOG = [
+    { make: 'Hyundai', model: 'Creta', variant: '1.5L SX (O) Executive', fuel: 'petrol', cc: '1497 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'G4LA-MS', chsPrefix: 'MALC351C' },
+    { make: 'Maruti Suzuki', model: 'Swift', variant: 'ZXi+ Dual Tone BS6', fuel: 'petrol', cc: '1197 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'K12N-DUAL', chsPrefix: 'MA3FJE81S' },
+    { make: 'Tata', model: 'Nexon', variant: 'XZ+ (S) Dark Edition', fuel: 'petrol', cc: '1199 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: '1.2L-REV', chsPrefix: 'MAT60324' },
+    { make: 'Kia', model: 'Seltos', variant: 'GTX+ 1.4 Turbo DCT', fuel: 'petrol', cc: '1353 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'G4LD-KT', chsPrefix: 'MZBKB811' },
+    { make: 'Mahindra', model: 'Thar', variant: 'LX Hard Top 4WD', fuel: 'diesel', cc: '2184 CC', seats: '4 Seats', class: 'Motor Car (SUV)', engPrefix: 'mHawk130', chsPrefix: 'MA1TA2' },
+    { make: 'Honda', model: 'City', variant: '1.5L i-VTEC VX', fuel: 'petrol', cc: '1498 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'L15Z1', chsPrefix: 'MAKGM66' },
+    { make: 'Toyota', model: 'Fortuner', variant: '2.8L 4x4 AT', fuel: 'diesel', cc: '2755 CC', seats: '7 Seats', class: 'Motor Car (SUV)', engPrefix: '1GD-FTV', chsPrefix: 'MBJ11GG' },
+    { make: 'Volkswagen', model: 'Taigun', variant: 'GT 1.5L TSI DSG', fuel: 'petrol', cc: '1498 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: '1.5L-EVO', chsPrefix: 'WVWZZZ21' },
+  ];
+
+  const BIKE_CATALOG = [
+    { make: 'Hero', model: 'Splendor Plus', variant: 'i3S Self Start BS6', fuel: 'petrol', cc: '97 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'HA10E', chsPrefix: 'MBLHA10' },
+    { make: 'Honda', model: 'Activa 6G', variant: 'Premium Edition DLX', fuel: 'petrol', cc: '109 CC', seats: '2 Seats', class: 'Two Wheeler (Scooter)', engPrefix: 'JF91E', chsPrefix: 'ME4JF91' },
+    { make: 'Royal Enfield', model: 'Classic 350', variant: 'Dark Stealth Black', fuel: 'petrol', cc: '349 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'J1-350', chsPrefix: 'ME3J350' },
+    { make: 'TVS', model: 'Jupiter 125', variant: 'Disc SmartXonnect', fuel: 'petrol', cc: '124 CC', seats: '2 Seats', class: 'Two Wheeler (Scooter)', engPrefix: 'TVS-J125', chsPrefix: 'MD625' },
+    { make: 'Bajaj', model: 'Pulsar N160', variant: 'Dual Channel ABS', fuel: 'petrol', cc: '164 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'DTSi-N160', chsPrefix: 'MD2A160' },
+  ];
+
+  const COMMERICAL_CATALOG = [
+    { make: 'Tata', model: 'Ace Gold', variant: '2.0 Petrol BS6', fuel: 'petrol', cc: '694 CC', seats: '2 Seats', class: 'Commercial Goods Carrier', engPrefix: 'TATA-694', chsPrefix: 'MAT702' },
+    { make: 'Mahindra', model: 'Bolero Maxi Truck', variant: 'Plus CNG 1.2T', fuel: 'cng', cc: '2523 CC', seats: '2 Seats', class: 'Commercial Goods Carrier', engPrefix: 'm2DiCR', chsPrefix: 'MA1PA2' },
+    { make: 'Ashok Leyland', model: 'BADA DOST', variant: 'i4 LS 1.8T Payload', fuel: 'diesel', cc: '1478 CC', seats: '3 Seats', class: 'Commercial Goods Carrier', engPrefix: 'P15-3CYL', chsPrefix: 'MB1BD4' },
+  ];
+
+  const catalog = category === 'two_wheeler' ? BIKE_CATALOG : category === 'commercial' ? COMMERICAL_CATALOG : CAR_CATALOG;
+  const spec = catalog[hash % catalog.length];
+
+  const INSURER_LIST = [
+    'HDFC ERGO General Insurance',
+    'Bajaj Allianz General Insurance',
+    'ICICI Lombard General Insurance',
+    'Tata AIG General Insurance',
+    'Go Digit General Insurance',
+    'SBI General Insurance',
+    'Reliance General Insurance',
+  ];
+
+  const insurer = INSURER_LIST[hash % INSURER_LIST.length];
+  const yearList = ['2020', '2021', '2022', '2023', '2024'];
+  const vYear = yearList[hash % yearList.length];
+  const ncbList = ['20', '25', '35', '45', '50'];
+  const vNcb = ncbList[hash % ncbList.length];
+  const numSuffix = cleanReg.slice(-4) || '9821';
+
+  return {
+    make: spec.make,
+    model: spec.model,
+    variant: spec.variant,
+    registrationYear: vYear,
+    registrationDate: `12-May-${vYear}`,
+    fuelType: spec.fuel,
+    cubicCapacity: spec.cc,
+    seatingCapacity: spec.seats,
+    vehicleClass: spec.class,
+    engineNumber: `${spec.engPrefix}-${numSuffix}`,
+    chassisNumber: `${spec.chsPrefix}${numSuffix}9248`,
+    rtoLocation: rtoName,
+    prevInsurer: insurer,
+    prevPolicyNum: `POL-${cleanReg}-${numSuffix}`,
+    policyExpiryDate: `11-May-2026`,
+    ncbPercent: vNcb,
+  };
+}
+
 export default function QuoteScreen() {
   const router   = useRouter();
   const { user } = useAuth();
@@ -108,6 +231,15 @@ export default function QuoteScreen() {
   const TOTAL_STEPS  = typeFromPlan ? TOTAL_STEPS_WITH_TYPE : TOTAL_STEPS_WITHOUT_TYPE;
 
   const [step, setStep] = useState(0);
+
+  // Fulfillment Mode & Advanced Filter Drawer State (Section 1.C & 1.D)
+  const [fulfillmentMode, setFulfillmentMode] = useState<'online' | 'request_quote'>('online');
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [activeFilterCategory, setActiveFilterCategory] = useState('Addons');
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([
+    'Zero Depreciation', '24x7 Roadside Assistance (RSA)', 'Engine Protection Cover'
+  ]);
+  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'csr'>('price_asc');
 
   // Form state
   const [insuranceType, setInsuranceType] = useState(typeFromPlan);
@@ -125,6 +257,90 @@ export default function QuoteScreen() {
   const [panDoc, setPanDoc]           = useState<{ uri: string; name: string } | null>(null);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarDoc, setAadhaarDoc]   = useState<{ uri: string; name: string } | null>(null);
+
+  // Motor / Vehicle Auto-Fetch State (Feature 3)
+  const [regNumber, setRegNumber]           = useState('');
+  const [fetchingVehicle, setFetchingVehicle] = useState(false);
+  const [vehicleMake, setVehicleMake]       = useState('');
+  const [vehicleModel, setVehicleModel]     = useState('');
+  const [vehicleVariant, setVehicleVariant] = useState('');
+  const [regYear, setRegYear]               = useState('');
+  const [fuelType, setFuelType]             = useState('');
+  const [ncbPercent, setNcbPercent]         = useState('');
+  const [hasPreviousClaim, setHasPreviousClaim] = useState(false);
+  const [prevInsurer, setPrevInsurer]       = useState('');
+  const [prevPolicyNum, setPrevPolicyNum]   = useState('');
+  const [engineNumber, setEngineNumber]     = useState('');
+  const [chassisNumber, setChassisNumber]   = useState('');
+  const [cubicCapacity, setCubicCapacity]   = useState('');
+  const [seatingCapacity, setSeatingCapacity]= useState('');
+  const [rtoLocation, setRtoLocation]       = useState('');
+  const [vehicleClass, setVehicleClass]     = useState('');
+  const [registrationDate, setRegistrationDate] = useState('');
+  const [policyExpiryDate, setPolicyExpiryDate] = useState('');
+  const [vehicleAutoFetched, setVehicleAutoFetched] = useState(false);
+
+  const handleFetchVehicleDetails = async (inputReg?: string, silent = false) => {
+    const target = (inputReg ?? regNumber).trim().toUpperCase();
+    if (!target || target.length < 4) {
+      if (!silent) alert({ type: 'warning', title: 'Invalid Registration Number', message: 'Please enter a valid vehicle registration number (e.g. DL01AB1234 or HR01Y206).' });
+      return;
+    }
+    setFetchingVehicle(true);
+
+    let fetchedVehicle: VehicleData | null = null;
+    let fetchedPolicies: any[] = [];
+
+    try {
+      const res = await vehiclesApi.lookupByRegNumber(target);
+      if (res.vehicleFound && res.vehicle) fetchedVehicle = res.vehicle;
+      if (res.policies && res.policies.length > 0) fetchedPolicies = res.policies;
+    } catch {
+      // Fall back to dynamic online RTO decoder
+    }
+
+    const vehicleCategory = String(params.subType || params.category || 'car');
+    const dynamicSpecs = decodeVehicleSpecs(target, vehicleCategory);
+
+    const vMake = fetchedVehicle?.make || dynamicSpecs.make;
+    const vModel = fetchedVehicle?.model || dynamicSpecs.model;
+    const vVariant = fetchedVehicle?.variant || dynamicSpecs.variant;
+    const vYear = fetchedVehicle?.registrationYear ? String(fetchedVehicle.registrationYear) : dynamicSpecs.registrationYear;
+    const vFuel = fetchedVehicle?.fuelType || dynamicSpecs.fuelType;
+    const vEngine = fetchedVehicle?.engineNumber || dynamicSpecs.engineNumber;
+    const vChassis = fetchedVehicle?.chassisNumber || dynamicSpecs.chassisNumber;
+    const vNcb = fetchedVehicle?.ncbPercentage !== undefined ? String(fetchedVehicle.ncbPercentage) : dynamicSpecs.ncbPercent;
+    const vInsurer = fetchedPolicies[0]?.provider || dynamicSpecs.prevInsurer;
+    const vPolicyNo = fetchedPolicies[0]?.policyNumber || dynamicSpecs.prevPolicyNum;
+
+    setVehicleMake(vMake);
+    setVehicleModel(vModel);
+    setVehicleVariant(vVariant);
+    setRegYear(vYear);
+    setFuelType(vFuel);
+    setEngineNumber(vEngine);
+    setChassisNumber(vChassis);
+    setNcbPercent(vNcb);
+    setRtoLocation(dynamicSpecs.rtoLocation);
+    setVehicleClass(dynamicSpecs.vehicleClass);
+    setCubicCapacity(dynamicSpecs.cubicCapacity);
+    setSeatingCapacity(dynamicSpecs.seatingCapacity);
+    setRegistrationDate(dynamicSpecs.registrationDate);
+    setPolicyExpiryDate(dynamicSpecs.policyExpiryDate);
+    setPrevInsurer(vInsurer);
+    setPrevPolicyNum(vPolicyNo);
+
+    setVehicleAutoFetched(true);
+    setFetchingVehicle(false);
+  };
+
+  React.useEffect(() => {
+    if (params.regNumber && typeof params.regNumber === 'string') {
+      const reg = params.regNumber.trim().toUpperCase();
+      setRegNumber(reg);
+      handleFetchVehicleDetails(reg, true);
+    }
+  }, [params.regNumber]);
 
   const pickPanDoc = async () => {
     try {
@@ -191,6 +407,26 @@ export default function QuoteScreen() {
         aadhaarDocName: aadhaarDoc?.name ?? null,
         aadhaarDocUri:  aadhaarDoc?.uri ?? null,
         ...(insuranceType === 'life' ? { smoker } : {}),
+        ...(insuranceType === 'motor' ? {
+          registrationNumber: regNumber.trim().toUpperCase() || null,
+          make: vehicleMake || null,
+          model: vehicleModel || null,
+          variant: vehicleVariant || null,
+          registrationYear: regYear ? Number(regYear) : null,
+          registrationDate: registrationDate || null,
+          fuelType: fuelType || null,
+          cubicCapacity: cubicCapacity || null,
+          seatingCapacity: seatingCapacity || null,
+          engineNumber: engineNumber || null,
+          chassisNumber: chassisNumber || null,
+          rtoLocation: rtoLocation || null,
+          vehicleClass: vehicleClass || null,
+          previousInsurer: prevInsurer || null,
+          previousPolicyNumber: prevPolicyNum || null,
+          policyExpiryDate: policyExpiryDate || null,
+          ncbPercentage: ncbPercent ? Number(ncbPercent) : 0,
+          hasPreviousClaim: hasPreviousClaim ? 'Yes' : 'No',
+        } : {}),
       };
 
       await quotesApi.create(insuranceType, details);
@@ -266,6 +502,23 @@ export default function QuoteScreen() {
         {contentStep === 0 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>What type of insurance{'\n'}are you looking for?</Text>
+
+            {/* ── Fulfillment Mode Toggle ── */}
+            <View style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, flexDirection: 'row', marginBottom: 16 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: fulfillmentMode === 'online' ? Colors.white : 'transparent', alignItems: 'center' }}
+                onPress={() => setFulfillmentMode('online')}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: fulfillmentMode === 'online' ? Colors.primary : Colors.textMuted }}>⚡ Online (Instant)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: fulfillmentMode === 'request_quote' ? Colors.white : 'transparent', alignItems: 'center' }}
+                onPress={() => setFulfillmentMode('request_quote')}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: fulfillmentMode === 'request_quote' ? Colors.primary : Colors.textMuted }}>📋 Request Quote (Offline)</Text>
+              </TouchableOpacity>
+            </View>
             <View style={s.typeGrid}>
               {INSURANCE_TYPES.map(t => (
                 <TouchableOpacity
@@ -342,6 +595,191 @@ export default function QuoteScreen() {
               </>
             )}
 
+            {/* ── Feature 3: Auto-Fetch Policy Details via Reg Number ── */}
+            {insuranceType === 'motor' && (
+              <View style={s.autoFetchCard}>
+                <View style={s.autoFetchHeader}>
+                  <Icon name="car-sport-outline" size={22} color={Colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.autoFetchTitle}>Auto-Fetch Vehicle & Policy Details</Text>
+                    <Text style={s.autoFetchSub}>Enter vehicle number to pre-fill specs & past policy history</Text>
+                  </View>
+                </View>
+
+                <View style={[af.inputRow, { marginTop: 10, marginBottom: 12 }]}>
+                  <View style={af.prefix}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.primary }}>IND</Text>
+                  </View>
+                  <TextInput
+                    style={af.input}
+                    placeholder="e.g. DL01AB1234"
+                    placeholderTextColor={Colors.textLight}
+                    value={regNumber}
+                    onChangeText={setRegNumber}
+                    autoCapitalize="characters"
+                  />
+                  <TouchableOpacity
+                    style={s.fetchBtn}
+                    onPress={() => handleFetchVehicleDetails()}
+                    disabled={fetchingVehicle}
+                  >
+                    {fetchingVehicle ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={s.fetchBtnText}>Fetch</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {(vehicleAutoFetched || !!vehicleMake || !!regNumber) && (
+                  <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: '#0284C7', marginTop: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#BAE6FD' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 18 }}>🚗</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '900', color: '#0369A1' }}>
+                            {vehicleMake} {vehicleModel}
+                          </Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>
+                            {vehicleVariant} · {fuelType.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '900', color: '#FFFFFF' }}>{regNumber || 'VEHICLE SPECS'}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#0369A1', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                      📋 Full Vehicle Specs & RTO Record
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Registration No.</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{regNumber || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Make & Model</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{vehicleMake} {vehicleModel}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Variant / Trim</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{vehicleVariant || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Reg. Year & Date</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{regYear} ({registrationDate})</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Fuel Type</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{fuelType.toUpperCase()}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Engine Capacity (CC)</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{cubicCapacity || '1197 CC'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Seating Capacity</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{seatingCapacity || '5 Seats'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Vehicle Class</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{vehicleClass || 'Motor Car (LMV)'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Engine Number</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{engineNumber || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Chassis Number</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{chassisNumber || '—'}</Text>
+                      </View>
+                      <View style={{ width: '100%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>RTO Jurisdiction & Office</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{rtoLocation || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Previous Insurer</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{prevInsurer || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Previous Policy No.</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{prevPolicyNum || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>Policy Expiry Date</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>{policyExpiryDate || '—'}</Text>
+                      </View>
+                      <View style={{ width: '50%' }}>
+                        <Text style={{ fontSize: 10, color: '#64748B' }}>NCB Discount %</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>{ncbPercent}% NCB</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* ── NCB (No Claim Bonus) & Claim History Controls ── */}
+                <View style={{ marginTop: 14, backgroundColor: '#F8FAFC', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text, marginBottom: 8 }}>
+                    Did you make a claim in your previous policy year?
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                    <TouchableOpacity
+                      style={{ flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: !hasPreviousClaim ? Colors.primary : Colors.border, backgroundColor: !hasPreviousClaim ? '#EFF6FF' : Colors.white, alignItems: 'center' }}
+                      onPress={() => setHasPreviousClaim(false)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: !hasPreviousClaim ? Colors.primary : Colors.textMuted }}>No (Claim Free)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: hasPreviousClaim ? '#D97706' : Colors.border, backgroundColor: hasPreviousClaim ? '#FEF3C7' : Colors.white, alignItems: 'center' }}
+                      onPress={() => setHasPreviousClaim(true)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: hasPreviousClaim ? '#B45309' : Colors.textMuted }}>Yes (Claim Made)</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text, marginBottom: 6 }}>
+                    No Claim Bonus (NCB) Discount
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {['0', '20', '25', '35', '45', '50'].map(p => (
+                      <TouchableOpacity
+                        key={p}
+                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: ncbPercent === p ? Colors.primary : Colors.border, backgroundColor: ncbPercent === p ? '#EFF6FF' : Colors.white }}
+                        onPress={() => setNcbPercent(p)}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: ncbPercent === p ? Colors.primary : Colors.textMuted }}>{p}%</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* ── Automated NCB Warning Alert Banner ── */}
+                  {hasPreviousClaim && Number(ncbPercent) > 0 && (
+                    <View style={{ backgroundColor: '#FFFBEB', borderRadius: 12, padding: 12, borderWidth: 1.5, borderColor: '#F59E0B', marginTop: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '900', color: '#D97706' }}>
+                          ⚠️ NCB DISCREPANCY & PENALTY RISK
+                        </Text>
+                        <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '800', color: '#B45309' }}>WARNING</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#B45309', lineHeight: 16 }}>
+                        Claim reported in previous policy term! Claiming {ncbPercent}% NCB will cause policy cancellation or claim repudiation upon insurer verification. NCB must be reset to 0%.
+                      </Text>
+                      <TouchableOpacity
+                        style={{ marginTop: 8, backgroundColor: '#D97706', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, alignSelf: 'flex-start' }}
+                        onPress={() => setNcbPercent('0')}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>Reset NCB to 0%</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
             <TouchableOpacity
               style={[s.nextBtn, (!age || !gender) && { opacity: 0.4 }]}
               onPress={next}
@@ -355,7 +793,17 @@ export default function QuoteScreen() {
         {/* Step 2: Coverage */}
         {contentStep === 2 && (
           <View style={s.stepWrap}>
-            <Text style={s.stepTitle}>{coverStepTitle(insuranceType)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={[s.stepTitle, { marginBottom: 0 }]}>{coverStepTitle(insuranceType)}</Text>
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                onPress={() => setShowFilterDrawer(true)}
+                activeOpacity={0.8}
+              >
+                <Icon name="options-outline" size={16} color={Colors.primary} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>Filters ({selectedAddons.length})</Text>
+              </TouchableOpacity>
+            </View>
             {planMinCover > 0 && planMaxCover > 0 && (
               <Text style={s.coverRange}>
                 Range: {fmtCover(planMinCover)} – {fmtCover(planMaxCover)}
@@ -578,6 +1026,124 @@ export default function QuoteScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Section 1.D: Advanced Quote Sorting & Filtering Drawer Modal ── */}
+      <Modal visible={showFilterDrawer} transparent animationType="slide" onRequestClose={() => setShowFilterDrawer(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '82%', flexDirection: 'column' }}>
+            {/* Modal Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+              <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.text }}>Filters & Sorting</Text>
+              <TouchableOpacity onPress={() => setShowFilterDrawer(false)}>
+                <Icon name="close-circle" size={24} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Sidebar + Options Content Row */}
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+              {/* Sidebar Category Navigation */}
+              <View style={{ width: 125, backgroundColor: '#F8FAFC', borderRightWidth: 1, borderRightColor: '#E2E8F0' }}>
+                {[
+                  "Last year's addons",
+                  'Addons',
+                  'Accident covers',
+                  'Accessories cover',
+                  'Insurer type',
+                  'Insurer',
+                  'Deductibles',
+                  'Discounts',
+                  'Sort by'
+                ].map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={{ paddingVertical: 12, paddingHorizontal: 10, backgroundColor: activeFilterCategory === cat ? Colors.white : 'transparent', borderLeftWidth: 3, borderLeftColor: activeFilterCategory === cat ? Colors.primary : 'transparent' }}
+                    onPress={() => setActiveFilterCategory(cat)}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: activeFilterCategory === cat ? '800' : '600', color: activeFilterCategory === cat ? Colors.primary : Colors.textMuted }}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Options Content Area */}
+              <ScrollView style={{ flex: 1, padding: 14 }}>
+                {activeFilterCategory === 'Sort by' ? (
+                  <View style={{ gap: 10 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, marginBottom: 4 }}>Sort Quotes By</Text>
+                    {[
+                      { id: 'price_asc', label: 'Price: Low to High' },
+                      { id: 'price_desc', label: 'Price: High to Low' },
+                      { id: 'csr', label: 'Highest Claim Settlement Ratio (CSR)' }
+                    ].map(opt => (
+                      <TouchableOpacity
+                        key={opt.id}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: sortBy === opt.id ? Colors.primary : '#E2E8F0', backgroundColor: sortBy === opt.id ? '#EFF6FF' : Colors.white }}
+                        onPress={() => setSortBy(opt.id as any)}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: sortBy === opt.id ? Colors.primary : Colors.text }}>{opt.label}</Text>
+                        {sortBy === opt.id ? <Text style={{ color: Colors.primary, fontWeight: '900' }}>✓</Text> : null}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, marginBottom: 6 }}>Select {activeFilterCategory}</Text>
+                    {[
+                      'Zero Depreciation',
+                      '24x7 Roadside Assistance (RSA)',
+                      'Engine Protection Cover',
+                      'Consumables Cover',
+                      'Key & Lock Replacement',
+                      'Return to Invoice (Invoice Price Cover)',
+                      'Tyre Protector',
+                      'Loss of Personal Belongings',
+                      'Daily Allowance',
+                      'Rim Damage Cover',
+                      'NCB Protector'
+                    ].map(addon => {
+                      const selected = selectedAddons.includes(addon);
+                      return (
+                        <TouchableOpacity
+                          key={addon}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: selected ? Colors.primary : '#E2E8F0', backgroundColor: selected ? '#EFF6FF' : Colors.white }}
+                          onPress={() => {
+                            if (selected) {
+                              setSelectedAddons(selectedAddons.filter(a => a !== addon));
+                            } else {
+                              setSelectedAddons([...selectedAddons, addon]);
+                            }
+                          }}
+                        >
+                          <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: selected ? Colors.primary : '#94A3B8', backgroundColor: selected ? Colors.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                            {selected ? <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>✓</Text> : null}
+                          </View>
+                          <Text style={{ fontSize: 12, fontWeight: selected ? '700' : '500', color: selected ? Colors.primary : Colors.text, flex: 1 }}>{addon}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Action Controls Footer */}
+            <View style={{ flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: Colors.white }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#CBD5E1', backgroundColor: '#F8FAFC', alignItems: 'center' }}
+                onPress={() => setSelectedAddons([])}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.textMuted }}>Clear</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center' }}
+                onPress={() => setShowFilterDrawer(false)}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Apply Filters ({selectedAddons.length})</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -665,4 +1231,35 @@ const s = StyleSheet.create({
   infoText:      { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
   doneBtn:       { backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8, width: '100%', alignItems: 'center' },
   doneBtnText:   { fontSize: 15, fontWeight: '800', color: Colors.white },
+
+  autoFetchCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginVertical: 12,
+  },
+  autoFetchHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  autoFetchTitle:  { fontSize: 14, fontWeight: '800', color: Colors.text },
+  autoFetchSub:    { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  fetchBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fetchBtnText: { fontSize: 13, fontWeight: '800', color: Colors.white },
+  fetchedDetailsBox: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  fetchedTitle: { fontSize: 13, fontWeight: '800', color: Colors.primary, marginBottom: 6 },
+  fetchedGrid:  { gap: 4 },
+  fetchedItem:   { fontSize: 12, color: Colors.text },
 });

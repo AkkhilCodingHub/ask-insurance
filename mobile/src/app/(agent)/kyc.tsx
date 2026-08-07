@@ -11,13 +11,13 @@ import { Colors } from '@/constants/theme';
 import { agentApi } from '@/lib/api';
 import { useAgent } from '@/context/agent';
 
-type DocType = 'appointment_letter' | 'aadhaar' | 'driving_license' | 'passport';
+type DocType = 'marksheet_10_12' | 'aadhaar' | 'pan' | 'appointment_letter';
 
 export default function AgentKycScreen() {
   const router = useRouter();
   const { agent, refreshAgent } = useAgent();
 
-  const [docType, setDocType] = useState<DocType>('appointment_letter');
+  const [docType, setDocType] = useState<DocType>('marksheet_10_12');
   const [file, setFile] = useState<{ uri: string; name: string; type: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,10 +153,10 @@ export default function AgentKycScreen() {
         <Text style={s.sectionLabel}>SELECT DOCUMENT TYPE</Text>
         <View style={s.docSelector}>
           {([
-            { id: 'appointment_letter', label: 'ASK Insurance Authorization / Appointment Letter (Official)' },
-            { id: 'aadhaar', label: 'Aadhaar Card' },
-            { id: 'driving_license', label: 'Driving License' },
-            { id: 'passport', label: 'Passport' }
+            { id: 'marksheet_10_12', label: '📄 10th / 12th Educational Marksheet (POSP Certification Proof)' },
+            { id: 'aadhaar', label: '🆔 Aadhaar Card (Front & Back Proof)' },
+            { id: 'pan', label: '💳 PAN Card (Tax & Payout Verification)' },
+            { id: 'appointment_letter', label: '📜 ASK Insurance Appointment Letter (Official)' }
           ] as const).map(item => {
             const active = docType === item.id;
             return (

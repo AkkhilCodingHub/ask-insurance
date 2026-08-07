@@ -100,10 +100,21 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
 
     const assignedAgentId = await getAssignedAgentForUser(userId);
 
+    const ncbValue = Number(details?.ncbPercentage || 0);
+    const hasClaim = Boolean(details?.hasPreviousClaim);
+    const ncbDiscrepancy = hasClaim && ncbValue > 0;
+
+    const ncbWarningAlert = ncbDiscrepancy ? {
+      warning: true,
+      code: 'NCB_DISCREPANCY',
+      title: '⚠️ NCB Discrepancy & Penalty Risk Warning Alert',
+      message: `Claim reported in previous policy year! Claiming ${ncbValue}% NCB will result in policy rejection or claim repudiation during verification. NCB reset to 0%.`
+    } : null;
+
     const quote = await prisma.quote.create({
       data: {
         type,
-        details:   JSON.stringify(details),
+        details:   JSON.stringify({ ...details, ...(ncbWarningAlert ? { ncbWarningAlert } : {}) }),
         providers: '[]',
         status:    'pending',
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
@@ -114,12 +125,13 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
 
     res.status(201).json({
       quote: {
-        id:        quote.id,
-        type:      quote.type,
-        status:    quote.status,
-        agentId:   quote.agentId,
-        createdAt: quote.createdAt,
-        message:   'Quote request submitted. Our advisor will contact you with the best quote within 24 hours.',
+        id:              quote.id,
+        type:            quote.type,
+        status:          quote.status,
+        agentId:         quote.agentId,
+        ncbWarningAlert,
+        createdAt:       quote.createdAt,
+        message:         'Quote request submitted. Our advisor will contact you with the best quote within 24 hours.',
       }
     });
   } catch (e) {

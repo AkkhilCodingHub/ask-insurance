@@ -157,12 +157,15 @@ router.get('/users', adminAuthenticate, async (req: Request, res: Response): Pro
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
+          customerCode: true,
           phone: true,
           name: true,
           email: true,
           city: true,
           state: true,
           createdAt: true,
+          agentId: true,
+          agent: { select: { id: true, name: true, email: true, agentCode: true } },
           _count: { select: { policies: true, claims: true } }
         }
       }),
@@ -175,6 +178,42 @@ router.get('/users', adminAuthenticate, async (req: Request, res: Response): Pro
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
     return;
+  }
+});
+
+router.post('/users/:userId/assign-agent', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.params.userId as string;
+    const { agentId } = z.object({ agentId: z.string().min(1) }).parse(req.body);
+
+    const agent = await prisma.admin.findUnique({ where: { id: agentId } });
+    if (!agent) {
+      res.status(404).json({ error: 'POSP Agent not found' });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { agentId },
+      select: {
+        id: true,
+        customerCode: true,
+        phone: true,
+        name: true,
+        email: true,
+        agentId: true,
+        agent: { select: { id: true, name: true, email: true, agentCode: true } }
+      }
+    });
+
+    res.json({ success: true, user: updatedUser, message: `Assigned POSP ${agent.name} to user` });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid agentId' });
+      return;
+    }
+    console.error('Error assigning agent:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
