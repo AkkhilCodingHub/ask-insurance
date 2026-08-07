@@ -195,6 +195,11 @@ export default function EditProfileScreen() {
               </Text>
             </View>
             <Text style={s.avatarHint}>Initials are generated from your name</Text>
+            <View style={{ marginTop: 8, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#BFDBFE' }}>
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>
+                Customer ID: {(user as any)?.customerCode || `ASK-CUST-${user?.id?.slice(-6)?.toUpperCase() || '849201'}`}
+              </Text>
+            </View>
           </View>
 
           {/* Personal info */}

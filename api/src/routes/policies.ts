@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireKyc } from '../middleware/auth';
 
+import { normalizeRegNumber } from './vehicles';
+
 const router = Router();
 
 const paramsSchema = z.object({ id: z.string().min(1) });
@@ -12,7 +14,38 @@ const createPolicySchema = z.object({
   provider: z.string().min(2),
   sumInsured: z.number().positive(),
   premium: z.number().nonnegative(),
+  registrationNumber: z.string().optional().transform((val) => val ? normalizeRegNumber(val) : undefined),
   durationDays: z.number().int().positive().optional()
+});
+
+// GET /api/policies/vehicle/:registrationNumber - List multi-class policies for a specific vehicle registration number
+router.get('/vehicle/:registrationNumber', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    const regNum = normalizeRegNumber(req.params.registrationNumber as string);
+
+    if (!regNum) {
+      res.status(400).json({ error: 'Valid registration number required' });
+      return;
+    }
+
+    const policies = await prisma.policy.findMany({
+      where: {
+        userId,
+        registrationNumber: { contains: regNum }
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        claims: true,
+        renewal: true
+      }
+    });
+
+    res.json({ registrationNumber: regNum, count: policies.length, policies });
+  } catch (error) {
+    console.error('Error fetching vehicle policies:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
@@ -85,6 +118,7 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
         provider: payload.provider,
         sumInsured: payload.sumInsured,
         premium: payload.premium,
+        registrationNumber: payload.registrationNumber ?? null,
         startDate: now,
         endDate: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
         userId

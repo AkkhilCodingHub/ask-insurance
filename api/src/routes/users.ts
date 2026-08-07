@@ -16,6 +16,64 @@ const updateProfileSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/).optional()
 });
 
+router.get('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        customerCode: true,
+        phone: true,
+        email: true,
+        name: true,
+        dateOfBirth: true,
+        gender: true,
+        address: true,
+        city: true,
+        state: true,
+        pincode: true,
+        kycStatus: true,
+        createdAt: true
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (!user.customerCode) {
+      const code = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { customerCode: code },
+        select: {
+          id: true,
+          customerCode: true,
+          phone: true,
+          email: true,
+          name: true,
+          dateOfBirth: true,
+          gender: true,
+          address: true,
+          city: true,
+          state: true,
+          pincode: true,
+          kycStatus: true,
+          createdAt: true
+        }
+      });
+      user = updated;
+    }
+
+    res.json({ user });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.put('/profile', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
@@ -31,6 +89,7 @@ router.put('/profile', authenticate, async (req: Request, res: Response): Promis
       data: updateData,
       select: {
         id: true,
+        customerCode: true,
         phone: true,
         name: true,
         email: true,

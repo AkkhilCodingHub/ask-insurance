@@ -17,8 +17,17 @@ interface AgentContextValue {
 const AgentContext = createContext<AgentContextValue | null>(null);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const [agent,   setAgent]   = useState<AgentAdmin | null>(null);
-  const [loading, setLoading] = useState(true);
+  const DEV_AGENT: AgentAdmin = {
+    id: 'cmsj5bfz30000eqyg2e1xjgck',
+    name: 'Rahul POSP Advisor',
+    email: 'agent@ask-insurance.in',
+    role: 'agent',
+    pospCode: 'AGT-1082',
+    phone: '9876543210',
+    isVerified: true
+  };
+  const [agent,   setAgent]   = useState<AgentAdmin | null>(__DEV__ ? DEV_AGENT : null);
+  const [loading, setLoading] = useState(false);
 
   // Restore session on mount
   useEffect(() => {
@@ -30,6 +39,16 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           const SecureStore = await import('expo-secure-store');
           await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
           setAgent(admin);
+        } else if (__DEV__) {
+          try {
+            const { token: t, admin: a } = await agentApi.login('agent@ask-insurance.in', 'Agent@12345');
+            await setAgentToken(t);
+            const SecureStore = await import('expo-secure-store');
+            await SecureStore.setItemAsync('agent_profile', JSON.stringify(a));
+            setAgent(a);
+          } catch (e) {
+            console.warn('[AgentProvider] dev auto login failed:', e);
+          }
         }
       } catch {
         try {
@@ -84,6 +103,9 @@ export function useAgent() {
   if (!ctx) throw new Error('useAgent must be used within AgentProvider');
   return ctx;
 }
+
+export const POSPProvider = AgentProvider;
+export const usePOSP = useAgent;
 
 // ── Multi-Language i18n ───────────────────────────────────────────────────────
 

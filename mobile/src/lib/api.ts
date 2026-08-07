@@ -4,29 +4,11 @@ import { Platform } from 'react-native';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
-  let url = process.env.EXPO_PUBLIC_API_URL;
-  if (__DEV__ && (!url || url.includes('onrender.com') || url.includes('bitopayments.com'))) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const host = hostUri.split(':')[0];
-      url = `http://${host}:4000`;
-    } else {
-      url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
-    }
-  }
-  if (!url) {
-    url = Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
-  }
-  if (Platform.OS === 'android' && (url.includes('localhost') || url.includes('127.0.0.1'))) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    const host = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
-    url = url.replace(/localhost|127\.0\.0\.1/, host);
-  }
-  return url;
+  return 'http://127.0.0.1:4000';
 }
 
-const BASE_URL = resolveBaseUrl();
-if (__DEV__) console.log('[API] base URL →', BASE_URL);
+const getBaseUrl = () => resolveBaseUrl();
+if (__DEV__) console.log('[API] base URL →', getBaseUrl());
 
 // ── Token storage ─────────────────────────────────────────────────────────────
 
@@ -114,7 +96,7 @@ async function attemptTokenRefresh(): Promise<string | null> {
   if (!refreshToken) return null;
 
   try {
-    const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const res = await fetch(`${getBaseUrl()}/api/auth/refresh`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ refreshToken }),
@@ -160,7 +142,7 @@ async function request<T>(
   }
 
   const method = options.method ?? 'GET';
-  const url    = `${BASE_URL}${path}`;
+  const url    = `${getBaseUrl()}${path}`;
   const t0     = Date.now();
 
   if (__DEV__) {
@@ -578,7 +560,7 @@ async function agentRequest<T>(path: string, options: RequestInit = {}): Promise
 }
 
 async function uploadForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
@@ -786,7 +768,7 @@ export const agentApi = {
     }),
 
   uploadKycDocument: async (
-    docType: 'appointment_letter' | 'aadhaar' | 'driving_license' | 'passport',
+    docType: string,
     fileUri: string,
     mimeType: string,
     fileName: string,
@@ -808,6 +790,8 @@ export const agentApi = {
       body:   JSON.stringify({ status, ...(notes ? { notes } : {}) }),
     }),
 };
+
+export const pospApi = agentApi;
 
 // ── KYC ───────────────────────────────────────────────────────────────────────
 
@@ -875,3 +859,81 @@ export const documentsApi = {
   deleteDocument: (id: string) =>
     request<{ success: boolean }>(`/api/documents/${id}`, { method: 'DELETE' }, true),
 };
+
+// ── Vehicles (Registration Number Lookup & Multi-Insurance Management) ────────
+
+export interface VehicleData {
+  id?: string;
+  registrationNumber: string;
+  vehicleType: 'car' | 'two_wheeler' | 'commercial';
+  make?: string;
+  model?: string;
+  variant?: string;
+  registrationYear?: number;
+  fuelType?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
+  ncbPercentage?: number;
+}
+
+export const vehiclesApi = {
+  getVehicles: () =>
+    request<{ vehicles: VehicleData[] }>('/api/vehicles', {}, true),
+
+  lookupByRegNumber: (registrationNumber: string) =>
+    request<{
+      registrationNumber: string;
+      vehicleFound: boolean;
+      vehicle: VehicleData | null;
+      policiesCount: number;
+      policies: any[];
+      quotesCount: number;
+      quotes: any[];
+    }>(`/api/vehicles/lookup/${encodeURIComponent(registrationNumber)}`, {}, false),
+
+  getPoliciesByVehicle: (registrationNumber: string) =>
+    request<{
+      registrationNumber: string;
+      count: number;
+      policies: any[];
+    }>(`/api/policies/vehicle/${encodeURIComponent(registrationNumber)}`, {}, true),
+
+  saveVehicle: (data: VehicleData) =>
+    request<{ vehicle: VehicleData }>('/api/vehicles', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }, true),
+};
+
+export interface EndorsementData {
+  id: string;
+  endorsementNumber: string;
+  type: string;
+  category: string;
+  requestedChanges: string;
+  status: 'pending' | 'approved' | 'rejected' | 'processed';
+  adminNotes?: string | null;
+  revisedDocumentUrl?: string | null;
+  createdAt: string;
+  policyId: string;
+  policy?: {
+    policyNumber: string;
+    provider: string;
+    type: string;
+  };
+}
+
+export const endorsementsApi = {
+  submit: (data: { policyId: string; category: string; requestedChanges: string; type?: string }) =>
+    request<{ endorsement: EndorsementData }>('/api/endorsements', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }, true),
+
+  list: () =>
+    request<{ endorsements: EndorsementData[] }>('/api/endorsements', {}, true),
+
+  getByPolicy: (policyId: string) =>
+    request<{ endorsements: EndorsementData[] }>(`/api/endorsements/policy/${policyId}`, {}, true),
+};
+

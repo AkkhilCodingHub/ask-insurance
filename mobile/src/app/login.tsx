@@ -14,6 +14,17 @@ import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useDialog } from '@/components/Dialog';
 
+export const POLICY_OPTIONS = [
+  { id: 'car', label: 'Car Insurance', emoji: '🚗', type: 'motor' },
+  { id: 'two_wheeler', label: 'Two Wheeler Insurance', emoji: '🛵', type: 'motor' },
+  { id: 'commercial', label: 'Commercial Vehicle', emoji: '🚛', type: 'motor' },
+  { id: 'health', label: 'Health Insurance', emoji: '🏥', type: 'health' },
+  { id: 'life', label: 'Life Insurance', emoji: '❤️', type: 'life' },
+  { id: 'travel', label: 'Travel Insurance', emoji: '✈️', type: 'travel' },
+  { id: 'home', label: 'Home Insurance', emoji: '🏠', type: 'home' },
+  { id: 'business', label: 'Business Insurance', emoji: '💼', type: 'business' },
+];
+
 export default function LoginScreen() {
   const router       = useRouter();
   const { sendOTP }  = useAuth();
@@ -26,6 +37,7 @@ export default function LoginScreen() {
   const [password,setPassword]= useState('');
   const [showPass,setShowPass]= useState(false);
   const [loading, setLoading] = useState(false);
+
   const inputRef = useRef<TextInput>(null);
 
   const isValidCustomer = phone.length === 10;
@@ -36,8 +48,8 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      await sendOTP(phone);
-      router.push('/otp');
+      sendOTP(phone);
+      router.push({ pathname: '/otp', params: { phone } } as any);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not send OTP. Please try again.';
       alert({ type: 'error', title: 'Error', message: msg });
@@ -93,10 +105,10 @@ export default function LoginScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.segBtn, mode === 'agent' && s.segBtnActive]}
-              onPress={() => setMode('agent')} activeOpacity={0.8}
+              onPress={() => router.push('/agent-login' as any)} activeOpacity={0.8}
             >
               <Icon name="shield-checkmark-outline" size={14} color={mode === 'agent' ? Colors.primary : 'rgba(255,255,255,0.7)'} />
-              <Text style={[s.segText, mode === 'agent' && s.segTextActive]}>Agent</Text>
+              <Text style={[s.segText, mode === 'agent' && s.segTextActive]}>POSP (Agent)</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -107,6 +119,8 @@ export default function LoginScreen() {
             <>
               <Text style={s.cardTitle}>Enter your mobile number</Text>
               <Text style={s.cardSub}>We'll send a one-time code to verify you</Text>
+
+
 
               <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={[af.inputRow, af.fieldGap]}>
                 <View style={af.prefix}>
@@ -151,11 +165,21 @@ export default function LoginScreen() {
                 {' '}&{' '}
                 <Text style={s.consentLink}>Privacy Policy</Text>
               </Text>
+
+              <TouchableOpacity
+                style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8 }}
+                onPress={() => router.push('/agent-login' as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.primary }}>
+                  💼 Are you a POSP Advisor? Sign in to Agent Portal →
+                </Text>
+              </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={s.cardTitle}>Agent Sign In</Text>
-              <Text style={s.cardSub}>Use your advisor credentials to access the portal</Text>
+              <Text style={s.cardTitle}>POSP Sign In</Text>
+              <Text style={s.cardSub}>Use your POSP advisor credentials to access the portal</Text>
 
               {/* ── Email — mirrors inputRow ── */}
               <View style={[af.inputRow, af.fieldGap]}>
@@ -213,10 +237,12 @@ export default function LoginScreen() {
                 }
               </TouchableOpacity>
 
-              <Text style={s.consent}>Licensed insurance advisors only</Text>
+              <Text style={s.consent}>Licensed POSP advisors only</Text>
             </>
           )}
         </View>
+
+
 
         {/* ── Footer ────────────────────────────────── */}
         <View style={s.footer}>
@@ -285,8 +311,34 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 32,
   },
-  cardTitle: { fontSize: 22, fontWeight: '900', color: Colors.text, letterSpacing: -0.4, marginBottom: 6 },
-  cardSub:   { fontSize: 14, color: Colors.textMuted, marginBottom: 28, lineHeight: 20 },
+  cardTitle: { fontSize: 22, fontWeight: '900', color: Colors.text, letterSpacing: -0.4, marginBottom: 4 },
+  cardSub:   { fontSize: 13, color: Colors.textMuted, marginBottom: 16, lineHeight: 18 },
+
+  policySelectLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  policyDropdown: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0',
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
+  },
+  policyDropdownLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  policyEmoji: { fontSize: 20 },
+  policyDropdownText: { fontSize: 15, fontWeight: '700', color: Colors.text },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 20, paddingBottom: 36,
+  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  modalHeaderTitle: { fontSize: 17, fontWeight: '800', color: Colors.text },
+  modalOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 8,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9',
+  },
+  modalOptionActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+  modalOptionText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
+  modalOptionTextActive: { fontWeight: '800', color: Colors.primary },
 
   flag:       { fontSize: 18 },
   prefixText: { fontSize: 15, fontWeight: '700', color: Colors.primary },

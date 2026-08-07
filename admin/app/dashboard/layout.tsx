@@ -23,7 +23,7 @@ const nav = [
   { label: "Files",      icon: HardDrive,        href: "/dashboard/files",               badge: false },
   { label: "Chat",       icon: Headphones,       href: "/dashboard/chat",                badge: true  },
   { label: "Analytics",  icon: BarChart3,        href: "/dashboard/analytics",          badge: false },
-  { label: "Agents",     icon: UserCog,          href: "/dashboard/agents",              badge: false },
+  { label: "POSP Advisors", icon: UserCog,          href: "/dashboard/agents",              badge: false },
   { label: "Brokerage",  icon: Percent,          href: "/dashboard/brokerage",          badge: false },
   { label: "Renewals",   icon: RefreshCcw,       href: "/dashboard/renewals",           badge: false },
   { label: "Templates",  icon: BookTemplate,     href: "/dashboard/settings/templates", badge: false },

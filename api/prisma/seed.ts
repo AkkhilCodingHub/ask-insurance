@@ -1309,7 +1309,7 @@ async function main() {
   console.log('\n🔐 Seeding admin...');
   const adminHash = await bcrypt.hash('Admin@123!', 12);
   await prisma.admin.create({
-    data: { name: 'ASK Admin', email: 'admin@ask-insurance.in', password: adminHash, role: 'super_admin' }
+    data: { name: 'ASK Admin', email: 'admin@ask-insurance.in', password: adminHash, role: 'superadmin' }
   });
   console.log('   ✓ admin@ask-insurance.in (Admin@123!)');
 

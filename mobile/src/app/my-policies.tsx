@@ -2,12 +2,13 @@ import React, { useEffect, useState, useCallback, useRef, type ComponentProps } 
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Modal, Animated, Dimensions, Platform,
-  StatusBar, Pressable,
+  StatusBar, Pressable, TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { policiesApi, ApiPolicy } from '@/lib/api';
+import { policiesApi, endorsementsApi, ApiPolicy, EndorsementData } from '@/lib/api';
+import { useDialog } from '@/components/Dialog';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
@@ -154,20 +155,62 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
   const insets  = useSafeAreaInsets();
   const slideY  = useRef(new Animated.Value(SCREEN_H)).current;
   const visible = !!policy;
+  const { alert } = useDialog();
+
+  const [endorsements, setEndorsements] = useState<EndorsementData[]>([]);
+  const [showEndorsementModal, setShowEndorsementModal] = useState(false);
+  const [category, setCategory] = useState('name_correction');
+  const [requestedChanges, setRequestedChanges] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadEndorsements = useCallback(async () => {
+    if (!policy) return;
+    try {
+      const res = await endorsementsApi.getByPolicy(policy.id);
+      setEndorsements(res.endorsements || []);
+    } catch {
+      // ignore
+    }
+  }, [policy]);
 
   useEffect(() => {
     if (visible) {
       Animated.spring(slideY, {
         toValue: 0, damping: 22, stiffness: 260, useNativeDriver: true,
       }).start();
+      loadEndorsements();
     } else {
       Animated.timing(slideY, {
         toValue: SCREEN_H, duration: 220, useNativeDriver: true,
       }).start();
     }
-  }, [visible, slideY]);
+  }, [visible, slideY, loadEndorsements]);
 
   if (!policy) return null;
+
+  const handleSubmitEndorsement = async () => {
+    if (!policy || requestedChanges.trim().length < 5) {
+      alert({ type: 'warning', title: 'Invalid Request', message: 'Please describe your requested changes (at least 5 characters).' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await endorsementsApi.submit({
+        policyId: policy.id,
+        category,
+        requestedChanges: requestedChanges.trim()
+      });
+      alert({ type: 'success', title: 'Endorsement Submitted', message: 'Your policy endorsement request has been sent for admin review.' });
+      setShowEndorsementModal(false);
+      setRequestedChanges('');
+      loadEndorsements();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not submit endorsement request';
+      alert({ type: 'error', title: 'Error', message: msg });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const type   = TYPE_META[policy.type] ?? { color: '#1580FF', lightBg: '#EFF6FF', emoji: '📋', label: policy.type };
   const days   = daysLeft(policy.endDate);
@@ -264,6 +307,56 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
               </View>
             </View>
 
+            {/* Feature 5: Policy Endorsement & Revised Policy Downloads */}
+            <View style={d.section}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={d.sectionTitle}>Policy Endorsements</Text>
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  onPress={() => setShowEndorsementModal(true)}
+                >
+                  <Icon name="create-outline" size={14} color={Colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>Request Endorsement</Text>
+                </TouchableOpacity>
+              </View>
+
+              {endorsements.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  {endorsements.map((end) => (
+                    <View key={end.id} style={d.endorsementItem}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>
+                            {end.endorsementNumber} ({end.category.replace('_', ' ').toUpperCase()})
+                          </Text>
+                          <View style={[d.statusBadge, end.status === 'approved' ? d.statusApproved : d.statusPending]}>
+                            <Text style={d.statusBadgeText}>{end.status.toUpperCase()}</Text>
+                          </View>
+                        </View>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 4 }}>
+                          Changes: {end.requestedChanges}
+                        </Text>
+                        {!!end.revisedDocumentUrl && (
+                          <TouchableOpacity
+                            style={d.downloadRevisedBtn}
+                            onPress={() => WebBrowser.openBrowserAsync(end.revisedDocumentUrl!)}
+                            activeOpacity={0.8}
+                          >
+                            <Icon name="download-outline" size={14} color="#fff" />
+                            <Text style={d.downloadRevisedBtnText}>Download Revised Policy PDF</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={d.noEndorsementBox}>
+                  <Text style={d.noDocText}>No endorsements requested for this policy</Text>
+                </View>
+              )}
+            </View>
+
             {/* Payment */}
             <View style={d.section}>
               <Text style={d.sectionTitle}>Payment</Text>
@@ -279,17 +372,6 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
                 </View>
               </View>
             </View>
-
-            {/* Admin notes */}
-            {!!policy.notes && (
-              <View style={d.section}>
-                <Text style={d.sectionTitle}>Note from Insurer</Text>
-                <View style={d.noteBox}>
-                  <Icon name="information-circle-outline" size={15} color="#1580FF" />
-                  <Text style={d.noteText}>{policy.notes}</Text>
-                </View>
-              </View>
-            )}
 
             {/* Document */}
             <View style={d.section}>
@@ -319,6 +401,62 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
           </View>
         </ScrollView>
       </Animated.View>
+
+      {/* Endorsement Request Modal */}
+      <Modal visible={showEndorsementModal} transparent animationType="fade">
+        <Pressable style={d.modalBackdrop} onPress={() => setShowEndorsementModal(false)}>
+          <View style={d.modalBox}>
+            <Text style={d.modalTitle}>Request Policy Endorsement</Text>
+            <Text style={d.modalSub}>Specify the correction or policy change required</Text>
+
+            <Text style={d.inputLabel}>Endorsement Category</Text>
+            <View style={d.categoryRow}>
+              {[
+                { id: 'name_correction', label: 'Name' },
+                { id: 'address_update', label: 'Address' },
+                { id: 'nominee_change', label: 'Nominee' },
+                { id: 'vehicle_reg_update', label: 'Vehicle' },
+                { id: 'sum_insured_change', label: 'Cover Sum' }
+              ].map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[d.catPill, category === cat.id && d.catPillActive]}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <Text style={[d.catText, category === cat.id && d.catTextActive]}>{cat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={d.inputLabel}>Requested Changes / Details</Text>
+            <TextInput
+              style={d.textArea}
+              placeholder="e.g. Correct policyholder name to Rajesh Kumar Sharma..."
+              placeholderTextColor={Colors.textLight}
+              value={requestedChanges}
+              onChangeText={setRequestedChanges}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                style={d.cancelModalBtn}
+                onPress={() => setShowEndorsementModal(false)}
+              >
+                <Text style={d.cancelModalText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={d.submitModalBtn}
+                onPress={handleSubmitEndorsement}
+                disabled={submitting}
+              >
+                <Text style={d.submitModalText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 }
@@ -350,6 +488,14 @@ function PolicyCard({ policy, onPress }: { policy: ApiPolicy; onPress: () => voi
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={c.provider} numberOfLines={1}>{policy.provider}</Text>
             <Text style={c.policyNum}>{policy.policyNumber}</Text>
+            {!!(policy as any).registrationNumber && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                <Icon name="car" size={12} color={type.color} />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: type.color, letterSpacing: 0.5 }}>
+                  {(policy as any).registrationNumber}
+                </Text>
+              </View>
+            )}
           </View>
           <View style={c.statusTagSlot}>
             <StatusTag statusKey={policy.status} />
@@ -454,6 +600,7 @@ export default function MyPoliciesScreen() {
   const [activeTab,  setActiveTab]  = useState<Tab>('All');
   const [error,      setError]      = useState<string | null>(null);
   const [selected,   setSelected]   = useState<ApiPolicy | null>(null);
+  const [searchReg,  setSearchReg]  = useState('');
 
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -478,11 +625,21 @@ export default function MyPoliciesScreen() {
     expiring: policies.filter(p => p.status === 'active' && daysLeft(p.endDate) <= 30 && daysLeft(p.endDate) > 0).length,
   };
 
-  const filtered = activeTab === 'All'
+  let filtered = activeTab === 'All'
     ? policies
     : activeTab === 'Claimed'
     ? policies.filter(p => p.status === 'claimed' || p.status === 'settled')
     : policies.filter(p => p.status === activeTab.toLowerCase());
+
+  if (searchReg.trim()) {
+    const q = searchReg.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    filtered = filtered.filter(p => {
+      const reg = (p as any).registrationNumber?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+      const num = p.policyNumber.toUpperCase();
+      const prov = p.provider.toUpperCase();
+      return reg.includes(q) || num.includes(q) || prov.includes(q);
+    });
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -519,6 +676,24 @@ export default function MyPoliciesScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.primary} />}
         >
+          {/* ── Vehicle Reg Number Search Bar ── */}
+          <View style={s.searchContainer}>
+            <Icon name="car-outline" size={20} color={Colors.primary} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Search by Vehicle Reg Number (e.g. DL01AB1234)..."
+              placeholderTextColor={Colors.textLight}
+              value={searchReg}
+              onChangeText={setSearchReg}
+              autoCapitalize="characters"
+            />
+            {!!searchReg && (
+              <TouchableOpacity onPress={() => setSearchReg('')}>
+                <Icon name="close-circle" size={18} color={Colors.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* ── Stats strip ── */}
           {policies.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -603,6 +778,26 @@ const s = StyleSheet.create({
   retryText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
   content:    { paddingTop: 12, paddingBottom: 56, paddingHorizontal: 20 },
+
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    padding: 0,
+  },
 
   statsScroll:{ flexGrow: 0, marginTop: 4 },
   statsRow:   { gap: 12, paddingRight: 4 },
@@ -724,6 +919,60 @@ const d = StyleSheet.create({
   docBtnSub:  { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   noDocBox:   { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, borderRadius: 12, backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border },
   noDocText:  { fontSize: 13, color: Colors.textLight },
+
+  endorsementItem: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  noEndorsementBox: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.bg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusPending: { backgroundColor: '#FEF3C7' },
+  statusApproved: { backgroundColor: '#D1FAE5' },
+  statusBadgeText: { fontSize: 9, fontWeight: '800', color: Colors.text },
+  downloadRevisedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  downloadRevisedBtnText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalBox: { width: '100%', backgroundColor: Colors.white, borderRadius: 20, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.text },
+  modalSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2, marginBottom: 14 },
+  inputLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, marginTop: 10, marginBottom: 6, textTransform: 'uppercase' },
+  categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  catPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bg },
+  catPillActive: { borderColor: Colors.primary, backgroundColor: '#EFF6FF' },
+  catText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
+  catTextActive: { fontWeight: '800', color: Colors.primary },
+  textArea: {
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, padding: 12,
+    fontSize: 13, color: Colors.text, height: 80, textAlignVertical: 'top', backgroundColor: '#F8FAFC',
+  },
+  cancelModalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  cancelModalText: { fontSize: 14, fontWeight: '700', color: Colors.textMuted },
+  submitModalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center' },
+  submitModalText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 });
 
 const e = StyleSheet.create({

@@ -95,7 +95,7 @@ export default function ProfileTab() {
   const handlePerformLinkAgent = async (codeToLink?: string) => {
     const targetCode = (codeToLink ?? agentCodeInput).trim();
     if (!targetCode) {
-      Alert.alert('Agent Code Required', 'Please enter a valid agent code (e.g. AGT-1082).');
+      Alert.alert('POSP Code Required', 'Please enter a valid POSP code (e.g. AGT-1082).');
       return;
     }
     setLinking(true);
@@ -103,9 +103,9 @@ export default function ProfileTab() {
       const res = await paymentsApi.linkAgent(targetCode);
       setLinkModalVisible(false);
       setAgentCodeInput('');
-      Alert.alert('Agent Linked!', res.message || `Successfully linked to Agent ${res.agent.name}`);
+      Alert.alert('POSP Linked!', res.message || `Successfully linked to POSP Advisor ${res.agent.name}`);
     } catch (e: any) {
-      Alert.alert('Link Failed', e.message || 'Invalid agent code. Please try again.');
+      Alert.alert('Link Failed', e.message || 'Invalid POSP code. Please try again.');
     } finally {
       setLinking(false);
     }
@@ -301,8 +301,8 @@ export default function ProfileTab() {
           <View style={s.menuDivider} />
           <MenuRow
             icon="qr-code-outline"
-            label="Link Insurance Agent"
-            sub="Scan QR code or enter agent code"
+            label="Link POSP Advisor"
+            sub="Scan QR code or enter POSP code"
             onPress={() => setLinkModalVisible(true)}
           />
           <View style={s.menuDivider} />
@@ -334,6 +334,20 @@ export default function ProfileTab() {
           <Text style={s.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[s.logoutBtn, { marginTop: 10, borderColor: Colors.primary, backgroundColor: Colors.primary + '10' }]}
+          onPress={async () => {
+            await logout();
+            const { clearToken } = await import('@/lib/api');
+            await clearToken();
+            router.push('/agent-login' as any);
+          }}
+          activeOpacity={0.85}
+        >
+          <Icon name="briefcase-outline" size={18} color={Colors.primary} />
+          <Text style={[s.logoutText, { color: Colors.primary }]}>Switch to POSP Advisor Portal</Text>
+        </TouchableOpacity>
+
         <Text style={s.version}>ASK Insurance Broker · v1.0.0{'\n'}IRDAI Licensed · Reg. No. XXXXX</Text>
       </ScrollView>
 
@@ -342,14 +356,14 @@ export default function ProfileTab() {
         <View style={mStyle.overlay}>
           <View style={[mStyle.modalCard, { backgroundColor: colors.card }]}>
             <View style={mStyle.modalHeader}>
-              <Text style={[mStyle.modalTitle, { color: colors.text }]}>Link Insurance Agent</Text>
+              <Text style={[mStyle.modalTitle, { color: colors.text }]}>Link POSP Advisor</Text>
               <TouchableOpacity onPress={() => setLinkModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Icon name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             <Text style={[mStyle.modalSub, { color: colors.textMuted }]}>
-              Enter your advisor's Agent Code (e.g. AGT-1082) or tap below to auto-link an active advisor on Simulator:
+              Enter your POSP Advisor's Code (e.g. AGT-1082) or tap below to auto-link an active POSP on Simulator:
             </Text>
 
             <TextInput
@@ -372,7 +386,7 @@ export default function ProfileTab() {
                 {linking ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={mStyle.primaryBtnText}>Link Agent Code</Text>
+                  <Text style={mStyle.primaryBtnText}>Link POSP Code</Text>
                 )}
               </TouchableOpacity>
 

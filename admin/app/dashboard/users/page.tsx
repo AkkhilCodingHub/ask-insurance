@@ -452,6 +452,11 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [assignModalUser, setAssignModalUser] = useState<AdminUser | null>(null);
+  const [agentsList, setAgentsList] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   function goToChat(userId: string) {
     router.push(`/dashboard/chat?userId=${userId}`);
   }
@@ -460,8 +465,12 @@ export default function UsersPage() {
     async function loadUsers() {
       try {
         setLoading(true);
-        const response = await adminApi.getUsers(1, 100); // Get all users for now
+        const [response, agRes] = await Promise.all([
+          adminApi.getUsers(1, 100),
+          adminApi.getAdminList().catch(() => ({ admins: [] }))
+        ]);
         setUsers(response.users);
+        setAgentsList(agRes.admins || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load users");
       } finally {
@@ -470,6 +479,20 @@ export default function UsersPage() {
     }
     loadUsers();
   }, []);
+
+  const handleAssignAgent = async () => {
+    if (!assignModalUser || !selectedAgentId) return;
+    setAssigning(true);
+    try {
+      const res = await (adminApi as any).assignAgentToUser(assignModalUser.id, selectedAgentId);
+      setUsers(prev => prev.map(u => u.id === assignModalUser.id ? { ...u, agentId: selectedAgentId, agent: res.user.agent } : u));
+      setAssignModalUser(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to assign POSP');
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
@@ -519,7 +542,7 @@ export default function UsersPage() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--bg)" }}>
-              {["User", "Phone", "Policies", "Claims", "Joined", ""].map((h, i) => (
+              {["User", "Phone", "Assigned POSP", "Policies", "Claims", "Joined", "Actions"].map((h, i) => (
                 <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
@@ -536,11 +559,20 @@ export default function UsersPage() {
                     </div>
                     <div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{u.name ?? u.phone}</p>
-                      <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{u.email}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{u.email} {u.customerCode ? `• ${u.customerCode}` : ''}</p>
                     </div>
                   </div>
                 </td>
                 <td style={{ padding: "14px 16px", fontSize: 13, color: "var(--text-muted)" }}>+91 {u.phone}</td>
+                <td style={{ padding: "14px 16px" }}>
+                  {u.agent ? (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 100, background: "#EFF6FF", color: "var(--primary)" }}>
+                      👤 {u.agent.name}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Unassigned</span>
+                  )}
+                </td>
                 <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u._count?.policies || 0}</td>
                 <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--text)", textAlign: "center" }}>{u._count?.claims || 0}</td>
                 <td style={{ padding: "14px 16px", fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{new Date(u.createdAt).toLocaleDateString()}</td>
@@ -549,6 +581,10 @@ export default function UsersPage() {
                     <button onClick={() => setSelected(u)}
                       style={{ padding: "6px 14px", background: "var(--primary-light)", border: "none", borderRadius: 7, color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                       View
+                    </button>
+                    <button onClick={() => { setAssignModalUser(u); setSelectedAgentId(u.agentId || (agentsList[0]?.id ?? "")); }}
+                      style={{ padding: "6px 12px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, color: "var(--primary)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      Assign POSP
                     </button>
                     <button onClick={() => goToChat(u.id)}
                       style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "#ECFDF5", border: "none", borderRadius: 7, color: "#059669", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
@@ -560,13 +596,41 @@ export default function UsersPage() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: "center", padding: "48px 24px", color: "var(--text-muted)" }}>
-            <Search size={36} color="var(--border)" style={{ marginBottom: 10 }} />
-            <p style={{ fontWeight: 600 }}>No users found</p>
-          </div>
-        )}
       </div>
+
+      {/* POSP Assignment Modal */}
+      {assignModalUser && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+            <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", marginBottom: 4 }}>Assign POSP Advisor</h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Select POSP advisor to manage customer <strong>{assignModalUser.name || assignModalUser.phone}</strong></p>
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", display: "block", marginBottom: 6 }}>POSP Advisor</label>
+            <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontSize: 14, color: "var(--text)", marginBottom: 20 }}>
+              {agentsList.map(a => (
+                <option key={a.id} value={a.id}>{a.name} ({a.email})</option>
+              ))}
+            </select>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setAssignModalUser(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)", background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={handleAssignAgent} disabled={assigning || !selectedAgentId} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "var(--primary)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                {assigning ? "Assigning..." : "Confirm POSP Assignment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: "48px 24px", color: "var(--text-muted)" }}>
+          <Search size={36} color="var(--border)" style={{ marginBottom: 10 }} />
+          <p style={{ fontWeight: 600 }}>No users found</p>
+        </div>
+      )}
 
       {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} onChat={goToChat} />}
     </div>
