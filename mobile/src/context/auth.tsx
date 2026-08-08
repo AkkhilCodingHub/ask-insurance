@@ -64,6 +64,7 @@ async function savePushToken() {
 
 export interface AuthUser {
   id:              string;
+  customerCode?:   string;
   name:            string;
   phone:           string;
   email?:          string;
@@ -102,6 +103,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function mapApiUser(u: ApiUser): AuthUser {
   return {
     id:              u.id,
+    customerCode:    u.customerCode ?? undefined,
     name:            u.name ?? u.phone,
     phone:           u.phone,
     email:           u.email       ?? undefined,

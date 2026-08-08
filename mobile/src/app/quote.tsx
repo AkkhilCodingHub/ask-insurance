@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { quotesApi, vehiclesApi, ApiError } from '@/lib/api';
+import { quotesApi, vehiclesApi, VehicleData, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
@@ -222,7 +222,7 @@ export default function QuoteScreen() {
   const router   = useRouter();
   const { user } = useAuth();
   const { alert } = useDialog();
-  const params   = useLocalSearchParams<{ planId?: string; type?: string; planName?: string; minCover?: string; maxCover?: string }>();
+  const params   = useLocalSearchParams<{ planId?: string; type?: string; subType?: string; category?: string; planName?: string; regNumber?: string; minCover?: string; maxCover?: string }>();
 
   const typeFromPlan = params.type ?? '';
   const planMinCover = params.minCover ? Number(params.minCover) : 0;

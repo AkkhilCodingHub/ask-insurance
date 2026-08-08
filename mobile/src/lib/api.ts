@@ -4,7 +4,11 @@ import { Platform } from 'react-native';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
-  return 'http://127.0.0.1:4000';
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && envUrl.startsWith('http')) {
+    return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
+  }
+  return 'https://ask-insurance-api-production.up.railway.app';
 }
 
 const getBaseUrl = () => resolveBaseUrl();
@@ -237,6 +241,7 @@ async function request<T>(
 
 export interface ApiUser {
   id:              string;
+  customerCode?:   string | null;
   phone:           string;
   name:            string | null;
   email:           string | null;
@@ -581,6 +586,9 @@ export interface AgentAdmin {
   email: string;
   role:  string;
   agentCode?:          string | null;
+  pospCode?:           string | null;
+  phone?:              string | null;
+  isVerified?:         boolean;
   kycStatus?:          string;
   kycDocType?:         string | null;
   kycDocUrl?:          string | null;
