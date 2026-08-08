@@ -12,6 +12,8 @@ const router = Router();
 
 import { generateCustomerId } from '../lib/idGenerator';
 
+const cleanPhone = (val: string) => val.replace(/\D/g, '').slice(-10);
+
 const resolvePhoneOrCustomerCode = async (rawInput: string): Promise<string> => {
   const trimmed = rawInput.trim();
   const uppercaseInput = trimmed.toUpperCase();
