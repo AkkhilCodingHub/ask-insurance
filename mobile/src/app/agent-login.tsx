@@ -70,14 +70,16 @@ export default function AgentLoginScreen() {
                 <Icon name="mail-outline" size={18} color={Colors.primary} />
               </View>
               <TextInput
-                style={af.input}
-                placeholder="advisor@example.com or AS849102"
-                placeholderTextColor={Colors.textLight}
+                style={s.agentInput}
+                placeholder="Email or POSP ID"
+                placeholderTextColor={Colors.textMuted}
                 value={email}
                 onChangeText={v => { setEmail(v); setError(''); }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                numberOfLines={1}
+                multiline={false}
               />
             </View>
 
@@ -87,7 +89,7 @@ export default function AgentLoginScreen() {
                 <Icon name="lock-closed-outline" size={18} color={Colors.primary} />
               </View>
               <TextInput
-                style={af.input}
+                style={s.agentInput}
                 placeholder="••••••••"
                 placeholderTextColor={Colors.textLight}
                 value={password}
@@ -149,6 +151,14 @@ const s = StyleSheet.create({
   },
   form:  { gap: 4 },
   label: { fontSize: 10, fontWeight: '800', color: Colors.textMuted, letterSpacing: 1, marginBottom: 6 },
+  agentInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
   eyeBtn: { paddingRight: 14, paddingVertical: 16, paddingLeft: 4 },
 
   errBox: {
