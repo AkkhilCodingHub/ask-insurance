@@ -1931,11 +1931,24 @@ router.get('/agents', adminAuthenticate, superadminOnly, async (_req: Request, r
     const agents = await prisma.admin.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, name: true, email: true, role: true, isActive: true, createdAt: true, storageUsed: true,
+        id: true, name: true, email: true, role: true, agentCode: true, isActive: true, createdAt: true, storageUsed: true,
         kycStatus: true, kycDocType: true, kycDocUrl: true, kycSubmittedAt: true, kycRejectionReason: true, kycVerifiedAt: true
       },
     });
-    res.json({ agents: agents.map(a => ({ ...a, storageUsed: Number(a.storageUsed) })) });
+
+    const updatedAgents = await Promise.all(agents.map(async (a) => {
+      let code = a.agentCode;
+      if (!code || code.startsWith('AGT-')) {
+        code = await generateAgentId();
+        await prisma.admin.update({
+          where: { id: a.id },
+          data: { agentCode: code }
+        });
+      }
+      return { ...a, agentCode: code, storageUsed: Number(a.storageUsed) };
+    }));
+
+    res.json({ agents: updatedAgents });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Internal server error' });
