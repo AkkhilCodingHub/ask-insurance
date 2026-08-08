@@ -129,10 +129,10 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleSubmit}>
-            {/* Email */}
+            {/* Email or POSP ID */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-                Email address
+                Email address or POSP ID (AS...)
               </label>
               <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px solid var(--border)", borderRadius: 10, padding: "0 14px", height: 46, background: "var(--bg)", transition: "border-color 0.15s" }}
                 onFocusCapture={(e) => (e.currentTarget.style.borderColor = "var(--primary)")}
@@ -140,10 +140,10 @@ export default function LoginPage() {
               >
                 <Mail size={16} color="var(--text-muted)" />
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
+                  placeholder="your@email.com or AS849102"
                   style={{ flex: 1, border: "none", outline: "none", fontSize: 14, color: "var(--text)", background: "transparent" }}
                 />
               </div>

@@ -68,14 +68,14 @@ export default function AgentLoginScreen() {
           {/* Form */}
           <View style={s.formCard}>
           <View style={s.form}>
-            <Text style={s.label}>EMAIL</Text>
+            <Text style={s.label}>EMAIL OR POSP ID (AS...)</Text>
             <View style={[af.inputRow, af.fieldGap]}>
               <View style={af.prefix}>
                 <Icon name="mail-outline" size={18} color={Colors.primary} />
               </View>
               <TextInput
                 style={af.input}
-                placeholder="advisor@example.com"
+                placeholder="advisor@example.com or AS849102"
                 placeholderTextColor={Colors.textLight}
                 value={email}
                 onChangeText={v => { setEmail(v); setError(''); }}
