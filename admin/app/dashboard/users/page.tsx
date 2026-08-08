@@ -496,7 +496,7 @@ export default function UsersPage() {
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return !q || (u.name ?? "").toLowerCase().includes(q) || u.phone.includes(q) || (u.email && u.email.toLowerCase().includes(q));
+    return !q || (u.name ?? "").toLowerCase().includes(q) || u.phone.includes(q) || (u.email && u.email.toLowerCase().includes(q)) || (u.customerCode && u.customerCode.toLowerCase().includes(q));
   });
 
   if (loading) {

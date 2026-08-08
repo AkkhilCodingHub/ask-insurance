@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
+import { generateCustomerId } from '../lib/idGenerator';
 
 const router = Router();
 
@@ -43,8 +44,8 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    if (!user.customerCode) {
-      const code = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+    if (!user.customerCode || user.customerCode.startsWith('ASK-CUST-')) {
+      const code = await generateCustomerId();
       const updated = await prisma.user.update({
         where: { id: userId },
         data: { customerCode: code },

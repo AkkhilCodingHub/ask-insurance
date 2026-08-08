@@ -10,16 +10,31 @@ import { getAuth } from 'firebase-admin/auth';
 
 const router = Router();
 
-const cleanPhone = (val: string) => val.replace(/\D/g, '').slice(-10);
+import { generateCustomerId } from '../lib/idGenerator';
 
-const sendOtpSchema = z.object({
-  phone: z.string().transform(cleanPhone).pipe(z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number'))
-});
+const resolvePhoneOrCustomerCode = async (rawInput: string): Promise<string> => {
+  const trimmed = rawInput.trim();
+  const uppercaseInput = trimmed.toUpperCase();
+  
+  // Check if input matches Customer ID format (e.g. CU849201 or CU-849201)
+  if (uppercaseInput.startsWith('CU')) {
+    const userByCode = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { customerCode: uppercaseInput },
+          { customerCode: trimmed },
+          { customerCode: uppercaseInput.replace(/^CU-?/, 'CU') }
+        ]
+      }
+    });
+    if (userByCode && userByCode.phone) {
+      return userByCode.phone;
+    }
+  }
 
-const verifyOtpSchema = z.object({
-  phone: z.string().transform(cleanPhone).pipe(z.string().regex(/^[6-9]\d{9}$/, 'Invalid phone number')),
-  otp: z.string().length(6, 'OTP must be 6 digits')
-});
+  // Otherwise clean as phone number
+  return cleanPhone(trimmed);
+};
 
 export const autoAssignAgentToUser = async (userId: string) => {
   try {
@@ -46,16 +61,26 @@ export const autoAssignAgentToUser = async (userId: string) => {
 
 router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone } = sendOtpSchema.parse(req.body);
+    const rawInput = String(req.body.phone || req.body.identifier || req.body.customerCode || '').trim();
+    if (!rawInput) {
+      res.status(400).json({ error: 'Phone number or Customer ID is required' });
+      return;
+    }
+
+    const phone = await resolvePhoneOrCustomerCode(rawInput);
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Invalid phone number or Customer ID' });
+      return;
+    }
 
     let user = await prisma.user.findUnique({ where: { phone } });
     const isNewUser = !user;
 
     if (!user) {
-      const customerCode = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+      const customerCode = await generateCustomerId();
       user = await prisma.user.create({ data: { phone, customerCode } });
-    } else if (!user.customerCode) {
-      const customerCode = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+    } else if (!user.customerCode || user.customerCode.startsWith('ASK-CUST-')) {
+      const customerCode = await generateCustomerId();
       user = await prisma.user.update({ where: { id: user.id }, data: { customerCode } });
     }
 
@@ -64,9 +89,9 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     }
 
     const otp = await createOtpChallenge(phone, user.id);
-    console.log(`OTP for ${phone}: ${otp}`);
+    console.log(`OTP for ${phone} (Customer ID: ${user.customerCode}): ${otp}`);
 
-    res.json({ success: true, message: 'OTP sent successfully', isNewUser });
+    res.json({ success: true, message: 'OTP sent successfully', isNewUser, customerCode: user.customerCode });
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -81,7 +106,19 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/verify-otp', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone, otp } = verifyOtpSchema.parse(req.body);
+    const rawInput = String(req.body.phone || req.body.identifier || req.body.customerCode || '').trim();
+    const otp = String(req.body.otp || '').trim();
+
+    if (!rawInput || !otp || otp.length !== 6) {
+      res.status(400).json({ error: 'Phone number/Customer ID and 6-digit OTP are required' });
+      return;
+    }
+
+    const phone = await resolvePhoneOrCustomerCode(rawInput);
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Invalid phone number or Customer ID' });
+      return;
+    }
 
     const verifyResult = await verifyOtpChallenge(phone, otp);
     if (!verifyResult.success) {
@@ -91,7 +128,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
 
     let user = await prisma.user.findUnique({ where: { phone } });
     if (!user) {
-      const customerCode = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+      const customerCode = await generateCustomerId();
       user = await prisma.user.create({
         data: {
           phone,
@@ -101,8 +138,8 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
       await autoAssignAgentToUser(user.id);
     }
 
-    if (!user.customerCode) {
-      const customerCode = `ASK-CUST-${Math.floor(100000 + Math.random() * 900000)}`;
+    if (!user.customerCode || user.customerCode.startsWith('ASK-CUST-')) {
+      const customerCode = await generateCustomerId();
       user = await prisma.user.update({ where: { id: user.id }, data: { customerCode } });
     }
 

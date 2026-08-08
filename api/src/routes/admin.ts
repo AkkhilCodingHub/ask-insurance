@@ -47,14 +47,31 @@ const adminAuthenticate = async (req: Request, res: Response, next: () => void):
   }
 };
 
+import { generateAgentId } from '../lib/idGenerator';
+
 // ── Auth ───────────────────────────────────────────────────────────────────────
 router.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = z
-      .object({ email: z.string().email(), password: z.string().min(6) })
-      .parse(req.body);
+    const rawIdentifier = String(req.body.identifier || req.body.email || '').trim();
+    const password = String(req.body.password || '').trim();
 
-    const admin = await prisma.admin.findUnique({ where: { email } });
+    if (!rawIdentifier || !password) {
+      res.status(400).json({ error: 'Email/POSP ID and password are required' });
+      return;
+    }
+
+    const uppercaseInput = rawIdentifier.toUpperCase();
+    let admin = await prisma.admin.findFirst({
+      where: {
+        OR: [
+          { email: rawIdentifier.toLowerCase() },
+          { agentCode: uppercaseInput },
+          { agentCode: rawIdentifier },
+          { agentCode: uppercaseInput.replace(/^AS-?/, 'AS') }
+        ]
+      }
+    });
+
     if (!admin || !admin.isActive) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -71,11 +88,19 @@ router.post('/auth/login', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    if (!admin.agentCode || admin.agentCode.startsWith('AGT-')) {
+      const newAgentCode = await generateAgentId();
+      admin = await prisma.admin.update({
+        where: { id: admin.id },
+        data: { agentCode: newAgentCode }
+      });
+    }
+
     const token = createAuthToken({ userId: admin.id, phone: admin.email });
 
     res.json({
       token,
-      admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role }
+      admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role, agentCode: admin.agentCode }
     });
     return;
   } catch (error) {
@@ -1931,9 +1956,10 @@ router.post('/agents', adminAuthenticate, superadminOnly, async (req: Request, r
     if (existing) { res.status(409).json({ error: 'An agent with this email already exists' }); return; }
 
     const hashed = password ? await bcrypt.hash(password, 12) : null;
+    const agentCode = await generateAgentId();
     const agent  = await prisma.admin.create({
-      data: { name, email, password: hashed, role },
-      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+      data: { name, email, password: hashed, role, agentCode },
+      select: { id: true, name: true, email: true, role: true, agentCode: true, isActive: true, createdAt: true },
     });
     const adminId = (req as any).adminId;
     await logActivity(adminId, 'CREATE_AGENT', { id: agent.id, name: agent.name, role: agent.role });

@@ -208,6 +208,13 @@ export default function ProfileTab() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.userName, { color: colors.text }]}>{user.name ?? 'Add your name'}</Text>
+            {user.customerCode && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 3 }}>
+                <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>ID: {user.customerCode}</Text>
+                </View>
+              </View>
+            )}
             <Text style={[s.userSub, { color: colors.textMuted }]}>{user.email ?? user.phone}</Text>
             {user.email && (
               <Text style={[s.userSub, { color: colors.textMuted }]}>{user.phone}</Text>
