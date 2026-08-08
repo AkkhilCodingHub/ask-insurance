@@ -15,15 +15,19 @@ export default function AgentLoginScreen() {
   const { agent, login } = useAgent();
 
   if (agent) return <Redirect href="/(agent)/quotes" />;
-  const [email,     setEmail]     = useState('agent@ask-insurance.in');
-  const [password,  setPassword]  = useState('Agent@12345');
+  const [email,     setEmail]     = useState('');
+  const [password,  setPassword]  = useState('');
   const [showPass,  setShowPass]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
 
   const handleLogin = async () => {
-    const targetEmail = email.trim() || 'agent@ask-insurance.in';
-    const targetPass = password.trim() || 'Agent@12345';
+    const targetEmail = email.trim();
+    const targetPass = password.trim();
+    if (!targetEmail || !targetPass) {
+      setError('Email or POSP ID and password are required.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -50,19 +54,11 @@ export default function AgentLoginScreen() {
           {/* Header */}
           <View style={s.heroWrap}>
             <Text style={s.kicker}>Advisor</Text>
-            <TouchableOpacity onPress={handleLogin} style={s.heroIcon} activeOpacity={0.7}>
+            <View style={s.heroIcon}>
               <Icon name="shield-checkmark" size={32} color={Colors.primary} />
-            </TouchableOpacity>
+            </View>
             <Text style={s.heroTitle}>POSP Advisor Portal</Text>
             <Text style={s.heroSub}>Sign in with your POSP advisor credentials to manage quotes and policies.</Text>
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              style={{ backgroundColor: '#1580FF', paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, width: '100%', alignItems: 'center', marginTop: 8 }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>⚡ FAST POSP LOGIN (Rahul POSP)</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Form */}

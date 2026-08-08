@@ -341,20 +341,6 @@ export default function ProfileTab() {
           <Text style={s.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[s.logoutBtn, { marginTop: 10, borderColor: Colors.primary, backgroundColor: Colors.primary + '10' }]}
-          onPress={async () => {
-            await logout();
-            const { clearToken } = await import('@/lib/api');
-            await clearToken();
-            router.push('/agent-login' as any);
-          }}
-          activeOpacity={0.85}
-        >
-          <Icon name="briefcase-outline" size={18} color={Colors.primary} />
-          <Text style={[s.logoutText, { color: Colors.primary }]}>Switch to POSP Advisor Portal</Text>
-        </TouchableOpacity>
-
         <Text style={s.version}>ASK Insurance Broker · v1.0.0{'\n'}IRDAI Licensed · Reg. No. XXXXX</Text>
       </ScrollView>
 

@@ -26,7 +26,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     phone: '9876543210',
     isVerified: true
   };
-  const [agent,   setAgent]   = useState<AgentAdmin | null>(__DEV__ ? DEV_AGENT : null);
+  const [agent,   setAgent]   = useState<AgentAdmin | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Restore session on mount

@@ -45,7 +45,8 @@ export default function TabLayout() {
   const { t } = useLanguage();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 52 + insets.bottom;
+  const extraBottomPadding = insets.bottom > 0 ? insets.bottom : 10;
+  const tabBarHeight = 56 + extraBottomPadding;
 
   if (loading) return null;
   if (!user) return <Redirect href="/login" />;
@@ -69,26 +70,31 @@ export default function TabLayout() {
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: tabBarHeight,
-          paddingTop: 8,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop: 6,
+          paddingBottom: extraBottomPadding,
+          elevation: 8,
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.05,
+          shadowRadius: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
-          marginTop: 1,
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: 2,
+          letterSpacing: -0.2,
         },
         tabBarIcon: ({ focused, color }) => {
           const icons = TAB_ICONS[route.name] ?? { outline: 'ellipse-outline', filled: 'ellipse' };
           return (
             <Ionicons
               name={focused ? icons.filled : icons.outline}
-              size={24}
+              size={22}
               color={color}
             />
           );
         },
         title: TAB_LABELS[route.name] ?? route.name,
-        // Dynamic tab screen background
         sceneStyle: { backgroundColor: colors.bg },
       })}
     >
