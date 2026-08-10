@@ -911,6 +911,38 @@ export const vehiclesApi = {
       method: 'POST',
       body: JSON.stringify(data)
     }, true),
+
+  fetchVehicleRcDetails: (registrationNumber: string) =>
+    request<{
+      success: boolean;
+      registrationNumber: string;
+      rcDetails: {
+        registrationNumber: string;
+        ownerName: string;
+        make: string;
+        model: string;
+        variant: string;
+        vehicleType: 'car' | 'two_wheeler' | 'commercial';
+        registrationYear: number;
+        registrationDate: string;
+        fuelType: 'petrol' | 'diesel' | 'cng' | 'electric' | 'hybrid';
+        engineNumber: string;
+        chassisNumber: string;
+        rtoCode: string;
+        rtoName: string;
+        state: string;
+        insuranceCompany?: string;
+        insuranceExpiry?: string;
+        insurancePolicyNumber?: string;
+        fitnessUpto?: string;
+        puccUpto?: string;
+        cubicCapacity?: string;
+        seatingCapacity?: number;
+        color?: string;
+        source: string;
+      };
+      savedVehicle?: VehicleData;
+    }>(`/api/vehicles/rc-fetch/${encodeURIComponent(registrationNumber)}`),
 };
 
 export interface EndorsementData {
