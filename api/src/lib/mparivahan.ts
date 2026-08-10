@@ -48,28 +48,69 @@ const STATE_NAMES: Record<string, string> = {
 };
 
 const RTO_MAPPING: Record<string, string> = {
+  // Haryana
+  HR01: 'Ambala RTO',
+  HR02: 'Yamunanagar RTO',
+  HR03: 'Panchkula RTO',
+  HR04: 'Naraingarh RTO',
+  HR05: 'Karnal RTO',
+  HR06: 'Panipat RTO',
+  HR07: 'Kurukshetra RTO',
+  HR08: 'Kaithal RTO',
+  HR10: 'Sonipat RTO',
+  HR12: 'Rohtak RTO',
+  HR20: 'Hisar RTO',
+  HR26: 'Gurugram North RTO',
+  HR51: 'Faridabad RTO',
+
+  // Delhi
   DL01: 'Delhi North (Mall Road)',
   DL02: 'Delhi New Delhi (Tilak Marg)',
   DL03: 'Delhi South (Sheikh Sarai)',
   DL04: 'Delhi West (Janakpuri)',
   DL05: 'Delhi North East (Loni Road)',
+  DL06: 'Delhi Central (Sarai Kale Khan)',
+  DL07: 'Delhi Mayur Vihar',
+  DL08: 'Delhi Dwarka',
+  DL09: 'Delhi Rohini',
+  DL10: 'Delhi Raja Garden',
+  DL11: 'Delhi Rohini Sector 16',
+  DL12: 'Delhi Vasant Vihar',
+
+  // Maharashtra
   MH01: 'Mumbai South (Tardeo)',
   MH02: 'Mumbai West (Andheri)',
   MH03: 'Mumbai East (Wadala)',
-  MH04: 'Thane',
-  MH12: 'Pune',
-  MH14: 'Pimpri-Chinchwad',
+  MH04: 'Thane RTO',
+  MH05: 'Kalyan RTO',
+  MH12: 'Pune RTO',
+  MH14: 'Pimpri-Chinchwad RTO',
+
+  // Karnataka
   KA01: 'Bangalore Central (Koramangala)',
   KA02: 'Bangalore West (Rajajinagar)',
   KA03: 'Bangalore East (Indiranagar)',
+  KA04: 'Bangalore North (Yelahanka)',
   KA05: 'Bangalore South (Jayanagar)',
-  HR26: 'Gurugram North',
-  HR51: 'Faridabad',
-  UP16: 'Gautam Buddh Nagar (Noida)',
-  UP14: 'Ghaziabad',
-  TN01: 'Chennai Central',
+  KA51: 'Electronics City RTO',
+  KA53: 'KR Puram RTO',
+
+  // Uttar Pradesh
+  UP14: 'Ghaziabad RTO',
+  UP15: 'Meerut RTO',
+  UP16: 'Gautam Buddh Nagar (Noida RTO)',
+  UP32: 'Lucknow RTO',
+  UP70: 'Prayagraj RTO',
+  UP78: 'Kanpur RTO',
+
+  // Tamil Nadu & Telangana & Gujarat
+  TN01: 'Chennai Central RTO',
+  TN07: 'Chennai South RTO',
   TS07: 'Ranga Reddy (Hyderabad)',
-  GJ01: 'Ahmedabad',
+  TS09: 'Hyderabad Central',
+  GJ01: 'Ahmedabad RTO',
+  GJ06: 'Vadodara RTO',
+  GJ18: 'Gandhinagar RTO',
 };
 
 // ── Real mParivahan API Integration ──────────────────────────────────────────
