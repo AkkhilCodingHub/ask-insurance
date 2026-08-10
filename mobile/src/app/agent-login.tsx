@@ -59,6 +59,15 @@ export default function AgentLoginScreen() {
             </View>
             <Text style={s.heroTitle}>POSP Advisor Portal</Text>
             <Text style={s.heroSub}>Sign in with your POSP advisor credentials to manage quotes and policies.</Text>
+
+            <TouchableOpacity
+              style={s.pospRegisterBtn}
+              onPress={() => router.push('/posp-register' as any)}
+              activeOpacity={0.85}
+            >
+              <Icon name="school-outline" size={16} color={Colors.primary} />
+              <Text style={s.pospRegisterBtnText}>New Advisor? Take IC-38 Exam & Register</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Form */}
@@ -140,6 +149,13 @@ const s = StyleSheet.create({
   heroIcon:  { width: 72, height: 72, borderRadius: 22, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   heroTitle: { fontSize: 26, fontWeight: '900', color: Colors.text, letterSpacing: -0.5 },
   heroSub:   { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
+  pospRegisterBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.primary, backgroundColor: Colors.primary + '10',
+    marginTop: 6,
+  },
+  pospRegisterBtnText: { fontSize: 13, fontWeight: '800', color: Colors.primary },
 
   formCard: {
     backgroundColor: Colors.white,

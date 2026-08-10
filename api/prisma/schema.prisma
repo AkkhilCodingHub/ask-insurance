@@ -537,3 +537,55 @@ model Endorsement {
   @@index([status])
   @@map("endorsements")
 }
+
+model PospExamAttempt {
+  id               String   @id @default(cuid())
+  candidateName    String
+  candidatePhone   String
+  candidateEmail   String
+  score            Int
+  totalQuestions   Int      @default(50)
+  correctAnswers   Int
+  wrongAnswers     Int
+  passed           Boolean
+  terminatedEarly Boolean  @default(false)
+  terminationReason String?
+  attemptDate      String   // YYYY-MM-DD for tracking retake limits (max 4 per day)
+  startedAt        DateTime
+  completedAt      DateTime @default(now())
+
+  createdAt        DateTime @default(now())
+
+  @@index([candidatePhone, attemptDate])
+  @@index([candidateEmail, attemptDate])
+  @@index([candidatePhone, completedAt])
+  @@index([passed])
+  @@map("posp_exam_attempts")
+}
+
+model PospApplication {
+  id                 String   @id @default(cuid())
+  applicationNumber  String   @unique // e.g. POSP-REQ-849102
+  name               String
+  email              String   @unique
+  phone              String   @unique
+  examScore          Int
+  examPassedAt       DateTime
+  examAttemptId      String?
+  aadhaarNumber      String?
+  aadhaarDocUrl      String?  @db.Text
+  panNumber          String?
+  panDocUrl          String?  @db.Text
+  status             String   @default("pending") // pending | approved | rejected
+  rejectionReason    String?  @db.Text
+  assignedAgentCode  String?
+  createdAdminId     String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@index([email])
+  @@map("posp_applications")
+}

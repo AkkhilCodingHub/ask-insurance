@@ -3046,4 +3046,134 @@ router.post('/agents/bulk-import', adminAuthenticate, upload.single('file'), asy
   }
 });
 
+// ── GET /admin/posp-applications ──────────────────────────────────────────────
+router.get('/posp-applications', adminAuthenticate, superadminOnly, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const applications = await prisma.pospApplication.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ applications });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /admin/posp-applications/:id/approve ────────────────────────────────
+router.post('/posp-applications/:id/approve', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appId = String(req.params.id);
+    const application = await prisma.pospApplication.findUnique({ where: { id: appId } });
+
+    if (!application) {
+      res.status(404).json({ error: 'POSP application not found' });
+      return;
+    }
+
+    if (application.status === 'approved') {
+      res.status(400).json({ error: 'POSP application is already approved' });
+      return;
+    }
+
+    // Generate unique POSP Agent Code (ASxxxxxx)
+    const agentCode = await generateAgentId();
+    const defaultPassword = await bcrypt.hash('POSP@12345', 12);
+
+    // Create or update Admin record with role: 'agent'
+    let adminRecord = await prisma.admin.findUnique({ where: { email: application.email } });
+
+    if (!adminRecord) {
+      adminRecord = await prisma.admin.create({
+        data: {
+          email: application.email,
+          name: application.name,
+          password: defaultPassword,
+          role: 'agent',
+          agentCode,
+          isActive: true,
+          kycStatus: 'verified',
+          kycDocType: 'aadhaar_pan',
+          kycDocUrl: application.aadhaarDocUrl,
+          kycVerifiedAt: new Date(),
+        },
+      });
+    } else {
+      adminRecord = await prisma.admin.update({
+        where: { id: adminRecord.id },
+        data: {
+          role: 'agent',
+          agentCode: adminRecord.agentCode || agentCode,
+          isActive: true,
+          kycStatus: 'verified',
+          kycVerifiedAt: new Date(),
+        },
+      });
+    }
+
+    const updatedApp = await prisma.pospApplication.update({
+      where: { id: appId },
+      data: {
+        status: 'approved',
+        assignedAgentCode: adminRecord.agentCode || agentCode,
+        createdAdminId: adminRecord.id,
+      },
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'APPROVE_POSP_APPLICATION', {
+      applicationId: appId,
+      candidateEmail: application.email,
+      assignedCode: adminRecord.agentCode || agentCode,
+    });
+
+    res.json({
+      success: true,
+      application: updatedApp,
+      agentCode: adminRecord.agentCode || agentCode,
+      message: `POSP Candidate approved! Advisor account created with code ${adminRecord.agentCode || agentCode}`,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to approve POSP application' });
+  }
+});
+
+// ── POST /admin/posp-applications/:id/reject ─────────────────────────────────
+router.post('/posp-applications/:id/reject', adminAuthenticate, superadminOnly, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const appId = String(req.params.id);
+    const { reason } = z.object({ reason: z.string().optional() }).parse(req.body);
+
+    const application = await prisma.pospApplication.findUnique({ where: { id: appId } });
+    if (!application) {
+      res.status(404).json({ error: 'POSP application not found' });
+      return;
+    }
+
+    const updatedApp = await prisma.pospApplication.update({
+      where: { id: appId },
+      data: {
+        status: 'rejected',
+        rejectionReason: reason || 'Documentation verification failed or unverified details.',
+      },
+    });
+
+    const adminId = (req as any).adminId;
+    await logActivity(adminId, 'REJECT_POSP_APPLICATION', {
+      applicationId: appId,
+      candidateEmail: application.email,
+      reason,
+    });
+
+    res.json({
+      success: true,
+      application: updatedApp,
+      message: 'POSP candidate application rejected.',
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to reject POSP application' });
+  }
+});
+
 export { router as adminRouter };
