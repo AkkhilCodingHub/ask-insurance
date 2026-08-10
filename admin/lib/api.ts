@@ -826,6 +826,44 @@ class AdminApiClient {
     if (data.error) throw new Error(data.error);
     return data;
   }
+
+  // ── POSP Application Requests ───────────────────────────────────────────────
+  async getPospApplications(): Promise<PospApplicationRecord[]> {
+    const { data } = await this.instance.get('/posp-applications');
+    if (data.error) throw new Error(data.error);
+    return data.applications || [];
+  }
+
+  async approvePospApplication(id: string): Promise<{ success: boolean; agentCode: string; message: string }> {
+    const { data } = await this.instance.post(`/posp-applications/${id}/approve`);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async rejectPospApplication(id: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    const { data } = await this.instance.post(`/posp-applications/${id}/reject`, { reason });
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+}
+
+export interface PospApplicationRecord {
+  id:                 string;
+  applicationNumber:  string;
+  name:               string;
+  email:              string;
+  phone:              string;
+  examScore:          number;
+  examPassedAt:       string;
+  examAttemptId?:     string | null;
+  aadhaarNumber?:     string | null;
+  aadhaarDocUrl?:     string | null;
+  panNumber?:         string | null;
+  panDocUrl?:         string | null;
+  status:             'pending' | 'approved' | 'rejected';
+  rejectionReason?:   string | null;
+  assignedAgentCode?: string | null;
+  createdAt:          string;
 }
 
 export interface KycSubmission {

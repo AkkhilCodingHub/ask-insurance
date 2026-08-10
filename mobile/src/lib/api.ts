@@ -945,3 +945,113 @@ export const endorsementsApi = {
     request<{ endorsements: EndorsementData[] }>(`/api/endorsements/policy/${policyId}`, {}, true),
 };
 
+// ── POSP Examination & Registration ──────────────────────────────────────────
+
+export const pospExamApi = {
+  getSyllabus: () =>
+    request<{
+      title: string;
+      institution: string;
+      passingScore: string;
+      examDuration: string;
+      pdfUrl: string;
+      sections: Array<{ title: string; chapters: string[] }>;
+    }>('/api/posp/syllabus'),
+
+  checkEligibility: (phone?: string, email?: string) => {
+    const qs = new URLSearchParams();
+    if (phone) qs.set('phone', phone);
+    if (email) qs.set('email', email);
+    return request<{
+      eligible: boolean;
+      reason?: string;
+      status?: string;
+      attemptsToday?: number;
+      attemptsLeft?: number;
+      nextEligibleAt?: string;
+      remainingSeconds?: number;
+    }>(`/api/posp/exam/check-eligibility?${qs.toString()}`);
+  },
+
+  startExam: (data: { name: string; phone: string; email: string }) =>
+    request<{
+      attemptId: string;
+      candidateName: string;
+      durationMinutes: number;
+      totalQuestions: number;
+      passingScore: number;
+      questions: Array<{ id: number; chapter: string; question: string; options: [string, string, string, string] }>;
+    }>('/api/posp/exam/start', { method: 'POST', body: JSON.stringify(data) }),
+
+  submitExam: (data: {
+    attemptId: string;
+    userAnswers: Record<string, number>;
+    terminatedEarly?: boolean;
+    terminationReason?: string;
+  }) =>
+    request<{
+      attemptId: string;
+      candidateName: string;
+      candidatePhone: string;
+      candidateEmail: string;
+      score: number;
+      totalQuestions: number;
+      correctAnswers: number;
+      wrongAnswers: number;
+      passed: boolean;
+      passingScoreRequired: number;
+      terminatedEarly: boolean;
+      terminationReason?: string;
+      completedAt: string;
+      questionsReview: Array<{
+        id: number;
+        chapter: string;
+        question: string;
+        options: string[];
+        selectedAnswer: number | null;
+        correctAnswer: number;
+        isCorrect: boolean;
+        explanation: string;
+      }>;
+    }>('/api/posp/exam/submit', { method: 'POST', body: JSON.stringify(data) }),
+
+  applyPosp: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    examAttemptId: string;
+    aadhaarNumber: string;
+    aadhaarDocUrl: string;
+    panNumber: string;
+    panDocUrl: string;
+  }) =>
+    request<{
+      success: boolean;
+      applicationNumber: string;
+      status: string;
+      message: string;
+      assignedAgentCode?: string;
+    }>('/api/posp/apply', { method: 'POST', body: JSON.stringify(data) }),
+
+  getApplicationStatus: (phone?: string, email?: string) => {
+    const qs = new URLSearchParams();
+    if (phone) qs.set('phone', phone);
+    if (email) qs.set('email', email);
+    return request<{
+      hasApplication: boolean;
+      application?: {
+        id: string;
+        applicationNumber: string;
+        name: string;
+        email: string;
+        phone: string;
+        examScore: number;
+        status: string;
+        assignedAgentCode?: string;
+        rejectionReason?: string;
+        createdAt: string;
+      };
+    }>(`/api/posp/application/status?${qs.toString()}`);
+  },
+};
+
