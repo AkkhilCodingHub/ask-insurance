@@ -290,28 +290,39 @@ export default function QuoteScreen() {
 
     let fetchedVehicle: VehicleData | null = null;
     let fetchedPolicies: any[] = [];
+    let rcDetailsData: any = null;
+
+    try {
+      // 1. Fetch live mParivahan RC Details from backend API
+      const rcRes = await vehiclesApi.fetchVehicleRcDetails(target);
+      if (rcRes.success && rcRes.rcDetails) {
+        rcDetailsData = rcRes.rcDetails;
+      }
+    } catch {
+      // Fallback
+    }
 
     try {
       const res = await vehiclesApi.lookupByRegNumber(target);
       if (res.vehicleFound && res.vehicle) fetchedVehicle = res.vehicle;
       if (res.policies && res.policies.length > 0) fetchedPolicies = res.policies;
     } catch {
-      // Fall back to dynamic online RTO decoder
+      // Fallback
     }
 
     const vehicleCategory = String(params.subType || params.category || 'car');
     const dynamicSpecs = decodeVehicleSpecs(target, vehicleCategory);
 
-    const vMake = fetchedVehicle?.make || dynamicSpecs.make;
-    const vModel = fetchedVehicle?.model || dynamicSpecs.model;
-    const vVariant = fetchedVehicle?.variant || dynamicSpecs.variant;
-    const vYear = fetchedVehicle?.registrationYear ? String(fetchedVehicle.registrationYear) : dynamicSpecs.registrationYear;
-    const vFuel = fetchedVehicle?.fuelType || dynamicSpecs.fuelType;
-    const vEngine = fetchedVehicle?.engineNumber || dynamicSpecs.engineNumber;
-    const vChassis = fetchedVehicle?.chassisNumber || dynamicSpecs.chassisNumber;
+    const vMake = rcDetailsData?.make || fetchedVehicle?.make || dynamicSpecs.make;
+    const vModel = rcDetailsData?.model || fetchedVehicle?.model || dynamicSpecs.model;
+    const vVariant = rcDetailsData?.variant || fetchedVehicle?.variant || dynamicSpecs.variant;
+    const vYear = rcDetailsData?.registrationYear ? String(rcDetailsData.registrationYear) : (fetchedVehicle?.registrationYear ? String(fetchedVehicle.registrationYear) : dynamicSpecs.registrationYear);
+    const vFuel = rcDetailsData?.fuelType || fetchedVehicle?.fuelType || dynamicSpecs.fuelType;
+    const vEngine = rcDetailsData?.engineNumber || fetchedVehicle?.engineNumber || dynamicSpecs.engineNumber;
+    const vChassis = rcDetailsData?.chassisNumber || fetchedVehicle?.chassisNumber || dynamicSpecs.chassisNumber;
     const vNcb = fetchedVehicle?.ncbPercentage !== undefined ? String(fetchedVehicle.ncbPercentage) : dynamicSpecs.ncbPercent;
-    const vInsurer = fetchedPolicies[0]?.provider || dynamicSpecs.prevInsurer;
-    const vPolicyNo = fetchedPolicies[0]?.policyNumber || dynamicSpecs.prevPolicyNum;
+    const vInsurer = rcDetailsData?.insuranceCompany || fetchedPolicies[0]?.provider || dynamicSpecs.prevInsurer;
+    const vPolicyNo = rcDetailsData?.insurancePolicyNumber || fetchedPolicies[0]?.policyNumber || dynamicSpecs.prevPolicyNum;
 
     setVehicleMake(vMake);
     setVehicleModel(vModel);
@@ -321,12 +332,12 @@ export default function QuoteScreen() {
     setEngineNumber(vEngine);
     setChassisNumber(vChassis);
     setNcbPercent(vNcb);
-    setRtoLocation(dynamicSpecs.rtoLocation);
-    setVehicleClass(dynamicSpecs.vehicleClass);
-    setCubicCapacity(dynamicSpecs.cubicCapacity);
-    setSeatingCapacity(dynamicSpecs.seatingCapacity);
-    setRegistrationDate(dynamicSpecs.registrationDate);
-    setPolicyExpiryDate(dynamicSpecs.policyExpiryDate);
+    setRtoLocation(rcDetailsData?.rtoName || dynamicSpecs.rtoLocation);
+    setVehicleClass(rcDetailsData?.vehicleType || dynamicSpecs.vehicleClass);
+    setCubicCapacity(rcDetailsData?.cubicCapacity || dynamicSpecs.cubicCapacity);
+    setSeatingCapacity(rcDetailsData?.seatingCapacity ? String(rcDetailsData.seatingCapacity) : dynamicSpecs.seatingCapacity);
+    setRegistrationDate(rcDetailsData?.registrationDate || dynamicSpecs.registrationDate);
+    setPolicyExpiryDate(rcDetailsData?.insuranceExpiry || dynamicSpecs.policyExpiryDate);
     setPrevInsurer(vInsurer);
     setPrevPolicyNum(vPolicyNo);
 

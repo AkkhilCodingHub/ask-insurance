@@ -129,6 +129,56 @@ router.get('/lookup/:registrationNumber', optionalAuth, async (req: Request, res
   }
 });
 
+// GET /api/vehicles/rc-fetch/:registrationNumber - mParivahan Vehicle Details Fetcher
+router.get('/rc-fetch/:registrationNumber', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawReg = String(req.params.registrationNumber || '');
+    const regParam = normalizeRegNumber(rawReg);
+
+    if (!regParam || regParam.length < 4) {
+      res.status(400).json({ error: 'Valid Indian vehicle registration number (e.g. MH02CB1234, DL01AB1234) is required.' });
+      return;
+    }
+
+    const { getVehicleRcDetails } = await import('../lib/mparivahan');
+    const rcDetails = await getVehicleRcDetails(regParam);
+
+    // Save/Update vehicle details in database if authenticated or looking up
+    let vehicle = await prisma.vehicle.findUnique({
+      where: { registrationNumber: regParam },
+    });
+
+    const userId = req.userId || null;
+
+    if (!vehicle && userId) {
+      vehicle = await prisma.vehicle.create({
+        data: {
+          registrationNumber: regParam,
+          vehicleType: rcDetails.vehicleType,
+          make: rcDetails.make,
+          model: rcDetails.model,
+          variant: rcDetails.variant,
+          registrationYear: rcDetails.registrationYear,
+          fuelType: rcDetails.fuelType,
+          engineNumber: rcDetails.engineNumber,
+          chassisNumber: rcDetails.chassisNumber,
+          userId,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      registrationNumber: regParam,
+      rcDetails,
+      savedVehicle: vehicle,
+    });
+  } catch (error) {
+    console.error('Error fetching mParivahan vehicle details:', error);
+    res.status(500).json({ error: 'Failed to fetch vehicle details from mParivahan' });
+  }
+});
+
 // POST /api/vehicles - Register or update a vehicle
 router.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
