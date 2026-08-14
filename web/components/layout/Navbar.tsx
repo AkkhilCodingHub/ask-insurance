@@ -5,11 +5,12 @@ import Link from "next/link";
 import { Menu, X, Shield } from "lucide-react";
 
 const navLinks = [
-  { label: "Products", href: "/products" },
-  { label: "Compare", href: "/compare" },
+  { label: "Term Life", href: "/products?type=life" },
+  { label: "Health", href: "/products?type=health" },
+  { label: "Motor", href: "/products?type=motor" },
+  { label: "Investment 2.0", href: "/products?type=investment_20" },
+  { label: "Travel", href: "/products?type=travel" },
   { label: "Claims", href: "/claims" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
 ];
 
 export function Navbar() {
@@ -102,12 +103,32 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Auth buttons */}
+        {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
+          <a
+            href="http://localhost:3001"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: "7px 14px",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              background: "var(--bg)",
+              color: "var(--text-muted)",
+              fontSize: 12,
+              fontWeight: 700,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            Admin Portal ↗
+          </a>
           <Link
             href="/login"
             style={{
-              padding: "8px 20px",
+              padding: "8px 18px",
               border: "1.5px solid var(--primary)",
               borderRadius: 8,
               background: "transparent",
@@ -130,7 +151,7 @@ export function Navbar() {
             href="/register"
             className="glow-blue-sm"
             style={{
-              padding: "8px 20px",
+              padding: "8px 18px",
               border: "none",
               borderRadius: 8,
               background: "linear-gradient(135deg, var(--primary), var(--accent-dark))",

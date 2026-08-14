@@ -2,8 +2,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireKyc } from '../middleware/auth';
-
 import { normalizeRegNumber } from './vehicles';
+import { calculateLiveProviderQuotes } from '../lib/providerQuoteEngine';
 
 const router = Router();
 
@@ -16,6 +16,19 @@ const createPolicySchema = z.object({
   premium: z.number().nonnegative(),
   registrationNumber: z.string().optional().transform((val) => val ? normalizeRegNumber(val) : undefined),
   durationDays: z.number().int().positive().optional()
+});
+// POST /api/policies/live-quotes - Fetch live provider policy quotes & PolicyBazaar IDV calculation
+router.post('/live-quotes', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body || {};
+    const result = calculateLiveProviderQuotes(payload);
+    res.json(result);
+    return;
+  } catch (error) {
+    console.error('Error calculating live provider quotes:', error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
 });
 
 // GET /api/policies/vehicle/:registrationNumber - List multi-class policies for a specific vehicle registration number

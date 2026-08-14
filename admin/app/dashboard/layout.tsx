@@ -150,12 +150,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Brand */}
       <div style={{ padding: "18px 16px", borderBottom: "1px solid var(--sidebar-border)", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 64 }}>
         {!collapsed && (
-          <div>
+          <a href="http://localhost:3000" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
             <p style={{ fontSize: 15, fontWeight: 800, color: "#F1F5F9", letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
-              ASK <span style={{ color: "#1580FF", fontWeight: 400, fontSize: 12 }}>Admin</span>
+              ASK <span style={{ color: "#1580FF", fontWeight: 400, fontSize: 12 }}>Admin ↗</span>
             </p>
             <p style={{ fontSize: 10, color: "#475569", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Insurance Portal</p>
-          </div>
+          </a>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}

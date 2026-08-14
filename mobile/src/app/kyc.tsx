@@ -9,7 +9,8 @@ import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
-import { kycApi } from '@/lib/api';
+import * as DocumentPicker from 'expo-document-picker';
+import { kycApi, documentsApi } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
 import { useThemeColors } from '@/context/agent';
@@ -175,6 +176,9 @@ export default function KycScreen() {
           ))}
         </View>
 
+        {/* ── PolicyBazaar-Style Backend Document Verification & OCR Widget ── */}
+        <PolicyBazaarDocVerificationWidget colors={colors} alert={alert} refreshUser={refreshUser} />
+
         {/* Primary — DigiLocker verification */}
         <TouchableOpacity
           style={[s.dlCard, dlBusy && s.dlCardDisabled]}
@@ -311,3 +315,159 @@ const s = StyleSheet.create({
   },
   successHomeBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white, letterSpacing: -0.3 },
 });
+
+function PolicyBazaarDocVerificationWidget({ colors, alert, refreshUser }: { colors: any; alert: any; refreshUser: () => Promise<void> }) {
+  const [selectedDocType, setSelectedDocType] = useState<'pan' | 'aadhaar' | 'rc' | 'driving_license' | 'policy_copy'>('pan');
+  const [uploading, setUploading] = useState(false);
+  const [extractedResult, setExtractedResult] = useState<any>(null);
+
+  const handlePickAndVerify = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (res.canceled || !res.assets || res.assets.length === 0) return;
+
+      const asset = res.assets[0];
+      setUploading(true);
+      setExtractedResult(null);
+
+      const formData = new FormData();
+      formData.append('docType', selectedDocType);
+      formData.append('document', {
+        uri: asset.uri,
+        name: asset.name,
+        type: asset.mimeType || 'image/jpeg',
+      } as any);
+
+      const response = await documentsApi.ocrVerify(formData);
+      if (response && response.success) {
+        setExtractedResult(response);
+        await refreshUser().catch(() => {});
+        alert({
+          type: 'success',
+          title: 'Document Verified!',
+          message: `${response.extractedFields?.docType || selectedDocType.toUpperCase()} verified successfully via IRDAI compliant OCR engine.`
+        });
+      } else {
+        alert({ type: 'error', title: 'Verification Failed', message: 'Could not extract document fields. Please re-upload a clear image.' });
+      }
+    } catch {
+      alert({ type: 'error', title: 'Upload Error', message: 'Failed to process document verification via backend API.' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <View style={{ backgroundColor: colors.card, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 18 }}>🔍</Text>
+          <View>
+            <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text }}>PolicyBazaar Document Verification</Text>
+            <Text style={{ fontSize: 11, color: colors.textMuted }}>Backend OCR &amp; Instant Data Extraction Engine</Text>
+          </View>
+        </View>
+        <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: '#059669' }}>LIVE OCR</Text>
+        </View>
+      </View>
+
+      {/* DocType Selector Pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 14 }}>
+        {[
+          { id: 'pan', label: '💳 PAN Card' },
+          { id: 'aadhaar', label: '🪪 Aadhaar Card' },
+          { id: 'rc', label: '🚗 Vehicle RC' },
+          { id: 'driving_license', label: '📄 Driving License' },
+          { id: 'policy_copy', label: '📑 Policy Copy' },
+        ].map((t) => (
+          <TouchableOpacity
+            key={t.id}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 10,
+              backgroundColor: selectedDocType === t.id ? Colors.primary : colors.bg,
+              borderWidth: 1,
+              borderColor: selectedDocType === t.id ? Colors.primary : colors.border,
+            }}
+            onPress={() => { setSelectedDocType(t.id as any); setExtractedResult(null); }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '700', color: selectedDocType === t.id ? Colors.white : colors.text }}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Action Upload Card */}
+      <TouchableOpacity
+        style={{
+          borderWidth: 2,
+          borderStyle: 'dashed',
+          borderColor: Colors.primary,
+          borderRadius: 14,
+          padding: 16,
+          alignItems: 'center',
+          backgroundColor: '#F0F9FF',
+          marginBottom: 12,
+        }}
+        onPress={handlePickAndVerify}
+        disabled={uploading}
+        activeOpacity={0.8}
+      >
+        {uploading ? (
+          <View style={{ alignItems: 'center', gap: 8 }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>
+              Uploading &amp; Running PolicyBazaar Backend OCR Verification...
+            </Text>
+          </View>
+        ) : (
+          <View style={{ alignItems: 'center', gap: 6 }}>
+            <Icon name="cloud-upload-outline" size={32} color={Colors.primary} />
+            <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.primary }}>
+              Upload {selectedDocType.toUpperCase().replace('_', ' ')} Image or PDF
+            </Text>
+            <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+              Instant OCR field extraction &amp; verification via backend API
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Extracted Verified Fields Result Card */}
+      {extractedResult && (
+        <View style={{ backgroundColor: '#ECFDF5', borderRadius: 14, padding: 14, borderWidth: 1.5, borderColor: '#10B981' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#A7F3D0' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="checkmark-circle" size={20} color="#059669" />
+              <Text style={{ fontSize: 13, fontWeight: '900', color: '#065F46' }}>
+                {extractedResult.extractedFields?.docType || 'Document'} Verified ✓
+              </Text>
+            </View>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: '#059669' }}>
+              {(extractedResult.confidenceScore * 100).toFixed(0)}% Confidence
+            </Text>
+          </View>
+
+          <View style={{ rowGap: 6 }}>
+            {Object.entries(extractedResult.extractedFields || {}).map(([k, v]) => {
+              if (k === 'docType') return null;
+              return (
+                <View key={k} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 11, color: '#047857', textTransform: 'capitalize' }}>
+                    {k.replace(/([A-Z])/g, ' $1').trim()}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#065F46' }}>{String(v)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}

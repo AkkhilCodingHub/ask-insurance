@@ -125,7 +125,9 @@ export function AppDownload() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {/* App Store */}
             <a
-              href="#"
+              href="https://apps.apple.com/app/ask-insurance/id168294821"
+              target="_blank"
+              rel="noopener noreferrer"
               className="store-badge"
               style={{
                 display: "inline-flex",
@@ -158,7 +160,9 @@ export function AppDownload() {
 
             {/* Google Play */}
             <a
-              href="#"
+              href="https://play.google.com/store/apps/details?id=com.ask.insurance"
+              target="_blank"
+              rel="noopener noreferrer"
               className="store-badge"
               style={{
                 display: "inline-flex",

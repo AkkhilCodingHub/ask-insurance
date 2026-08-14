@@ -78,13 +78,19 @@ app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Fast Health Check for Render Probes
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'OK', uptime: process.uptime(), timestamp: new Date().toISOString() });
+// Fast Health Check & Cron Keep-Alive Probe Endpoints for 24/7 Render Keep-Alive
+app.get(['/health', '/api/health', '/api/cron/keep-alive'], (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'OK',
+    service: 'ASK Insurance API',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    keepAlive: true
+  });
 });
 
 app.get('/', (_req: Request, res: Response) => {
-  res.status(200).json({ name: 'ASK Insurance API', status: 'running' });
+  res.status(200).json({ name: 'ASK Insurance API', status: 'running', keepAlive: true });
 });
 
 app.use('/api/auth', authRouter);

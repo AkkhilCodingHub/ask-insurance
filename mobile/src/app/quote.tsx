@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { quotesApi, vehiclesApi, VehicleData, ApiError } from '@/lib/api';
+import { quotesApi, vehiclesApi, policiesApi, VehicleData, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
@@ -280,12 +280,60 @@ export default function QuoteScreen() {
   const [policyExpiryDate, setPolicyExpiryDate] = useState('');
   const [vehicleAutoFetched, setVehicleAutoFetched] = useState(false);
 
+  // Live Provider Quotes & PolicyBazaar IDV Engine State
+  const [liveQuotes, setLiveQuotes] = useState<any[]>([]);
+  const [idvPayload, setIdvPayload] = useState<any>(null);
+  const [selectedProviderQuote, setSelectedProviderQuote] = useState<any>(null);
+  const [customIdvVal, setCustomIdvVal] = useState<number | undefined>(undefined);
+  const [fetchingLiveQuotes, setFetchingLiveQuotes] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+
+  const fetchLiveQuotes = async (overrideIdv?: number) => {
+    setFetchingLiveQuotes(true);
+    try {
+      const res = await policiesApi.fetchLiveProviderQuotes({
+        registrationNumber: regNumber,
+        registrationYear: regYear,
+        registrationDate,
+        make: vehicleMake,
+        model: vehicleModel,
+        variant: vehicleVariant,
+        exShowroomPrice: 750000,
+        ncbPercent: Number(ncbPercent || 0),
+        hasPreviousClaim,
+        selectedAddons,
+        customIDV: overrideIdv ?? customIdvVal,
+        vehicleType: String(params.subType || params.category || 'car'),
+        cubicCapacity,
+      });
+
+      if (res && res.quotes) {
+        setLiveQuotes(res.quotes);
+        setIdvPayload(res.idvDetails);
+        if (res.quotes.length > 0 && !selectedProviderQuote) {
+          setSelectedProviderQuote(res.quotes[0]);
+          setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+        }
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setFetchingLiveQuotes(false);
+    }
+  };
+
+  const lastAutoFetchRef = React.useRef('');
+
   const handleFetchVehicleDetails = async (inputReg?: string, silent = false) => {
-    const target = (inputReg ?? regNumber).trim().toUpperCase();
-    if (!target || target.length < 4) {
+    const rawInput = inputReg ?? regNumber;
+    const targetClean = rawInput.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    if (!targetClean || targetClean.length < 4) {
       if (!silent) alert({ type: 'warning', title: 'Invalid Registration Number', message: 'Please enter a valid vehicle registration number (e.g. DL01AB1234 or HR01Y206).' });
       return;
     }
+
+    setRegNumber(targetClean);
     setFetchingVehicle(true);
 
     let fetchedVehicle: VehicleData | null = null;
@@ -294,7 +342,7 @@ export default function QuoteScreen() {
 
     try {
       // 1. Fetch live mParivahan RC Details from backend API
-      const rcRes = await vehiclesApi.fetchVehicleRcDetails(target);
+      const rcRes = await vehiclesApi.fetchVehicleRcDetails(targetClean);
       if (rcRes.success && rcRes.rcDetails) {
         rcDetailsData = rcRes.rcDetails;
       }
@@ -303,7 +351,7 @@ export default function QuoteScreen() {
     }
 
     try {
-      const res = await vehiclesApi.lookupByRegNumber(target);
+      const res = await vehiclesApi.lookupByRegNumber(targetClean);
       if (res.vehicleFound && res.vehicle) fetchedVehicle = res.vehicle;
       if (res.policies && res.policies.length > 0) fetchedPolicies = res.policies;
     } catch {
@@ -311,7 +359,7 @@ export default function QuoteScreen() {
     }
 
     const vehicleCategory = String(params.subType || params.category || 'car');
-    const dynamicSpecs = decodeVehicleSpecs(target, vehicleCategory);
+    const dynamicSpecs = decodeVehicleSpecs(targetClean, vehicleCategory);
 
     const vMake = rcDetailsData?.make || fetchedVehicle?.make || dynamicSpecs.make;
     const vModel = rcDetailsData?.model || fetchedVehicle?.model || dynamicSpecs.model;
@@ -323,6 +371,8 @@ export default function QuoteScreen() {
     const vNcb = fetchedVehicle?.ncbPercentage !== undefined ? String(fetchedVehicle.ncbPercentage) : dynamicSpecs.ncbPercent;
     const vInsurer = rcDetailsData?.insuranceCompany || fetchedPolicies[0]?.provider || dynamicSpecs.prevInsurer;
     const vPolicyNo = rcDetailsData?.insurancePolicyNumber || fetchedPolicies[0]?.policyNumber || dynamicSpecs.prevPolicyNum;
+    const vCc = rcDetailsData?.cubicCapacity || dynamicSpecs.cubicCapacity;
+    const vRegDate = rcDetailsData?.registrationDate || dynamicSpecs.registrationDate;
 
     setVehicleMake(vMake);
     setVehicleModel(vModel);
@@ -334,24 +384,66 @@ export default function QuoteScreen() {
     setNcbPercent(vNcb);
     setRtoLocation(rcDetailsData?.rtoName || dynamicSpecs.rtoLocation);
     setVehicleClass(rcDetailsData?.vehicleType || dynamicSpecs.vehicleClass);
-    setCubicCapacity(rcDetailsData?.cubicCapacity || dynamicSpecs.cubicCapacity);
+    setCubicCapacity(vCc);
     setSeatingCapacity(rcDetailsData?.seatingCapacity ? String(rcDetailsData.seatingCapacity) : dynamicSpecs.seatingCapacity);
-    setRegistrationDate(rcDetailsData?.registrationDate || dynamicSpecs.registrationDate);
+    setRegistrationDate(vRegDate);
     setPolicyExpiryDate(rcDetailsData?.insuranceExpiry || dynamicSpecs.policyExpiryDate);
     setPrevInsurer(vInsurer);
     setPrevPolicyNum(vPolicyNo);
 
     setVehicleAutoFetched(true);
     setFetchingVehicle(false);
+
+    // Immediately trigger PolicyBazaar IDV calculation & Live Provider Quotes update
+    try {
+      policiesApi.fetchLiveProviderQuotes({
+        registrationNumber: targetClean,
+        registrationYear: vYear,
+        registrationDate: vRegDate,
+        make: vMake,
+        model: vModel,
+        variant: vVariant,
+        exShowroomPrice: 750000,
+        ncbPercent: Number(vNcb || 0),
+        hasPreviousClaim,
+        selectedAddons,
+        customIDV: customIdvVal,
+        vehicleType: String(params.subType || params.category || 'car'),
+        cubicCapacity: vCc,
+      }).then((res) => {
+        if (res && res.quotes) {
+          setLiveQuotes(res.quotes);
+          setIdvPayload(res.idvDetails);
+          if (res.quotes.length > 0) {
+            setSelectedProviderQuote(res.quotes[0]);
+            setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+          }
+        }
+      }).catch(() => {});
+    } catch {
+      // Non-fatal
+    }
   };
 
   React.useEffect(() => {
     if (params.regNumber && typeof params.regNumber === 'string') {
-      const reg = params.regNumber.trim().toUpperCase();
+      const reg = params.regNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
       setRegNumber(reg);
       handleFetchVehicleDetails(reg, true);
     }
   }, [params.regNumber]);
+
+  // Debounced auto-fetch as user types valid 8-10 character Indian vehicle registration number
+  React.useEffect(() => {
+    const clean = regNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.length >= 8 && clean !== lastAutoFetchRef.current) {
+      const timer = setTimeout(() => {
+        lastAutoFetchRef.current = clean;
+        handleFetchVehicleDetails(clean, true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [regNumber]);
 
   const pickPanDoc = async () => {
     try {
@@ -571,7 +663,7 @@ export default function QuoteScreen() {
                 placeholder="e.g. 28"
                 placeholderTextColor={Colors.textLight}
                 value={age}
-                onChangeText={t => setAge(t.replace(/\D/g, '').slice(0, 2))}
+                onChangeText={(t: string) => setAge(t.replace(/\D/g, '').slice(0, 2))}
                 keyboardType="numeric"
               />
             </View>
@@ -815,6 +907,147 @@ export default function QuoteScreen() {
                 <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>Filters ({selectedAddons.length})</Text>
               </TouchableOpacity>
             </View>
+
+            {/* ── PolicyBazaar IDV Calculation Box & Live Provider Quotes Grid ── */}
+            {insuranceType === 'motor' && (
+              <View style={{ marginBottom: 16 }}>
+                <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#0284C7', marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 16 }}>🛡️</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#0369A1' }}>PolicyBazaar IDV Engine</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>
+                        {idvPayload?.ageBracketLabel || 'IRDAI Schedule'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ fontSize: 12, color: '#334155', marginBottom: 12, lineHeight: 18 }}>
+                    Insured Declared Value (IDV) is the maximum claim amount payable. Calculated based on official IRDAI 5-year depreciation schedule.
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BAE6FD', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View>
+                      <Text style={{ fontSize: 10, color: '#64748B' }}>Calculated Standard IDV</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.primary }}>
+                        ₹{(idvPayload?.selectedIDV || 425000).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 10, color: '#64748B' }}>Depreciation Rate</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#059669' }}>
+                        {idvPayload?.depreciationPercent ?? 15}% Dep
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* IDV Preset Controls */}
+                  {idvPayload && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: customIdvVal === idvPayload.minPermittedIDV ? Colors.primary : Colors.border, backgroundColor: customIdvVal === idvPayload.minPermittedIDV ? '#EFF6FF' : '#FFF', alignItems: 'center' }}
+                        onPress={() => { setCustomIdvVal(idvPayload.minPermittedIDV); fetchLiveQuotes(idvPayload.minPermittedIDV); }}
+                      >
+                        <Text style={{ fontSize: 10, color: Colors.textMuted }}>MIN IDV</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.text }}>₹{(idvPayload.minPermittedIDV / 1000).toFixed(0)}k</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: (!customIdvVal || customIdvVal === idvPayload.standardIDV) ? Colors.primary : Colors.border, backgroundColor: (!customIdvVal || customIdvVal === idvPayload.standardIDV) ? '#EFF6FF' : '#FFF', alignItems: 'center' }}
+                        onPress={() => { setCustomIdvVal(idvPayload.standardIDV); fetchLiveQuotes(idvPayload.standardIDV); }}
+                      >
+                        <Text style={{ fontSize: 10, color: Colors.textMuted }}>STANDARD</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: Colors.primary }}>₹{(idvPayload.standardIDV / 1000).toFixed(0)}k</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{ flex: 1, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: customIdvVal === idvPayload.maxPermittedIDV ? Colors.primary : Colors.border, backgroundColor: customIdvVal === idvPayload.maxPermittedIDV ? '#EFF6FF' : '#FFF', alignItems: 'center' }}
+                        onPress={() => { setCustomIdvVal(idvPayload.maxPermittedIDV); fetchLiveQuotes(idvPayload.maxPermittedIDV); }}
+                      >
+                        <Text style={{ fontSize: 10, color: Colors.textMuted }}>MAX IDV</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: Colors.text }}>₹{(idvPayload.maxPermittedIDV / 1000).toFixed(0)}k</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {idvPayload?.isMutualAgreementRequired && (
+                    <View style={{ backgroundColor: '#FEF3C7', padding: 8, borderRadius: 8, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#B45309' }}>
+                        🤝 Mutual Agreement Rule (&gt;5 Years Old): IDV value is mutually agreed between Insured &amp; Insurer.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Live Provider Quotes Grid */}
+                <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.text, marginBottom: 10 }}>
+                  Live Partner Insurer Quotes ({liveQuotes.length})
+                </Text>
+
+                {fetchingLiveQuotes ? (
+                  <ActivityIndicator size="large" color={Colors.primary} style={{ marginVertical: 20 }} />
+                ) : (
+                  <View style={{ gap: 12 }}>
+                    {liveQuotes.map((q) => {
+                      const isSel = selectedProviderQuote?.id === q.id;
+                      return (
+                        <TouchableOpacity
+                          key={q.id}
+                          style={{
+                            backgroundColor: Colors.white,
+                            borderRadius: 16,
+                            padding: 14,
+                            borderWidth: isSel ? 2 : 1,
+                            borderColor: isSel ? Colors.primary : Colors.border,
+                          }}
+                          onPress={() => {
+                            setSelectedProviderQuote(q);
+                            setCover({ label: `₹${q.breakdown.idv.toLocaleString('en-IN')}`, value: q.breakdown.idv });
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                              <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: q.brandColor, alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>{q.shortName.slice(0, 3)}</Text>
+                              </View>
+                              <View>
+                                <Text style={{ fontSize: 14, fontWeight: '800', color: Colors.text }}>{q.shortName}</Text>
+                                <Text style={{ fontSize: 11, color: Colors.textMuted }}>{q.tagline}</Text>
+                              </View>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>★ {q.rating}</Text>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>{q.claimsRatio}% CSR</Text>
+                            </View>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 10, justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                            <View>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>IDV: ₹{q.breakdown.idv.toLocaleString('en-IN')}</Text>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>OD: ₹{q.breakdown.netODPremium} | TP: ₹{q.breakdown.tpPremium} | GST: ₹{q.breakdown.gstAmount}</Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.primary }}>
+                                ₹{q.breakdown.totalPremium.toLocaleString('en-IN')}
+                              </Text>
+                              <Text style={{ fontSize: 9, color: Colors.textMuted }}>incl. 18% GST / yr</Text>
+                            </View>
+                          </View>
+
+                          {isSel && (
+                            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>Selected Plan ✓</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
             {planMinCover > 0 && planMaxCover > 0 && (
               <Text style={s.coverRange}>
                 Range: {fmtCover(planMinCover)} – {fmtCover(planMaxCover)}
@@ -855,20 +1088,21 @@ export default function QuoteScreen() {
                     placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
                     placeholderTextColor={Colors.textLight}
                     value={customCover}
-                    onChangeText={t => {
-                      const num = t.replace(/[^0-9]/g, '');
-                      setCustomCover(num);
-                      const val = Number(num);
-                      if (val > 0) {
+                    onChangeText={(t: string) => {
+                      const cleanStr = t.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                      setCustomCover(cleanStr);
+                      const floatVal = parseFloat(cleanStr);
+                      if (!isNaN(floatVal) && floatVal > 0) {
+                        const numericVal = floatVal < 1000 ? Math.round(floatVal * 100000) : floatVal;
                         const clamped = planMinCover && planMaxCover
-                          ? Math.min(Math.max(val, planMinCover), planMaxCover)
-                          : val;
+                          ? Math.min(Math.max(numericVal, planMinCover), planMaxCover)
+                          : numericVal;
                         setCover({ label: fmtCover(clamped), value: clamped });
                       } else {
                         setCover(null);
                       }
                     }}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                   />
                 </View>
                 {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) < planMinCover && (
@@ -913,7 +1147,7 @@ export default function QuoteScreen() {
                   placeholder="e.g. ABCDE1234F"
                   placeholderTextColor={Colors.textLight}
                   value={panNumber}
-                  onChangeText={t => setPanNumber(t.toUpperCase().slice(0, 10))}
+                  onChangeText={(t: string) => setPanNumber(t.toUpperCase().slice(0, 10))}
                   autoCapitalize="characters"
                 />
               </View>
@@ -946,7 +1180,7 @@ export default function QuoteScreen() {
                   placeholder="e.g. 1234 5678 9012"
                   placeholderTextColor={Colors.textLight}
                   value={aadhaarNumber}
-                  onChangeText={t => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
+                  onChangeText={(t: string) => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
                   keyboardType="numeric"
                 />
               </View>
@@ -1026,17 +1260,159 @@ export default function QuoteScreen() {
 
             <TouchableOpacity
               style={[s.nextBtn, submitting && { opacity: 0.7 }]}
-              onPress={handleSubmit}
+              onPress={() => setShowCheckoutModal(true)}
               disabled={submitting}
             >
-              {submitting
-                ? <ActivityIndicator color={Colors.white} />
-                : <Text style={s.nextBtnText}>Submit Quote Request →</Text>
-              }
+              <Text style={s.nextBtnText}>View Policy Summary & Pay →</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
+
+      {/* ── PolicyBazaar Pre-Payment Checkout Summary Modal ── */}
+      <Modal visible={showCheckoutModal} transparent animationType="slide" onRequestClose={() => setShowCheckoutModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '88%', flexDirection: 'column' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>📋</Text>
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.text }}>Policy Summary & Checkout</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted }}>Review details before instant issuance</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowCheckoutModal(false)}>
+                <Icon name="close-circle" size={24} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1, padding: 18 }} showsVerticalScrollIndicator={false}>
+              {/* Insurer Card */}
+              {selectedProviderQuote && (
+                <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: '#0284C7', marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: selectedProviderQuote.brandColor, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{selectedProviderQuote.shortName.slice(0, 3)}</Text>
+                      </View>
+                      <View>
+                        <Text style={{ fontSize: 15, fontWeight: '900', color: Colors.text }}>{selectedProviderQuote.shortName}</Text>
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>{selectedProviderQuote.tagline}</Text>
+                      </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#059669' }}>★ {selectedProviderQuote.rating}</Text>
+                      <Text style={{ fontSize: 10, color: Colors.textMuted }}>{selectedProviderQuote.claimsRatio}% CSR</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Policy & Vehicle Summary */}
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                  📄 Coverage & Vehicle Summary
+                </Text>
+                <View style={{ rowGap: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 12, color: Colors.textMuted }}>Insurance Type</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{INSURANCE_TYPES.find(t => t.id === insuranceType)?.label ?? insuranceType}</Text>
+                  </View>
+                  {insuranceType === 'motor' && regNumber ? (
+                    <>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted }}>Registration No.</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{regNumber}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted }}>Vehicle Make & Model</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{vehicleMake} {vehicleModel} ({vehicleVariant})</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted }}>Fuel & Capacity</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{fuelType.toUpperCase()} · {cubicCapacity || '1197 CC'}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted }}>RTO Location</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>{rtoLocation || 'Delhi NCR RTO'}</Text>
+                      </View>
+                    </>
+                  ) : null}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 12, color: Colors.textMuted }}>Sum Insured / IDV</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>{coverLabel}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Comprehensive Premium Breakdown Table */}
+              {selectedProviderQuote && (
+                <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                    💳 Premium Cost Breakdown (Annual)
+                  </Text>
+                  <View style={{ rowGap: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 12, color: Colors.textMuted }}>Own Damage (OD) Premium</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.netODPremium.toLocaleString('en-IN')}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 12, color: Colors.textMuted }}>Statutory Third Party (TP) Cover</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.tpPremium.toLocaleString('en-IN')}</Text>
+                    </View>
+                    {selectedAddons.length > 0 && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: Colors.textMuted }}>Selected Addons ({selectedAddons.length})</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.addonsTotal.toLocaleString('en-IN')}</Text>
+                      </View>
+                    )}
+                    {Number(ncbPercent) > 0 && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 12, color: '#059669' }}>No Claim Bonus ({ncbPercent}% Discount)</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>-₹{selectedProviderQuote.breakdown.ncbDiscountAmount.toLocaleString('en-IN')}</Text>
+                      </View>
+                    )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 12, color: Colors.textMuted }}>GST (18%)</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.gstAmount.toLocaleString('en-IN')}</Text>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: '#CBD5E1', marginVertical: 4 }} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: Colors.text }}>Total Payable</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '900', color: Colors.primary }}>₹{selectedProviderQuote.breakdown.totalPremium.toLocaleString('en-IN')}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* KYC Status */}
+              <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#A7F3D0', marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Icon name="shield-checkmark" size={24} color={Colors.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#065F46' }}>IRDAI KYC Verified</Text>
+                  <Text style={{ fontSize: 11, color: '#047857' }}>PAN ({panNumber}) &amp; Aadhaar ({aadhaarNumber}) docs attached.</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={{ padding: 18, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#FFF' }}>
+              <TouchableOpacity
+                style={[s.nextBtn, submitting && { opacity: 0.7 }]}
+                onPress={() => { setShowCheckoutModal(false); handleSubmit(); }}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={s.nextBtnText}>
+                    Proceed to Instant Issuance (₹{(selectedProviderQuote?.breakdown?.totalPremium || cover?.value || 0).toLocaleString('en-IN')}) →
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Section 1.D: Advanced Quote Sorting & Filtering Drawer Modal ── */}
       <Modal visible={showFilterDrawer} transparent animationType="slide" onRequestClose={() => setShowFilterDrawer(false)}>

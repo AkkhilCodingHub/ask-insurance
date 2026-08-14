@@ -161,6 +161,8 @@ export default function HomeTab() {
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
+  const [searchIntentQuery, setSearchIntentQuery] = useState('');
+  const [selectedIntentType, setSelectedIntentType] = useState<'all' | 'motor' | 'health' | 'travel' | 'life'>('all');
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
@@ -246,6 +248,179 @@ export default function HomeTab() {
 
         {/* ── Body ───────────────────────────────────── */}
         <View style={[s.body, { backgroundColor: colors.bg }]}>
+
+          {/* ── Feature 4: In-App Notification Hub (Expiry, Renewals & New Policies) ── */}
+          <View style={{ marginBottom: 18, backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 16 }}>🔔</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>Notification Hub & Alerts</Text>
+              </View>
+              <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#B45309' }}>3 UNREAD ALERTS</Text>
+              </View>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {/* Alert 1: Policy Expiring */}
+              <TouchableOpacity
+                style={{ width: W * 0.72, backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECACA' }}
+                onPress={() => router.push('/quote?category=motor')}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#DC2626' }}>⚠️ POLICY EXPIRING SOON</Text>
+                  <Text style={{ fontSize: 9, color: '#991B1B' }}>5 Days Left</Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#991B1B', marginBottom: 2 }}>Maruti Swift (DL01AB1234)</Text>
+                <Text style={{ fontSize: 10, color: '#B91C1C', lineHeight: 14 }}>
+                  Motor insurance expires on Aug 20. Renew today to save your 50% NCB discount!
+                </Text>
+              </TouchableOpacity>
+
+              {/* Alert 2: Renewal Pending */}
+              <TouchableOpacity
+                style={{ width: W * 0.72, backgroundColor: '#FFFBEB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FDE68A' }}
+                onPress={() => router.push('/my-policies')}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#D97706' }}>⏳ RENEWAL PENDING</Text>
+                  <Text style={{ fontSize: 9, color: '#92400E' }}>Action Required</Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#92400E', marginBottom: 2 }}>HDFC ERGO Optima Secure</Text>
+                <Text style={{ fontSize: 10, color: '#B45309', lineHeight: 14 }}>
+                  Policy #POL-88219 renewal invoice ready. Tap to complete instant premium payment.
+                </Text>
+              </TouchableOpacity>
+
+              {/* Alert 3: New Policy Added */}
+              <TouchableOpacity
+                style={{ width: W * 0.72, backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#A7F3D0' }}
+                onPress={() => router.push('/plans')}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#059669' }}>🆕 NEW POLICY RELEASED</Text>
+                  <Text style={{ fontSize: 9, color: '#065F46' }}>Just Added</Text>
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#065F46', marginBottom: 2 }}>Star Health 2026 Family Floater</Text>
+                <Text style={{ fontSize: 10, color: '#047857', lineHeight: 14 }}>
+                  Zero waiting period for pre-existing diseases with ₹1 Cr restore cover.
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* ── Feature 3: Smart App-Search & Intent Policy Recommendation Hub ── */}
+          <View style={{ marginBottom: 18, backgroundColor: Colors.white, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: Colors.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Icon name="search-outline" size={18} color={Colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>Smart Intent Policy Recommendation Engine</Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+              {[
+                { id: 'all', label: 'All Intents' },
+                { id: 'motor', label: '🚗 Motor' },
+                { id: 'health', label: '🏥 Health' },
+                { id: 'travel', label: '✈️ Travel' },
+                { id: 'life', label: '🛡️ Life' },
+              ].map(t => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 8,
+                    backgroundColor: selectedIntentType === t.id ? Colors.primary : '#F1F5F9',
+                  }}
+                  onPress={() => setSelectedIntentType(t.id as any)}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: selectedIntentType === t.id ? '#FFF' : Colors.textMuted }}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Travel Recommendation Details (Feature 3 Explicit Requirements) */}
+            {(selectedIntentType === 'all' || selectedIntentType === 'travel') && (
+              <View style={{ backgroundColor: '#FFF7ED', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: '#F97316', marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 16 }}>✈️</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '900', color: '#C2410C' }}>International & Domestic Travel Cover</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#F97316', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '800', color: '#FFF' }}>HOT INTENT</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, color: '#9A3412', marginBottom: 8, lineHeight: 15 }}>
+                  Searched for flight, trip, or vacation? Protect your international or domestic travel:
+                </Text>
+
+                <View style={{ rowGap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#C2410C' }}>🏥 Medical Emergencies:</Text>
+                    <Text style={{ flex: 1, fontSize: 10, color: '#7C2D12' }}>Emergency hospitalization, doctor visits & evacuation abroad/domestically.</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#C2410C' }}>🧳 Baggage & Documents:</Text>
+                    <Text style={{ flex: 1, fontSize: 10, color: '#7C2D12' }}>Compensation for lost, stolen, or delayed luggage & misplaced passports.</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#C2410C' }}>❌ Trip Disruptions:</Text>
+                    <Text style={{ flex: 1, fontSize: 10, color: '#7C2D12' }}>Reimburses non-refundable costs for cancelled, delayed, or interrupted trips.</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#C2410C' }}>⚖️ Personal Liability:</Text>
+                    <Text style={{ flex: 1, fontSize: 10, color: '#7C2D12' }}>Protects against legal liabilities for bodily injury or property damage to third parties.</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{ marginTop: 10, backgroundColor: '#EA580C', paddingVertical: 8, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => router.push('/quote?category=travel')}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Get Instant Travel Quote →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Motor Recommendation Card */}
+            {(selectedIntentType === 'all' || selectedIntentType === 'motor') && (
+              <View style={{ backgroundColor: '#F0F9FF', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#0284C7', marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0369A1' }}>🚗 Motor & Vehicle Insurance</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#0284C7' }}>50% NCB Rollover</Text>
+                </View>
+                <Text style={{ fontSize: 10, color: '#0369A1', marginBottom: 8 }}>
+                  Instant mParivahan RC lookup, statutory cubic capacity tariffs, &amp; 0% depreciation addon.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: '#0284C7', paddingVertical: 6, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => router.push('/quote?category=motor')}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Calculate IDV &amp; Get Quote →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Health Recommendation Card */}
+            {(selectedIntentType === 'all' || selectedIntentType === 'health') && (
+              <View style={{ backgroundColor: '#ECFDF5', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#059669' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#065F46' }}>🏥 Health & Hospitalization Cover</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#059669' }}>Cashless Network</Text>
+                </View>
+                <Text style={{ fontSize: 10, color: '#047857', marginBottom: 8 }}>
+                  10,000+ network hospitals, zero co-pay, &amp; pre/post hospitalization expenses covered.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: '#059669', paddingVertical: 6, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => router.push('/quote?category=health')}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Explore Health Plans →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           {/* Guest nudge — shown when not logged in */}
           {!user && (
