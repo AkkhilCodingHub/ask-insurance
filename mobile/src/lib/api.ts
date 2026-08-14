@@ -8,6 +8,9 @@ function resolveBaseUrl(): string {
   if (envUrl && envUrl.startsWith('http')) {
     return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
   }
+  if (!__DEV__) {
+    return 'https://ask-insurance.onrender.com';
+  }
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:4000';
   }
