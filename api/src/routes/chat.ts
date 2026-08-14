@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
+import { processInsuranceQuery } from '../lib/aiQueryProcessor';
 
 const router = Router();
 
@@ -158,14 +159,30 @@ router.post('/conversations/:id/messages', authenticate, async (req: Request, re
       return;
     }
 
-    const [message] = await prisma.$transaction([
+    const [userMsg] = await prisma.$transaction([
       prisma.message.create({
         data: { conversationId: id, content, senderType: 'user', senderId: userId }
       }),
       prisma.conversation.update({ where: { id }, data: { updatedAt: new Date() } })
     ]);
 
-    res.status(201).json({ message });
+    // Auto-generate AI assistant response for user queries
+    let aiMsg = null;
+    try {
+      const { response: aiReplyText } = await processInsuranceQuery({ userId, userQuery: content });
+      aiMsg = await prisma.message.create({
+        data: {
+          conversationId: id,
+          content: aiReplyText,
+          senderType: 'admin',
+          senderId: 'system-ai-assistant'
+        }
+      });
+    } catch (aiErr) {
+      console.error('[Chat AI Auto-Reply Error]', aiErr);
+    }
+
+    res.status(201).json({ message: userMsg, aiResponse: aiMsg });
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {

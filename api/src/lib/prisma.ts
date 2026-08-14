@@ -2,7 +2,8 @@ import 'dotenv/config';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client';
 
-const url = new URL(process.env.DATABASE_URL ?? '');
+const dbUrlString = process.env.DATABASE_URL || 'mysql://root:root@localhost:3306/ask_insurance';
+const url = new URL(dbUrlString);
 
 const adapter = new PrismaMariaDb({
   host: url.hostname,

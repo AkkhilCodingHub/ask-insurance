@@ -33,7 +33,7 @@ export default function AgentLoginScreen() {
     try {
       const { clearToken } = await import('@/lib/api');
       await clearToken();
-      await login(targetEmail.toLowerCase(), targetPass);
+      await login(targetEmail, targetPass);
       router.replace('/(agent)/quotes' as any);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Invalid credentials.');

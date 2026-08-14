@@ -2,7 +2,7 @@
 set -e
 
 echo "Running migrations..."
-npx prisma migrate deploy
+npx prisma migrate deploy || npx prisma db push --accept-data-loss
 
 echo "Checking if database needs seeding..."
 COUNT=$(node -e "

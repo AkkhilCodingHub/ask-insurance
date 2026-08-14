@@ -8,7 +8,10 @@ function resolveBaseUrl(): string {
   if (envUrl && envUrl.startsWith('http')) {
     return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
   }
-  return 'https://ask-insurance-api-production.up.railway.app';
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:4000';
+  }
+  return 'http://localhost:4000';
 }
 
 const getBaseUrl = () => resolveBaseUrl();
@@ -441,6 +444,64 @@ export const policiesApi = {
   list: () => request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
   get:  (id: string) => request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
   renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
+  fetchLiveProviderQuotes: (payload: {
+    registrationNumber?: string;
+    registrationYear?: number | string;
+    registrationDate?: string;
+    make?: string;
+    model?: string;
+    variant?: string;
+    exShowroomPrice?: number;
+    ncbPercent?: number;
+    hasPreviousClaim?: boolean;
+    selectedAddons?: string[];
+    customIDV?: number;
+    vehicleType?: string;
+    cubicCapacity?: number | string;
+  }) => post<{
+    registrationNumber?: string;
+    vehicleSummary: { make: string; model: string; variant: string; vehicleType: string; registrationYear?: string };
+    idvDetails: {
+      vehicleAgeMonths: number;
+      vehicleAgeYears: number;
+      depreciationPercent: number;
+      standardIDV: number;
+      minPermittedIDV: number;
+      maxPermittedIDV: number;
+      selectedIDV: number;
+      isMutualAgreementRequired: boolean;
+      depreciationLabel: string;
+      ageBracketLabel: string;
+    };
+    ncbWarningAlert?: { warning: boolean; code: string; title: string; message: string } | null;
+    quotes: Array<{
+      id: string;
+      insurerId: string;
+      insurerName: string;
+      shortName: string;
+      logo: string;
+      brandColor: string;
+      claimsRatio: number;
+      rating: number;
+      planName: string;
+      tagline: string;
+      breakdown: {
+        idv: number;
+        baseODPremium: number;
+        ncbDiscountPercent: number;
+        ncbDiscountAmount: number;
+        netODPremium: number;
+        tpPremium: number;
+        addonsCost: number;
+        netPremium: number;
+        gstAmount: number;
+        totalPremium: number;
+      };
+      addonsIncluded: string[];
+      features: string[];
+      isRecommended?: boolean;
+    }>;
+  }>('/api/policies/live-quotes', payload, false),
 };
 
 // ── Claims ────────────────────────────────────────────────────────────────────
@@ -490,6 +551,7 @@ export const paymentsApi = {
       '/api/users/link-agent', { agentCode }, true
     ),
 };
+
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
@@ -866,6 +928,11 @@ export const documentsApi = {
 
   deleteDocument: (id: string) =>
     request<{ success: boolean }>(`/api/documents/${id}`, { method: 'DELETE' }, true),
+
+  ocrVerify: async (formData: FormData) => {
+    const token = await getToken();
+    return uploadForm<{ success: boolean; verified: boolean; confidenceScore: number; extractedFields: any; fileUrl: string }>('/api/documents/ocr', formData, token);
+  },
 };
 
 // ── Vehicles (Registration Number Lookup & Multi-Insurance Management) ────────
