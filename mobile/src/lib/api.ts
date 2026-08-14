@@ -8,13 +8,12 @@ function resolveBaseUrl(): string {
   if (envUrl && envUrl.startsWith('http')) {
     return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
   }
-  if (!__DEV__) {
-    return 'https://ask-insurance.onrender.com';
+  // Local development override only if process.env.USE_LOCAL_API is explicitly set
+  if (__DEV__ && process.env.USE_LOCAL_API === 'true') {
+    return Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4000';
-  }
-  return 'http://localhost:4000';
+  // All platforms (Android APK, iOS, Web, Production & Dev) use live Render API by default
+  return 'https://ask-insurance.onrender.com';
 }
 
 const getBaseUrl = () => resolveBaseUrl();
