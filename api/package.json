@@ -34,7 +34,7 @@
     "multer": "^2.2.0",
     "mysql2": "^3.11.3",
     "pg": "^8.23.0",
-    "razorpay": "^2.9.2",
+    "razorpay": "^2.9.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
