@@ -52,34 +52,16 @@ export function Navbar() {
       >
         {/* Logo */}
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            className="animate-ring"
+          <img
+            src="/logo.jpg"
+            alt="ASK Insurance Broker Logo"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              border: "2px solid var(--accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)",
+              height: 42,
+              width: "auto",
+              objectFit: "contain",
+              borderRadius: 8,
             }}
-          >
-            <Shield size={18} color="#fff" strokeWidth={2.5} />
-          </div>
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 20,
-              letterSpacing: "-0.03em",
-              color: "var(--text)",
-            }}
-          >
-            ASK{" "}
-            <span style={{ color: "var(--primary)", fontWeight: 400, fontSize: 14 }}>
-              Insurance
-            </span>
-          </span>
+          />
         </Link>
 
         {/* Desktop nav */}

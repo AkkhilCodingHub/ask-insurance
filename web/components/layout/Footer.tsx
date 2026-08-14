@@ -33,25 +33,16 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <div
+              <img
+                src="/logo.jpg"
+                alt="ASK Insurance Broker Logo"
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  border: "2px solid #38BDF8",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "linear-gradient(135deg, #1A6BF5, #38BDF8)",
-                  boxShadow: "0 0 16px rgba(56,189,248,0.4)",
+                  height: 38,
+                  width: "auto",
+                  objectFit: "contain",
+                  borderRadius: 6,
                 }}
-              >
-                <Shield size={16} color="#fff" strokeWidth={2.5} />
-              </div>
-              <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-0.03em" }}>
-                ASK{" "}
-                <span style={{ color: "#38BDF8", fontWeight: 400, fontSize: 13 }}>Insurance</span>
-              </span>
+              />
             </div>
             <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, maxWidth: 240 }}>
               IRDAI licensed insurance broker. Reg. No. IB-123-2023. Making insurance simple since 2023.
