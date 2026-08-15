@@ -88,7 +88,7 @@ export function Navbar() {
         {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
           <a
-            href={process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3001"}
+            href="/admin"
             target="_blank"
             rel="noreferrer"
             style={{
