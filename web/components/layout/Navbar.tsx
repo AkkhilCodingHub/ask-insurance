@@ -88,7 +88,7 @@ export function Navbar() {
         {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
           <a
-            href={process.env.NEXT_PUBLIC_ADMIN_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "https://ask-insurance-admin.vercel.app" : "http://localhost:3001")}
+            href={process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3001"}
             target="_blank"
             rel="noreferrer"
             style={{
