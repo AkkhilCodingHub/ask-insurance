@@ -1,20 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
-const getApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    let url = process.env.NEXT_PUBLIC_API_URL.trim();
-    if (!url.endsWith('/api')) {
-      url = url.replace(/\/$/, '') + '/api';
-    }
-    return url;
-  }
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://ask-insurance.onrender.com/api';
-  }
-  return 'http://localhost:4000/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const rawApiUrl = (process.env.NEXT_PUBLIC_API_URL || '').trim();
+const API_BASE_URL = rawApiUrl ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/$/, '')}/api`) : '/api';
 
 interface ApiResponse<T> {
   data?: T;

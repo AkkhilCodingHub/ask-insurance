@@ -3,7 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@ask/shared"],
   async rewrites() {
-    const adminUrl = process.env.ADMIN_URL || "https://ask-insurance-admin-blue.vercel.app";
+    if (!process.env.ADMIN_URL) return [];
+    const adminUrl = process.env.ADMIN_URL.trim();
     return [
       {
         source: "/admin",
