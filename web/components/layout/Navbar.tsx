@@ -88,7 +88,7 @@ export function Navbar() {
         {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
           <a
-            href="/admin"
+            href="https://ask-insurance-admin-blue.vercel.app/"
             target="_blank"
             rel="noreferrer"
             style={{
