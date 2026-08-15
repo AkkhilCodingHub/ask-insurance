@@ -5,9 +5,9 @@ export async function GET(req: NextRequest) {
   const isLocal = host === "localhost" || host === "127.0.0.1";
 
   if (isLocal) {
-    return NextResponse.redirect("http://localhost:3001");
+    return NextResponse.redirect("http://localhost:3001/admin/login");
   }
 
-  // On Vercel live production deployment, redirect directly to admin dashboard route on live domain
-  return NextResponse.redirect(new URL("/dashboard", req.url));
+  // On live deployment, redirect to /admin/login (Broker Admin Login Page)
+  return NextResponse.redirect(new URL("/admin/login", req.url));
 }
