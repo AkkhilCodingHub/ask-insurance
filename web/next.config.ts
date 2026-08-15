@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@ask/shared"],
   async rewrites() {
     if (!process.env.ADMIN_URL) return [];
-    const adminUrl = process.env.ADMIN_URL.trim();
+    const adminUrl = process.env.ADMIN_URL.trim().replace(/\/$/, '');
     return [
       {
         source: "/admin",
