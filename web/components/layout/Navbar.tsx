@@ -87,10 +87,8 @@ export function Navbar() {
 
         {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
-          <a
-            href="http://localhost:3001"
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            href="/admin"
             style={{
               padding: "7px 14px",
               border: "1px solid var(--border)",
@@ -106,7 +104,7 @@ export function Navbar() {
             }}
           >
             Admin Portal ↗
-          </a>
+          </Link>
           <Link
             href="/login"
             style={{
