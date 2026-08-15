@@ -1,0 +1,3 @@
+# Ignore non-frontend workspaces for Vercel Next.js deployment
+api
+mobile
