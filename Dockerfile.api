@@ -10,6 +10,7 @@ COPY shared/package.json ./shared/package.json
 COPY api/package.json    ./api/package.json
 COPY web/package.json    ./web/package.json
 COPY admin/package.json  ./admin/package.json
+COPY api/prisma          ./api/prisma
 RUN npm ci --omit=dev --workspace=api --workspace=shared --include-workspace-root
 
 # ── Build ─────────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ COPY shared/package.json ./shared/package.json
 COPY api/package.json    ./api/package.json
 COPY web/package.json    ./web/package.json
 COPY admin/package.json  ./admin/package.json
+COPY api/prisma          ./api/prisma
 RUN npm ci --workspace=api --workspace=shared --include-workspace-root
 
 # Copy source
