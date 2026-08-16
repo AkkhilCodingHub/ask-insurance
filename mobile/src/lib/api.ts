@@ -8,11 +8,6 @@ function resolveBaseUrl(): string {
   if (envUrl && envUrl.startsWith('http')) {
     return envUrl.endsWith('/api') ? envUrl.slice(0, -4) : envUrl;
   }
-  // Local development override only if process.env.USE_LOCAL_API is explicitly set
-  if (__DEV__ && process.env.USE_LOCAL_API === 'true') {
-    return Platform.OS === 'android' ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
-  }
-  // All platforms (Android APK, iOS, Web, Production & Dev) use live Render API by default
   return 'https://ask-insurance.onrender.com';
 }
 
@@ -333,6 +328,11 @@ export interface ApiPayment {
     policyNumber: string;
     type:         string;
     provider:     string;
+    sumInsured?:  number;
+    premium?:     number;
+    startDate?:   string;
+    endDate?:     string;
+    status?:      string;
   };
 }
 
@@ -445,6 +445,16 @@ export const plansApi = {
 export const policiesApi = {
   list: () => request<{ policies: ApiPolicy[] }>('/api/policies', {}, true),
   get:  (id: string) => request<{ policy: ApiPolicy }>(`/api/policies/${id}`, {}, true),
+  create: (data: {
+    type: string;
+    provider: string;
+    sumInsured: number;
+    premium: number;
+    durationDays?: number;
+    registrationNumber?: string;
+    nomineeName?: string;
+    nomineeRelation?: string;
+  }) => post<{ policy: ApiPolicy }>('/api/policies', data, true),
   renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
   fetchLiveProviderQuotes: (payload: {
     registrationNumber?: string;
@@ -893,6 +903,16 @@ export const kycApi = {
       kycRejectionReason: string | null; kycSubmittedAt: string | null;
     }>('/api/kyc/status', {}, true),
 
+  verifyInstant: (data: {
+    name: string;
+    panNumber: string;
+    aadhaarNumber: string;
+    dob?: string;
+    gender?: string;
+    address?: string;
+    pincode?: string;
+  }) => post<{ success: boolean; kycStatus: string; user: any }>('/api/kyc/verify-instant', data, true),
+
   uploadDocument: async (
     docType: 'aadhaar' | 'driving_license' | 'passport',
     fileUri: string,
@@ -953,7 +973,12 @@ export interface VehicleData {
   ncbPercentage?: number;
 }
 
+export type ApiVehicle = VehicleData;
+
 export const vehiclesApi = {
+  list: () =>
+    request<{ vehicles: VehicleData[] }>('/api/vehicles', {}, true),
+
   getVehicles: () =>
     request<{ vehicles: VehicleData[] }>('/api/vehicles', {}, true),
 
@@ -980,6 +1005,9 @@ export const vehiclesApi = {
       method: 'POST',
       body: JSON.stringify(data)
     }, true),
+
+  fetchRcDetails: (registrationNumber: string) =>
+    vehiclesApi.fetchVehicleRcDetails(registrationNumber),
 
   fetchVehicleRcDetails: (registrationNumber: string) =>
     request<{

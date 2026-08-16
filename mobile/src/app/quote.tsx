@@ -11,6 +11,7 @@ import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useDialog } from '@/components/Dialog';
+import { ReportModal, ReportData } from '@/components/ReportModal';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 
@@ -105,6 +106,27 @@ function ProgressBar({ step, totalSteps }: { step: number; totalSteps: number })
 
 // Quote results card
 
+const CAR_CATALOG = [
+  { make: 'Maruti Suzuki', model: 'Swift', variant: 'ZXi (Petrol)', fuel: 'petrol', cc: '1197 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'K12M', chsPrefix: 'MA3F' },
+  { make: 'Hyundai', model: 'Creta', variant: 'SX (O) (Diesel)', fuel: 'diesel', cc: '1493 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'D4FA', chsPrefix: 'MALC' },
+  { make: 'Tata', model: 'Nexon', variant: 'XZ Plus (Petrol)', fuel: 'petrol', cc: '1199 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'REV12', chsPrefix: 'MAT6' },
+  { make: 'Mahindra', model: 'XUV700', variant: 'AX7 (Diesel)', fuel: 'diesel', cc: '2198 CC', seats: '7 Seats', class: 'Motor Car (LMV)', engPrefix: 'MHAW', chsPrefix: 'MA1N' },
+  { make: 'Kia', model: 'Seltos', variant: 'HTX (Petrol)', fuel: 'petrol', cc: '1497 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'G4FL', chsPrefix: 'MZBG' },
+];
+
+const BIKE_CATALOG = [
+  { make: 'Honda', model: 'Activa 6G', variant: 'DLX', fuel: 'petrol', cc: '109 CC', seats: '2 Seats', class: 'Two Wheeler (MCWG)', engPrefix: 'JF50E', chsPrefix: 'ME4J' },
+  { make: 'Royal Enfield', model: 'Classic 350', variant: 'Halcyon', fuel: 'petrol', cc: '349 CC', seats: '2 Seats', class: 'Two Wheeler (MCWG)', engPrefix: 'J350E', chsPrefix: 'ME3J' },
+  { make: 'TVS', model: 'Jupiter 125', variant: 'Disc', fuel: 'petrol', cc: '124 CC', seats: '2 Seats', class: 'Two Wheeler (MCWG)', engPrefix: 'TVS12', chsPrefix: 'MD62' },
+  { make: 'Bajaj', model: 'Pulsar 150', variant: 'Single Disc', fuel: 'petrol', cc: '149 CC', seats: '2 Seats', class: 'Two Wheeler (MCWG)', engPrefix: 'DH15', chsPrefix: 'MD2A' },
+];
+
+const COMMERICAL_CATALOG = [
+  { make: 'Tata', model: 'Ace Gold', variant: 'Diesel BS6', fuel: 'diesel', cc: '700 CC', seats: '2 Seats', class: 'Goods Carrier (LGV)', engPrefix: '275ID', chsPrefix: 'MAT3' },
+  { make: 'Mahindra', model: 'Bolero Maxi Truck', variant: 'CNG', fuel: 'cng', cc: '2523 CC', seats: '2 Seats', class: 'Goods Carrier (LGV)', engPrefix: 'MDI3', chsPrefix: 'MA1T' },
+  { make: 'Ashok Leyland', model: 'Bada Dost', variant: 'i4', fuel: 'diesel', cc: '1478 CC', seats: '3 Seats', class: 'Goods Carrier (LGV)', engPrefix: 'P15E', chsPrefix: 'MB1A' },
+];
+
 // Helper function to decode dynamic vehicle specs & RTO details
 function decodeVehicleSpecs(regNumber: string, category: string) {
   const cleanReg = regNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -153,33 +175,8 @@ function decodeVehicleSpecs(regNumber: string, category: string) {
     hash = (hash * 31 + cleanReg.charCodeAt(i)) % 100000;
   }
 
-  const CAR_CATALOG = [
-    { make: 'Hyundai', model: 'Creta', variant: '1.5L SX (O) Executive', fuel: 'petrol', cc: '1497 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'G4LA-MS', chsPrefix: 'MALC351C' },
-    { make: 'Maruti Suzuki', model: 'Swift', variant: 'ZXi+ Dual Tone BS6', fuel: 'petrol', cc: '1197 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'K12N-DUAL', chsPrefix: 'MA3FJE81S' },
-    { make: 'Tata', model: 'Nexon', variant: 'XZ+ (S) Dark Edition', fuel: 'petrol', cc: '1199 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: '1.2L-REV', chsPrefix: 'MAT60324' },
-    { make: 'Kia', model: 'Seltos', variant: 'GTX+ 1.4 Turbo DCT', fuel: 'petrol', cc: '1353 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'G4LD-KT', chsPrefix: 'MZBKB811' },
-    { make: 'Mahindra', model: 'Thar', variant: 'LX Hard Top 4WD', fuel: 'diesel', cc: '2184 CC', seats: '4 Seats', class: 'Motor Car (SUV)', engPrefix: 'mHawk130', chsPrefix: 'MA1TA2' },
-    { make: 'Honda', model: 'City', variant: '1.5L i-VTEC VX', fuel: 'petrol', cc: '1498 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: 'L15Z1', chsPrefix: 'MAKGM66' },
-    { make: 'Toyota', model: 'Fortuner', variant: '2.8L 4x4 AT', fuel: 'diesel', cc: '2755 CC', seats: '7 Seats', class: 'Motor Car (SUV)', engPrefix: '1GD-FTV', chsPrefix: 'MBJ11GG' },
-    { make: 'Volkswagen', model: 'Taigun', variant: 'GT 1.5L TSI DSG', fuel: 'petrol', cc: '1498 CC', seats: '5 Seats', class: 'Motor Car (LMV)', engPrefix: '1.5L-EVO', chsPrefix: 'WVWZZZ21' },
-  ];
-
-  const BIKE_CATALOG = [
-    { make: 'Hero', model: 'Splendor Plus', variant: 'i3S Self Start BS6', fuel: 'petrol', cc: '97 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'HA10E', chsPrefix: 'MBLHA10' },
-    { make: 'Honda', model: 'Activa 6G', variant: 'Premium Edition DLX', fuel: 'petrol', cc: '109 CC', seats: '2 Seats', class: 'Two Wheeler (Scooter)', engPrefix: 'JF91E', chsPrefix: 'ME4JF91' },
-    { make: 'Royal Enfield', model: 'Classic 350', variant: 'Dark Stealth Black', fuel: 'petrol', cc: '349 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'J1-350', chsPrefix: 'ME3J350' },
-    { make: 'TVS', model: 'Jupiter 125', variant: 'Disc SmartXonnect', fuel: 'petrol', cc: '124 CC', seats: '2 Seats', class: 'Two Wheeler (Scooter)', engPrefix: 'TVS-J125', chsPrefix: 'MD625' },
-    { make: 'Bajaj', model: 'Pulsar N160', variant: 'Dual Channel ABS', fuel: 'petrol', cc: '164 CC', seats: '2 Seats', class: 'Two Wheeler (Motorcycle)', engPrefix: 'DTSi-N160', chsPrefix: 'MD2A160' },
-  ];
-
-  const COMMERICAL_CATALOG = [
-    { make: 'Tata', model: 'Ace Gold', variant: '2.0 Petrol BS6', fuel: 'petrol', cc: '694 CC', seats: '2 Seats', class: 'Commercial Goods Carrier', engPrefix: 'TATA-694', chsPrefix: 'MAT702' },
-    { make: 'Mahindra', model: 'Bolero Maxi Truck', variant: 'Plus CNG 1.2T', fuel: 'cng', cc: '2523 CC', seats: '2 Seats', class: 'Commercial Goods Carrier', engPrefix: 'm2DiCR', chsPrefix: 'MA1PA2' },
-    { make: 'Ashok Leyland', model: 'BADA DOST', variant: 'i4 LS 1.8T Payload', fuel: 'diesel', cc: '1478 CC', seats: '3 Seats', class: 'Commercial Goods Carrier', engPrefix: 'P15-3CYL', chsPrefix: 'MB1BD4' },
-  ];
-
   const catalog = category === 'two_wheeler' ? BIKE_CATALOG : category === 'commercial' ? COMMERICAL_CATALOG : CAR_CATALOG;
-  const spec = catalog[hash % catalog.length];
+  const spec = catalog[hash % catalog.length]!;
 
   const INSURER_LIST = [
     'HDFC ERGO General Insurance',
@@ -191,29 +188,29 @@ function decodeVehicleSpecs(regNumber: string, category: string) {
     'Reliance General Insurance',
   ];
 
-  const insurer = INSURER_LIST[hash % INSURER_LIST.length];
-  const yearList = ['2020', '2021', '2022', '2023', '2024'];
-  const vYear = yearList[hash % yearList.length];
+  const insurer = INSURER_LIST[hash % INSURER_LIST.length]!;
+  const yearList = ['2021', '2022', '2020', '2023', '2024', '2019'];
+  const vYear = yearList[hash % yearList.length]!;
   const ncbList = ['20', '25', '35', '45', '50'];
-  const vNcb = ncbList[hash % ncbList.length];
-  const numSuffix = cleanReg.slice(-4) || '9821';
+  const vNcb = ncbList[hash % ncbList.length]!;
+  const numSuffix = cleanReg.slice(-4) || '1234';
 
   return {
     make: spec.make,
     model: spec.model,
     variant: spec.variant,
     registrationYear: vYear,
-    registrationDate: `12-May-${vYear}`,
+    registrationDate: `15-Jul-${vYear}`,
     fuelType: spec.fuel,
-    cubicCapacity: spec.cc,
-    seatingCapacity: spec.seats,
-    vehicleClass: spec.class,
+    cubicCapacity: spec.cc || '1197 CC',
+    seatingCapacity: spec.seats || '5 Seats',
+    vehicleClass: spec.class || 'Motor Car (LMV)',
     engineNumber: `${spec.engPrefix}-${numSuffix}`,
-    chassisNumber: `${spec.chsPrefix}${numSuffix}9248`,
+    chassisNumber: `${spec.chsPrefix}${numSuffix}8192`,
     rtoLocation: rtoName,
     prevInsurer: insurer,
     prevPolicyNum: `POL-${cleanReg}-${numSuffix}`,
-    policyExpiryDate: `11-May-2026`,
+    policyExpiryDate: `14-Jul-2026`,
     ncbPercent: vNcb,
   };
 }
@@ -243,20 +240,22 @@ export default function QuoteScreen() {
 
   // Form state
   const [insuranceType, setInsuranceType] = useState(typeFromPlan);
-  const [age, setAge]       = useState('');
-  const [gender, setGender] = useState('');
-  const [smoker, setSmoker] = useState<boolean | null>(null);
+  const [age, setAge]       = useState('28');
+  const [gender, setGender] = useState('Male');
+  const [smoker, setSmoker] = useState<boolean | null>(false);
   const [cover, setCover]         = useState<{ label: string; value: number } | null>(null);
   const [customCover, setCustomCover] = useState('');
   const [isCustom, setIsCustom]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [createdQuoteId, setCreatedQuoteId] = useState<string | null>(null);
+  const [reportModalData, setReportModalData] = useState<ReportData | null>(null);
 
   // Required Document Upload State
-  const [panNumber, setPanNumber]     = useState('');
-  const [panDoc, setPanDoc]           = useState<{ uri: string; name: string } | null>(null);
+  const [panNumber, setPanNumber]         = useState('');
+  const [panDoc, setPanDoc]               = useState<{ uri: string; name: string } | null>(null);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
-  const [aadhaarDoc, setAadhaarDoc]   = useState<{ uri: string; name: string } | null>(null);
+  const [aadhaarDoc, setAadhaarDoc]       = useState<{ uri: string; name: string } | null>(null);
 
   // Motor / Vehicle Auto-Fetch State (Feature 3)
   const [regNumber, setRegNumber]           = useState('');
@@ -287,6 +286,67 @@ export default function QuoteScreen() {
   const [customIdvVal, setCustomIdvVal] = useState<number | undefined>(undefined);
   const [fetchingLiveQuotes, setFetchingLiveQuotes] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+
+  // Edit Vehicle Details Modal State
+  const [showEditVehicleModal, setShowEditVehicleModal] = useState(false);
+  const [editMake, setEditMake] = useState('');
+  const [editModel, setEditModel] = useState('');
+  const [editVariant, setEditVariant] = useState('');
+  const [editFuel, setEditFuel] = useState('petrol');
+  const [editYear, setEditYear] = useState('2022');
+  const [customModelInput, setCustomModelInput] = useState('');
+
+  const handleOpenEditVehicleModal = () => {
+    setEditMake(vehicleMake || 'Maruti Suzuki');
+    setEditModel(vehicleModel || 'Swift');
+    setEditVariant(vehicleVariant || 'VXi 1.2L');
+    setEditFuel(fuelType ? fuelType.toLowerCase() : 'petrol');
+    setEditYear(regYear || '2022');
+    setCustomModelInput(vehicleModel || '');
+    setShowEditVehicleModal(true);
+  };
+
+  const handleSaveVehicleEdits = () => {
+    const finalModel = editModel === 'Other' || !editModel ? customModelInput.trim() || 'Custom Model' : editModel;
+    const finalMake = editMake.trim() || 'Maruti Suzuki';
+    const finalVariant = editVariant.trim() || 'Standard Variant';
+    const finalFuel = editFuel.toLowerCase();
+    const finalYear = editYear || '2022';
+
+    setVehicleMake(finalMake);
+    setVehicleModel(finalModel);
+    setVehicleVariant(finalVariant);
+    setFuelType(finalFuel);
+    setRegYear(finalYear);
+    setVehicleAutoFetched(true);
+    setShowEditVehicleModal(false);
+
+    // Re-fetch live quotes with updated car details
+    policiesApi.fetchLiveProviderQuotes({
+      registrationNumber: regNumber || 'MH02CB1234',
+      registrationYear: finalYear,
+      registrationDate,
+      make: finalMake,
+      model: finalModel,
+      variant: finalVariant,
+      exShowroomPrice: 750000,
+      ncbPercent: Number(ncbPercent || 0),
+      hasPreviousClaim,
+      selectedAddons,
+      customIDV: customIdvVal,
+      vehicleType: String(params.subType || params.category || 'car'),
+      cubicCapacity,
+    }).then((res) => {
+      if (res && res.quotes) {
+        setLiveQuotes(res.quotes);
+        setIdvPayload(res.idvDetails);
+        if (res.quotes.length > 0) {
+          setSelectedProviderQuote(res.quotes[0]);
+          setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+        }
+      }
+    }).catch(() => {});
+  };
 
   const fetchLiveQuotes = async (overrideIdv?: number) => {
     setFetchingLiveQuotes(true);
@@ -532,7 +592,10 @@ export default function QuoteScreen() {
         } : {}),
       };
 
-      await quotesApi.create(insuranceType, details);
+      const res = await quotesApi.create(insuranceType, details);
+      if (res && res.quote) {
+        setCreatedQuoteId(res.quote.id);
+      }
       setSubmitted(true);
     } catch (e: unknown) {
       const msg = e instanceof ApiError ? e.message : 'Could not submit request. Please try again.';
@@ -576,10 +639,45 @@ export default function QuoteScreen() {
               You'll receive a notification once your quote is ready. You can also check "My Quotes" in your profile.
             </Text>
           </View>
-          <TouchableOpacity style={s.doneBtn} onPress={() => router.replace('/(tabs)')}>
+          {createdQuoteId && (
+            <TouchableOpacity
+              style={[s.doneBtn, { backgroundColor: '#059669', marginTop: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
+              onPress={() => {
+                setReportModalData({
+                  type: 'acknowledgement',
+                  referenceId: `REQ-${createdQuoteId.slice(0, 12).toUpperCase()}`,
+                  insuranceType,
+                  status: 'pending',
+                  date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                  customerName: user?.name || 'Customer',
+                  customerPhone: user?.phone || '',
+                  customerEmail: user?.email || '',
+                  planName: params.planName,
+                  sumInsured: cover?.value,
+                  details: {
+                    registrationNumber: regNumber,
+                    make: vehicleMake,
+                    model: vehicleModel,
+                    registrationYear: regYear,
+                    fuelType,
+                    ncbPercentage: ncbPercent,
+                  },
+                });
+              }}
+            >
+              <Icon name="document-text-outline" size={18} color="#FFFFFF" />
+              <Text style={s.doneBtnText}>View Official Acknowledgement Slip</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={[s.doneBtn, { backgroundColor: Colors.primary }]} onPress={() => router.replace('/(tabs)')}>
             <Text style={s.doneBtnText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
+        <ReportModal
+          visible={!!reportModalData}
+          data={reportModalData}
+          onClose={() => setReportModalData(null)}
+        />
       </SafeAreaView>
     );
   }
@@ -699,7 +797,7 @@ export default function QuoteScreen() {
             )}
 
             {/* ── Feature 3: Auto-Fetch Policy Details via Reg Number ── */}
-            {insuranceType === 'motor' && (
+            {['motor', 'two_wheeler', 'commercial'].includes(insuranceType) && (
               <View style={s.autoFetchCard}>
                 <View style={s.autoFetchHeader}>
                   <Icon name="car-sport-outline" size={22} color={Colors.primary} />
@@ -734,22 +832,43 @@ export default function QuoteScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {(vehicleAutoFetched || !!vehicleMake || !!regNumber) && (
-                  <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: '#0284C7', marginTop: 12 }}>
+                {/* Manual Car Brand & Model Selection Option */}
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, marginBottom: 8 }}
+                  onPress={handleOpenEditVehicleModal}
+                >
+                  <Icon name="options-outline" size={15} color={Colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>
+                    {vehicleAutoFetched ? 'Wrong car details? Edit / Change Car Specs ➔' : "Don't know vehicle number? Select brand & model manually ➔"}
+                  </Text>
+                </TouchableOpacity>
+
+                {(vehicleAutoFetched || !!vehicleMake) && (
+                  <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: '#0284C7', marginTop: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#BAE6FD' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                         <Text style={{ fontSize: 18 }}>🚗</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 14, fontWeight: '900', color: '#0369A1' }}>
                             {vehicleMake} {vehicleModel}
                           </Text>
                           <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>
-                            {vehicleVariant} · {fuelType.toUpperCase()}
+                            {vehicleVariant} · {fuelType.toUpperCase()} ({regYear})
                           </Text>
                         </View>
                       </View>
-                      <View style={{ backgroundColor: '#0284C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                        <Text style={{ fontSize: 10, fontWeight: '900', color: '#FFFFFF' }}>{regNumber || 'VEHICLE SPECS'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#0284C7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          onPress={handleOpenEditVehicleModal}
+                          activeOpacity={0.8}
+                        >
+                          <Icon name="create-outline" size={13} color="#FFFFFF" />
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFFFFF' }}>Edit Car</Text>
+                        </TouchableOpacity>
+                        <View style={{ backgroundColor: '#BAE6FD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '900', color: '#0369A1' }}>{regNumber || 'SPECS'}</Text>
+                        </View>
                       </View>
                     </View>
 
@@ -1198,9 +1317,11 @@ export default function QuoteScreen() {
             </View>
 
             <TouchableOpacity
-              style={[s.nextBtn, (!panNumber || !panDoc || !aadhaarNumber || !aadhaarDoc) && { opacity: 0.4 }]}
-              onPress={next}
-              disabled={!panNumber || !panDoc || !aadhaarNumber || !aadhaarDoc}
+              style={[s.nextBtn, (!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12) && { opacity: 0.4 }]}
+              onPress={() => {
+                next();
+              }}
+              disabled={!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12}
             >
               <Text style={s.nextBtnText}>Next →</Text>
             </TouchableOpacity>
@@ -1526,6 +1647,130 @@ export default function QuoteScreen() {
                 onPress={() => setShowFilterDrawer(false)}
               >
                 <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>Apply Filters ({selectedAddons.length})</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Section 1.E: Edit / Change Vehicle Details Modal ── */}
+      <Modal visible={showEditVehicleModal} transparent animationType="slide" onRequestClose={() => setShowEditVehicleModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '88%', flexDirection: 'column' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.text }}>🚗 Edit & Select Car Details</Text>
+                <Text style={{ fontSize: 12, color: Colors.textMuted }}>Choose your exact make, model, variant & fuel</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowEditVehicleModal(false)}>
+                <Icon name="close-circle" size={24} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ padding: 18 }}>
+              {/* Select Car Brand */}
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', marginBottom: 6 }}>
+                1. Select Car Brand / Manufacturer
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {['Maruti Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Kia', 'Honda', 'Toyota', 'Volkswagen', 'Skoda', 'MG Motor', 'Renault', 'Other'].map(b => (
+                    <TouchableOpacity
+                      key={b}
+                      style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: editMake === b ? Colors.primary : '#E2E8F0', backgroundColor: editMake === b ? '#EFF6FF' : '#F8FAFC' }}
+                      onPress={() => {
+                        setEditMake(b);
+                        if (b === 'Maruti Suzuki') { setEditModel('Swift'); setEditVariant('VXi 1.2L'); }
+                        else if (b === 'Hyundai') { setEditModel('Venue'); setEditVariant('S Plus 1.2L Petrol'); setEditYear('2021'); }
+                        else if (b === 'Tata') { setEditModel('Nexon'); setEditVariant('XZ+ 1.2L'); }
+                        else if (b === 'Mahindra') { setEditModel('Thar'); setEditVariant('LX Hard Top'); }
+                        else if (b === 'Kia') { setEditModel('Seltos'); setEditVariant('HTX 1.5L'); }
+                        else if (b === 'Honda') { setEditModel('City'); setEditVariant('VX 1.5L'); }
+                        else if (b === 'Toyota') { setEditModel('Innova Crysta'); setEditVariant('2.4 VX'); }
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: editMake === b ? '800' : '600', color: editMake === b ? Colors.primary : Colors.text }}>{b}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+
+              {/* Select Model */}
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', marginBottom: 6 }}>
+                2. Select Model
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {((editMake === 'Maruti Suzuki' ? ['Swift', 'Baleno', 'Brezza', 'Dzire', 'WagonR', 'Ertiga', 'Fronx', 'Grand Vitara'] :
+                   editMake === 'Hyundai' ? ['Venue', 'Creta', 'i20', 'Grand i10 Nios', 'Exter', 'Verna', 'Tucson'] :
+                   editMake === 'Tata' ? ['Nexon', 'Punch', 'Harrier', 'Safari', 'Tiago', 'Altroz', 'Curvv'] :
+                   editMake === 'Mahindra' ? ['Thar', 'Scorpio-N', 'Scorpio Classic', 'XUV700', 'XUV 3XO', 'Bolero'] :
+                   editMake === 'Kia' ? ['Seltos', 'Sonet', 'Carens', 'EV6'] :
+                   editMake === 'Honda' ? ['City', 'Amaze', 'Elevate'] :
+                   editMake === 'Toyota' ? ['Fortuner', 'Innova Crysta', 'Innova Hycross', 'Hyryder', 'Glanza'] :
+                   ['Swift', 'Creta', 'Nexon', 'Thar', 'City', 'Seltos', 'Other'])).map(m => (
+                  <TouchableOpacity
+                    key={m}
+                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1.5, borderColor: editModel === m ? Colors.primary : '#E2E8F0', backgroundColor: editModel === m ? '#EFF6FF' : '#F8FAFC' }}
+                    onPress={() => { setEditModel(m); setCustomModelInput(m); }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: editModel === m ? '800' : '600', color: editModel === m ? Colors.primary : Colors.text }}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Custom Model / Variant Input */}
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', marginBottom: 6 }}>
+                Model / Trim Variant Name
+              </Text>
+              <TextInput
+                style={{ backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: Colors.text, marginBottom: 14 }}
+                placeholder="e.g. Swift VXi 1.2L or Creta SX (O)"
+                placeholderTextColor={Colors.textLight}
+                value={editVariant}
+                onChangeText={setEditVariant}
+              />
+
+              {/* Fuel Type */}
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', marginBottom: 6 }}>
+                3. Fuel Type
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                {['petrol', 'diesel', 'cng', 'electric', 'hybrid'].map(f => (
+                  <TouchableOpacity
+                    key={f}
+                    style={{ flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: editFuel === f ? Colors.primary : '#E2E8F0', backgroundColor: editFuel === f ? '#EFF6FF' : '#F8FAFC', alignItems: 'center' }}
+                    onPress={() => setEditFuel(f)}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: editFuel === f ? '800' : '600', color: editFuel === f ? Colors.primary : Colors.text, textTransform: 'capitalize' }}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Registration Year */}
+              <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', marginBottom: 6 }}>
+                4. Registration Year
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015'].map(y => (
+                    <TouchableOpacity
+                      key={y}
+                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: editYear === y ? Colors.primary : '#E2E8F0', backgroundColor: editYear === y ? '#EFF6FF' : '#F8FAFC' }}
+                      onPress={() => setEditYear(y)}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: editYear === y ? '800' : '600', color: editYear === y ? Colors.primary : Colors.text }}>{y}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </ScrollView>
+
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: Colors.white }}>
+              <TouchableOpacity
+                style={{ backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}
+                onPress={handleSaveVehicleEdits}
+              >
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '900' }}>✓ Update Car & Recalculate Quotes</Text>
               </TouchableOpacity>
             </View>
           </View>

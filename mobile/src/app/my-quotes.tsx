@@ -12,7 +12,9 @@ import * as WebBrowser from 'expo-web-browser';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
+import { ReportModal, ReportData } from '@/components/ReportModal';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -589,8 +591,9 @@ const DETAIL_LABEL: Record<string, string> = {
   hasPreviousClaim: 'Past Claim',
 };
 
-function DetailsSheet({ visible, quote, onClose }: {
+function DetailsSheet({ visible, quote, onClose, onShowSlip }: {
   visible: boolean; quote: QuoteRequest | null; onClose: () => void;
+  onShowSlip: (q: QuoteRequest) => void;
 }) {
   const color = quote ? (TYPE_COLOR[quote.type] ?? Colors.primary) : Colors.primary;
   const ar    = quote?.adminResponse;
@@ -708,6 +711,30 @@ function DetailsSheet({ visible, quote, onClose }: {
             </View>
           </View>
         )}
+
+        {/* Official Acknowledgement Slip */}
+        <View style={ds.section}>
+          <Text style={ds.sectionLabel}>ACKNOWLEDGEMENT & REPORT</Text>
+          <TouchableOpacity
+            style={[ds.table, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}
+            onPress={() => {
+              if (quote) {
+                onClose();
+                onShowSlip(quote);
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <Icon name="document-text" size={22} color="#15803D" />
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#166534' }}>Official Acknowledgement Slip</Text>
+                <Text style={{ fontSize: 11, color: '#15803D' }}>IRDAI Direct Brokerage Underwriting Slip</Text>
+              </View>
+            </View>
+            <Icon name="open-outline" size={16} color="#15803D" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </BottomSheet>
   );
@@ -716,12 +743,13 @@ function DetailsSheet({ visible, quote, onClose }: {
 // ── Quote Card — mirrors PlanCard structure exactly ───────────────────────────
 
 function QuoteCard({
-  q, onAccept, onTrack, onDetails,
+  q, onAccept, onTrack, onDetails, onDownloadSlip,
 }: {
   q: QuoteRequest;
   onAccept:  (q: QuoteRequest) => void;
   onTrack:   (q: QuoteRequest) => void;
   onDetails: (q: QuoteRequest) => void;
+  onDownloadSlip: (q: QuoteRequest) => void;
 }) {
   const color   = TYPE_COLOR[q.type] ?? Colors.primary;
   const st      = STATUS_CFG[q.status] ?? STATUS_CFG.pending;
@@ -858,9 +886,14 @@ function QuoteCard({
           <Text style={qc.actionBtnText}>Details</Text>
         </TouchableOpacity>
         <View style={qc.actionDivider} />
+        <TouchableOpacity style={qc.actionBtn} onPress={() => onDownloadSlip(q)} activeOpacity={0.75}>
+          <Icon name="receipt-outline" size={14} color={Colors.textMuted} />
+          <Text style={qc.actionBtnText}>Ack Slip</Text>
+        </TouchableOpacity>
+        <View style={qc.actionDivider} />
         <TouchableOpacity style={qc.actionBtn} onPress={() => onTrack(q)} activeOpacity={0.75}>
           <Icon name="git-branch-outline" size={14} color={Colors.textMuted} />
-          <Text style={qc.actionBtnText}>Track Status</Text>
+          <Text style={qc.actionBtnText}>Track</Text>
         </TouchableOpacity>
         {(q.status === 'responded' || q.status === 'approved') && (
           <>
@@ -882,6 +915,7 @@ const AUTO_REFRESH_MS = 30_000; // 30 s
 
 export default function MyQuotesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { alert } = useDialog();
   const [quotes, setQuotes]             = useState<QuoteRequest[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -891,6 +925,7 @@ export default function MyQuotesScreen() {
   const [paymentQuote, setPaymentQuote] = useState<QuoteRequest | null>(null);
   const [trackingQuote, setTrackingQuote] = useState<QuoteRequest | null>(null);
   const [detailsQuote,  setDetailsQuote]  = useState<QuoteRequest | null>(null);
+  const [reportModalData, setReportModalData] = useState<ReportData | null>(null);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const spinLoop = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -1027,6 +1062,24 @@ export default function MyQuotesScreen() {
               onAccept={setPaymentQuote}
               onTrack={setTrackingQuote}
               onDetails={setDetailsQuote}
+              onDownloadSlip={(quote) => {
+                setReportModalData({
+                  type: 'acknowledgement',
+                  referenceId: `REQ-${quote.id.slice(0, 12).toUpperCase()}`,
+                  insuranceType: quote.type,
+                  status: quote.status,
+                  date: fmtDate(quote.createdAt),
+                  customerName: (quote.details as any)?.name || user?.name || 'Policyholder',
+                  customerPhone: (quote.details as any)?.phone || user?.phone || '',
+                  customerEmail: (quote.details as any)?.email || user?.email || '',
+                  provider: quote.adminResponse?.insurer,
+                  planName: quote.adminResponse?.planName || (quote.details as any)?.planName,
+                  sumInsured: (quote.details as any)?.sumInsured || (quote.details as any)?.idv,
+                  premium: quote.adminResponse?.totalPremium,
+                  details: quote.details || {},
+                  notes: quote.adminResponse?.notes,
+                });
+              }}
             />
           ))}
         </ScrollView>
@@ -1047,6 +1100,29 @@ export default function MyQuotesScreen() {
         visible={!!detailsQuote}
         quote={detailsQuote}
         onClose={() => setDetailsQuote(null)}
+        onShowSlip={(quote) => {
+          setReportModalData({
+            type: 'acknowledgement',
+            referenceId: `REQ-${quote.id.slice(0, 12).toUpperCase()}`,
+            insuranceType: quote.type,
+            status: quote.status,
+            date: fmtDate(quote.createdAt),
+            customerName: (quote.details as any)?.name || user?.name || 'Policyholder',
+            customerPhone: (quote.details as any)?.phone || user?.phone || '',
+            customerEmail: (quote.details as any)?.email || user?.email || '',
+            provider: quote.adminResponse?.insurer,
+            planName: quote.adminResponse?.planName || (quote.details as any)?.planName,
+            sumInsured: (quote.details as any)?.sumInsured || (quote.details as any)?.idv,
+            premium: quote.adminResponse?.totalPremium,
+            details: quote.details || {},
+            notes: quote.adminResponse?.notes,
+          });
+        }}
+      />
+      <ReportModal
+        visible={!!reportModalData}
+        data={reportModalData}
+        onClose={() => setReportModalData(null)}
       />
     </SafeAreaView>
   );

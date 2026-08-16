@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FlatList, View, Text, TouchableOpacity,
+  FlatList, ScrollView, View, Text, TouchableOpacity,
   TextInput, StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -136,11 +136,18 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
             <Text style={[pc.detailBtnCaret, { color: colors.textMuted }]}>{expanded ? '˄' : '˅'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[pc.quoteBtn, { backgroundColor: color }]}
-            onPress={() => router.push(`/plan/${plan.id}`)}
+            style={[pc.quoteBtn, { backgroundColor: colors.isDark ? '#1E293B' : '#F1F5F9', borderWidth: 1, borderColor: color }]}
+            onPress={() => router.push({ pathname: '/quote', params: { planId: plan.id, type: plan.type, planName: plan.name, minCover: plan.minCover, maxCover: plan.maxCover } })}
             activeOpacity={0.85}
           >
-            <Text style={pc.quoteBtnText}>Get quote</Text>
+            <Text style={[pc.quoteBtnText, { color, fontSize: 13 }]}>Get quote</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[pc.quoteBtn, { backgroundColor: color, flex: 1.2 }]}
+            onPress={() => router.push({ pathname: '/buy-policy' as any, params: { planId: plan.id, type: plan.type, planName: plan.name } })}
+            activeOpacity={0.85}
+          >
+            <Text style={[pc.quoteBtnText, { fontSize: 13 }]}>⚡ Buy Now</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -288,18 +295,19 @@ export default function PlansTab() {
           )}
         </View>
 
-        <FlatList
+        <ScrollView
           horizontal
-          data={CATEGORIES}
-          keyExtractor={c => c.key}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.filterList}
-          renderItem={({ item: cat }) => {
+        >
+          {CATEGORIES.map(cat => {
             const active = activeCategory === cat.key;
             return (
               <TouchableOpacity
+                key={cat.key}
                 onPress={() => setActiveCategory(cat.key)}
                 style={[s.chip, active && { backgroundColor: cat.color, borderColor: cat.color }]}
+                activeOpacity={0.7}
               >
                 <Icon
                   name={cat.icon as any}
@@ -311,8 +319,8 @@ export default function PlansTab() {
                 </Text>
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </ScrollView>
       </View>
 
       {/* Error state */}

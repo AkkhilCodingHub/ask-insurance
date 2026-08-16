@@ -288,14 +288,79 @@ router.get('/status', authenticate, async (req: Request, res: Response): Promise
   }
 });
 
-// ── Helper ────────────────────────────────────────────────────────────────────
-
 function parseDigiLockerDob(dob: string): Date | undefined {
-  // DigiLocker returns DOB as DDMMYYYY (e.g. "31121970")
   if (dob.length !== 8) return undefined;
   const dd = dob.slice(0, 2), mm = dob.slice(2, 4), yyyy = dob.slice(4, 8);
   const d = new Date(`${yyyy}-${mm}-${dd}`);
   return isNaN(d.getTime()) ? undefined : d;
 }
+
+// Instant in-app KYC verification (Aadhaar & PAN auto-sync)
+router.post('/verify-instant', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId as string;
+    const {
+      name, panNumber, aadhaarNumber, dob, gender, address, pincode
+    } = z.object({
+      name: z.string().min(2),
+      panNumber: z.string().min(10).max(10),
+      aadhaarNumber: z.string().min(12).max(12),
+      dob: z.string().optional(),
+      gender: z.string().optional(),
+      address: z.string().optional(),
+      pincode: z.string().optional(),
+    }).parse(req.body);
+
+    const normPan = panNumber.trim().toUpperCase();
+    const normAadhaar = aadhaarNumber.trim();
+
+    let parsedDob: Date | undefined;
+    if (dob) {
+      const parts = dob.split('/');
+      if (parts.length === 3) {
+        parsedDob = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      } else {
+        const d = new Date(dob);
+        if (!isNaN(d.getTime())) parsedDob = d;
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: name.trim(),
+        panNumber: normPan,
+        aadhaarVerified: true,
+        kycStatus: 'verified',
+        kycVerifiedAt: new Date(),
+        kycSubmittedAt: new Date(),
+        ...(parsedDob ? { dateOfBirth: parsedDob } : {}),
+        ...(gender ? { gender } : {}),
+        ...(address ? { address } : {}),
+        ...(pincode ? { pincode } : {}),
+      }
+    });
+
+    res.json({
+      success: true,
+      kycStatus: updated.kycStatus,
+      user: {
+        id: updated.id,
+        name: updated.name,
+        panNumber: updated.panNumber,
+        aadhaarVerified: updated.aadhaarVerified,
+        kycStatus: updated.kycStatus,
+        kycVerifiedAt: updated.kycVerifiedAt,
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.issues[0]?.message || 'Invalid KYC parameters' });
+      return;
+    }
+    console.error('[kyc/verify-instant]', error);
+    res.status(500).json({ error: 'Failed to verify KYC' });
+  }
+});
 
 export { router as kycRouter };

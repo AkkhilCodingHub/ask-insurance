@@ -56,8 +56,18 @@ function RootContent() {
         <Stack.Screen name="my-policies"  options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="my-quotes"    options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="payments"     options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="buy-policy"   options={{ animation: 'slide_from_bottom', gestureEnabled: true, gestureDirection: 'vertical' }} />
         <Stack.Screen name="kyc"          options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="kyc-callback" options={{ animation: 'none' }} />
+
+        {/* POSP & Utilities */}
+        <Stack.Screen name="posp-register" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="posp-exam"     options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="posp-results"  options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="garage"        options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="locator"       options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="emergency-sos" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="files"         options={{ animation: 'slide_from_right' }} />
 
         {/* Agent portal */}
         <Stack.Screen name="agent-login"  options={{ animation: 'slide_from_bottom', gestureEnabled: true, gestureDirection: 'vertical' }} />

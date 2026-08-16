@@ -31,7 +31,7 @@ function useShowFloatingChat(): boolean {
     if (root === '(tabs)') return false; // Bottom tab bar already includes dedicated Support tab
     const hideRoots = new Set([
       'login', 'otp', 'onboarding', 'welcome', 'register', 'agent-login', 'index',
-      'quote', 'plan', 'my-policies', 'my-quotes', 'payments',
+      'quote', 'plan', 'buy-policy', 'my-policies', 'my-quotes', 'payments', 'posp-exam', 'posp-register', 'posp-results',
     ]);
     if (root && hideRoots.has(String(root))) return false;
     return true;

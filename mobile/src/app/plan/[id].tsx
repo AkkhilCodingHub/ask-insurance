@@ -183,17 +183,26 @@ export default function PlanDetailScreen() {
 
       {/* Sticky CTA */}
       <View style={[s.stickyBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[s.stickyPremium, { color: colors.text }]}>{formatPremium(plan.basePremium)}</Text>
           <Text style={[s.stickyCover, { color: colors.textMuted }]}>Cover: {formatCover(plan.maxCover)}</Text>
         </View>
-        <TouchableOpacity
-          style={[s.ctaBtn, { backgroundColor: color }]}
-          activeOpacity={0.85}
-          onPress={() => router.push({ pathname: '/quote', params: { planId: plan.id, type: plan.type, planName: plan.name, minCover: plan.minCover, maxCover: plan.maxCover } })}
-        >
-          <Text style={s.ctaBtnText}>Get Quote →</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={[s.ctaBtn, { backgroundColor: colors.isDark ? '#1E293B' : '#F1F5F9', borderWidth: 1, borderColor: color, paddingHorizontal: 16 }]}
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/quote', params: { planId: plan.id, type: plan.type, planName: plan.name, minCover: plan.minCover, maxCover: plan.maxCover } })}
+          >
+            <Text style={[s.ctaBtnText, { color }]}>Get Quote</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.ctaBtn, { backgroundColor: color, paddingHorizontal: 20 }]}
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/buy-policy' as any, params: { planId: plan.id, type: plan.type, planName: plan.name } })}
+          >
+            <Text style={s.ctaBtnText}>⚡ Buy Policy Now</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );

@@ -386,7 +386,8 @@ export default function ClaimsTab() {
   };
 
   const openModal = () => {
-    setStep(1); setAmount(''); setDesc(''); setPolicyId('');
+    setStep(1); setAmount(''); setDesc('');
+    setPolicyId(activePolicies[0]?.id || policies[0]?.id || '');
     setAmountErr(''); setDescErr('');
     setModalVisible(true);
   };

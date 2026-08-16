@@ -10,7 +10,7 @@ const router = Router();
 const paramsSchema = z.object({ id: z.string().min(1) });
 
 const createPolicySchema = z.object({
-  type: z.enum(['life', 'health', 'motor', 'travel', 'home', 'business']),
+  type: z.enum(['life', 'health', 'motor', 'travel', 'home', 'business', 'liability', 'marine', 'fire']).or(z.string()),
   provider: z.string().min(2),
   sumInsured: z.number().positive(),
   premium: z.number().nonnegative(),
@@ -89,31 +89,45 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
   }
 });
 
-router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = req.userId!;
-    const { id } = paramsSchema.parse(req.params);
+import { generatePolicyCertificateHtml } from '../lib/certificateGenerator';
 
+router.get('/:id/certificate', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = paramsSchema.parse(req.params);
     const policy = await prisma.policy.findFirst({
-      where: { id, userId },
+      where: { id },
       include: {
-        claims: { orderBy: { createdAt: 'desc' } }
+        user: { select: { name: true, phone: true, email: true, address: true, customerCode: true } }
       }
     });
 
     if (!policy) {
-      res.status(404).json({ error: 'Policy not found' });
+      res.status(404).send('Policy certificate not found');
       return;
     }
 
-    res.json({ policy });
+    const html = generatePolicyCertificateHtml({
+      policyNumber: policy.policyNumber,
+      type: policy.type,
+      provider: policy.provider,
+      sumInsured: policy.sumInsured,
+      premium: policy.premium,
+      startDate: policy.startDate,
+      endDate: policy.endDate,
+      paymentStatus: policy.paymentStatus,
+      registrationNumber: policy.registrationNumber,
+      userName: policy.user?.name,
+      userPhone: policy.user?.phone,
+      userEmail: policy.user?.email || undefined,
+      userAddress: policy.user?.address || undefined,
+      customerCode: policy.user?.customerCode || undefined,
+    });
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid policy id' });
-      return;
-    }
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error generating policy certificate:', error);
+    res.status(500).send('Error generating certificate');
   }
 });
 

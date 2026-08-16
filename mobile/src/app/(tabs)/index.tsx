@@ -82,9 +82,12 @@ function RecommendedCardSkeleton() {
 }
 
 const QUICK_ACTIONS = [
-  { icon: 'document-text-outline', label: 'Compare\nPlans',  route: '/plans'   },
-  { icon: 'shield-outline',        label: 'My\nPolicies',    route: '/profile' },
-  { icon: 'add-circle-outline',    label: 'File\nClaim',     route: '/claims'  },
+  { icon: 'document-text-outline', label: 'Compare\nPlans',    route: '/plans'         },
+  { icon: 'car-sport-outline',     label: 'Vehicle\nGarage',   route: '/garage'        },
+  { icon: 'medical-outline',       label: 'Cashless\nLocator', route: '/locator'       },
+  { icon: 'warning-outline',       label: 'Claim\nSOS (24x7)', route: '/emergency-sos' },
+  { icon: 'shield-outline',        label: 'My\nPolicies',      route: '/my-policies'   },
+  { icon: 'add-circle-outline',    label: 'File\nClaim',       route: '/claims'        },
 ] as const;
 
 function getGreeting() {
@@ -395,9 +398,9 @@ export default function HomeTab() {
                 </Text>
                 <TouchableOpacity
                   style={{ backgroundColor: '#0284C7', paddingVertical: 6, borderRadius: 8, alignItems: 'center' }}
-                  onPress={() => router.push('/quote?category=motor')}
+                  onPress={() => router.push({ pathname: '/quote', params: { type: 'motor' } })}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Calculate IDV &amp; Get Quote →</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Calculate IDV & Get Quote →</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -499,7 +502,7 @@ export default function HomeTab() {
                   key={a.label}
                   style={[s.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   activeOpacity={0.72}
-                  onPress={() => router.push(a.route)}
+                  onPress={() => router.push(a.route as any)}
                 >
                   <View style={[s.actionIconWrap, i === 0 && s.actionIconPrimary]}>
                     <Icon name={a.icon} size={20} color={i === 0 ? Colors.white : Colors.primary} />
@@ -835,11 +838,12 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, letterSpacing: -0.3, marginBottom: 14 },
   viewAll:    { fontSize: 13, color: Colors.primary, fontWeight: '600' },
 
-  actionsGrid: { flexDirection: 'row', gap: 12 },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   actionCard: {
-    flex: 1, backgroundColor: Colors.white,
-    borderRadius: 14, paddingVertical: 16, paddingHorizontal: 10,
-    alignItems: 'center', gap: 10,
+    width: (W - 40 - 20) / 3,
+    backgroundColor: Colors.white,
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 6,
+    alignItems: 'center', gap: 8,
     borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
     ...Platform.select({
       ios: { shadowColor: '#0f172a', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 },

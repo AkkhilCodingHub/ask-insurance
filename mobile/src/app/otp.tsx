@@ -11,6 +11,9 @@ import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { useDialog } from '@/components/Dialog';
 
+import * as Clipboard from 'expo-clipboard';
+import { AppState, DeviceEventEmitter } from 'react-native';
+
 const OTP_LEN = 6;
 
 export default function OTPScreen() {
@@ -21,15 +24,62 @@ export default function OTPScreen() {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
   const [loading, setLoading]     = useState(false);
   const [resending, setResending] = useState(false);
-  // Show "Checking SIM…" spinner on Android for up to 3s while Firebase tries auto-verify
+  // Show "Checking SIM…" spinner on Android for up to 6s while Firebase tries auto-verify
   const [autoChecking, setAutoChecking] = useState(Platform.OS === 'android');
+  const [clipboardCode, setClipboardCode] = useState<string | null>(null);
   const refs = useRef<Array<TextInput | null>>(Array(OTP_LEN).fill(null));
   const autoVerifiedRef = useRef(false);
+  const processedCodeRef = useRef<string | null>(null);
 
-  // Hide auto-check spinner after 3s (auto-verify window)
+  // Native Android SMS Receiver Listener (Zero user tap required!)
+  useEffect(() => {
+    const listener = DeviceEventEmitter.addListener('onSmsReceived', (event: { code?: string }) => {
+      if (event?.code && event.code.length === OTP_LEN && processedCodeRef.current !== event.code) {
+        processedCodeRef.current = event.code;
+        const arr = event.code.split('');
+        setDigits(arr);
+        handleVerify(event.code);
+      }
+    });
+    return () => listener.remove();
+  }, []);
+
+  // Auto-read clipboard for Truecaller "Copy OTP" or copied SMS
+  useEffect(() => {
+    let active = true;
+    const checkClipboard = async () => {
+      if (!active) return;
+      try {
+        const text = await Clipboard.getStringAsync();
+        if (!text) return;
+        const cleaned = text.replace(/\D/g, '');
+        if (cleaned.length === OTP_LEN && processedCodeRef.current !== cleaned) {
+          processedCodeRef.current = cleaned;
+          setClipboardCode(cleaned);
+          const arr = cleaned.split('');
+          setDigits(arr);
+          handleVerify(cleaned);
+        }
+      } catch {}
+    };
+
+    checkClipboard();
+    const interval = setInterval(checkClipboard, 1000);
+    const sub = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') checkClipboard();
+    });
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, []);
+
+  // Hide auto-check spinner after 6s (auto-verify window)
   useEffect(() => {
     if (!autoChecking) return;
-    const t = setTimeout(() => setAutoChecking(false), 3000);
+    const t = setTimeout(() => setAutoChecking(false), 6000);
     return () => clearTimeout(t);
   }, [autoChecking]);
 
@@ -54,10 +104,16 @@ export default function OTPScreen() {
 
   const handleChange = (text: string, i: number) => {
     const cleaned = text.replace(/\D/g, '');
-    if (cleaned.length >= OTP_LEN) {
-      const next = cleaned.slice(0, OTP_LEN).split('');
+    if (cleaned.length > 1) {
+      const chars = cleaned.slice(0, OTP_LEN).split('');
+      const next = [...digits];
+      chars.forEach((c, idx) => {
+        if (i + idx < OTP_LEN) next[i + idx] = c;
+      });
       setDigits(next);
-      handleVerify(next.join(''));
+      const targetIdx = Math.min(i + chars.length, OTP_LEN - 1);
+      refs.current[targetIdx]?.focus();
+      if (next.every(x => x !== '')) handleVerify(next.join(''));
       return;
     }
     const d = cleaned.slice(-1);
@@ -162,7 +218,9 @@ export default function OTPScreen() {
                 onChangeText={t => handleChange(t, i)}
                 onKeyPress={({ nativeEvent }) => handleKey(nativeEvent.key, i)}
                 keyboardType="number-pad"
-                maxLength={1}
+                maxLength={OTP_LEN}
+                autoComplete={i === 0 ? "one-time-code" : "off"}
+                textContentType={i === 0 ? "oneTimeCode" : "none"}
                 autoFocus={i === 0}
                 selectTextOnFocus
                 caretHidden
@@ -176,6 +234,22 @@ export default function OTPScreen() {
               <ActivityIndicator size="small" color={Colors.primary} />
               <Text style={[s.hintText, { color: Colors.primary }]}>Checking SIM automatically…</Text>
             </View>
+          )}
+
+          {/* Clipboard detected code pill */}
+          {clipboardCode && (
+            <TouchableOpacity
+              style={s.pastePill}
+              onPress={() => {
+                const arr = clipboardCode.split('');
+                setDigits(arr);
+                handleVerify(clipboardCode);
+              }}
+              activeOpacity={0.8}
+            >
+              <Icon name="clipboard-outline" size={16} color={Colors.primary} />
+              <Text style={s.pastePillText}>Paste detected code ({clipboardCode})</Text>
+            </TouchableOpacity>
           )}
 
           {/* Verify button */}
@@ -273,6 +347,13 @@ const s = StyleSheet.create({
 
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 28 },
   hintText: { fontSize: 12, color: Colors.textLight },
+
+  pastePill: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Colors.primaryLight, borderRadius: 12, paddingVertical: 10,
+    marginBottom: 16, borderWidth: 1, borderColor: Colors.primary + '30',
+  },
+  pastePillText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
   verifyBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

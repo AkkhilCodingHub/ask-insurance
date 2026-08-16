@@ -6,32 +6,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { pospExamApi } from '@/lib/api';
+import { examStore, ExamQuestion } from '@/lib/examStore';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 
-interface ExamQuestion {
-  id: number;
-  chapter: string;
-  question: string;
-  options: [string, string, string, string];
-}
-
 export default function PospExamScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    attemptId: string;
-    name: string;
-    phone: string;
-    email: string;
-    questionsJson: string;
-  }>();
+  const session = examStore.getSession();
 
-  const attemptId = params.attemptId;
-  const questions: ExamQuestion[] = params.questionsJson ? JSON.parse(params.questionsJson) : [];
+  const attemptId = session?.attemptId || '';
+  const questions: ExamQuestion[] = session?.questions || [];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
-  const [secondsRemaining, setSecondsRemaining] = useState(40 * 60); // 40 mins = 2400s
+  const [secondsRemaining, setSecondsRemaining] = useState(session?.durationMinutes ? session.durationMinutes * 60 : 40 * 60);
   const [submitting, setSubmitting] = useState(false);
   const [terminated, setTerminated] = useState(false);
 
@@ -82,12 +70,8 @@ export default function PospExamScreen() {
         terminationReason: reason,
       });
 
-      router.replace({
-        pathname: '/posp-results' as any,
-        params: {
-          resultsJson: JSON.stringify(res),
-        },
-      });
+      examStore.setResults(res);
+      router.replace('/posp-results' as any);
     } catch {
       // ignore
     } finally {
@@ -133,12 +117,8 @@ export default function PospExamScreen() {
         terminatedEarly: false,
       });
 
-      router.replace({
-        pathname: '/posp-results' as any,
-        params: {
-          resultsJson: JSON.stringify(res),
-        },
-      });
+      examStore.setResults(res);
+      router.replace('/posp-results' as any);
     } catch (e: any) {
       Alert.alert('Submission Error', e?.message || 'Failed to submit exam. Please try again.');
     } finally {
