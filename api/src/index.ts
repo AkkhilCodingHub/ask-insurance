@@ -78,13 +78,37 @@ app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Fast Health Check & Cron Keep-Alive Probe Endpoints for 24/7 Render Keep-Alive
-app.get(['/health', '/api/health', '/api/cron/keep-alive'], (_req: Request, res: Response) => {
+// Fast Health Check — lightweight, no DB
+app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
     service: 'ASK Insurance API',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
+    keepAlive: true
+  });
+});
+
+// Unified Keep-Alive: pings both the Render container AND the Aiven MySQL database.
+// Point a single cron-job.org job at this endpoint every 5 minutes to keep both alive.
+app.get('/api/cron/keep-alive', async (_req: Request, res: Response) => {
+  let dbStatus = 'unknown';
+  let dbLatencyMs: number | null = null;
+  try {
+    const t0 = Date.now();
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatencyMs = Date.now() - t0;
+    dbStatus = 'ok';
+  } catch (err: any) {
+    dbStatus = `error: ${err?.message ?? 'unknown'}`;
+    console.warn('[keep-alive] DB ping failed:', err?.message);
+  }
+  res.status(200).json({
+    status: 'OK',
+    service: 'ASK Insurance API',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    db: { status: dbStatus, latencyMs: dbLatencyMs },
     keepAlive: true
   });
 });
