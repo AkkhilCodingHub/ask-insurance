@@ -173,6 +173,56 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
   }
 });
 
+import { generateQuoteAcknowledgementHtml } from '../lib/certificateGenerator';
+
+// ── GET /:id/acknowledgement — render official quote acknowledgement slip ───
+router.get('/:id/acknowledgement', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = z.object({ id: z.string().min(1) }).parse(req.params);
+
+    const quote = await prisma.quote.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, phone: true, email: true } } }
+    });
+
+    if (!quote) {
+      res.status(404).send('Quote acknowledgement slip not found');
+      return;
+    }
+
+    let parsedDetails: Record<string, any> = {};
+    try { parsedDetails = JSON.parse(quote.details); } catch {}
+
+    let parsedAdminResponse: any = null;
+    if (quote.adminResponse) {
+      try { parsedAdminResponse = JSON.parse(quote.adminResponse as string); } catch {}
+    }
+
+    const html = generateQuoteAcknowledgementHtml({
+      quoteId: quote.id,
+      type: quote.type,
+      status: quote.status,
+      createdAt: quote.createdAt,
+      expiresAt: quote.expiresAt,
+      userName: quote.user?.name,
+      userPhone: quote.user?.phone,
+      userEmail: quote.user?.email || undefined,
+      details: parsedDetails,
+      adminResponse: parsedAdminResponse,
+    });
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    console.error('Error generating quote acknowledgement:', error);
+    res.status(500).send('Error generating acknowledgement slip');
+  }
+});
+
+router.get('/:id/report', async (req: Request, res: Response): Promise<void> => {
+  res.redirect(`/api/quotes/${req.params.id}/acknowledgement`);
+});
+
 // ── POST /:id/approve — user approves admin's quote, creates pending policy ───
 router.post('/:id/approve', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {

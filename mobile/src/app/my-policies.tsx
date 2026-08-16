@@ -12,6 +12,8 @@ import { useDialog } from '@/components/Dialog';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/auth';
+import { ReportModal, ReportData } from '@/components/ReportModal';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -151,7 +153,12 @@ function SkeletonCard() {
 
 // ── Policy detail bottom sheet ────────────────────────────────────────────────
 
-function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: () => void }) {
+function PolicySheet({
+  policy, onClose, onShowCertificate,
+}: {
+  policy: ApiPolicy | null; onClose: () => void;
+  onShowCertificate: (p: ApiPolicy) => void;
+}) {
   const insets  = useSafeAreaInsets();
   const slideY  = useRef(new Animated.Value(SCREEN_H)).current;
   const visible = !!policy;
@@ -373,30 +380,26 @@ function PolicySheet({ policy, onClose }: { policy: ApiPolicy | null; onClose: (
               </View>
             </View>
 
-            {/* Document */}
-            <View style={d.section}>
-              <Text style={d.sectionTitle}>Policy Document</Text>
-              {policy.documentUrl ? (
+              {/* Document */}
+              <View style={d.section}>
+                <Text style={d.sectionTitle}>Policy Document & Certificate</Text>
                 <TouchableOpacity
                   style={[d.docBtn, { borderColor: type.color + '40' }]}
-                  onPress={() => WebBrowser.openBrowserAsync(policy.documentUrl!)}
+                  onPress={() => {
+                    onClose();
+                    onShowCertificate(policy);
+                  }}
                   activeOpacity={0.75}>
                   <View style={[d.docIconWrap, { backgroundColor: type.lightBg }]}>
                     <Icon name="document-text" size={20} color={type.color} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[d.docBtnTitle, { color: type.color }]}>View & Download Document</Text>
-                    <Text style={d.docBtnSub}>Official policy certificate</Text>
+                    <Text style={[d.docBtnTitle, { color: type.color }]}>View & Download Certificate</Text>
+                    <Text style={d.docBtnSub}>Official IRDAI policy schedule & certificate</Text>
                   </View>
                   <Icon name="open-outline" size={16} color={type.color} />
                 </TouchableOpacity>
-              ) : (
-                <View style={d.noDocBox}>
-                  <Icon name="document-outline" size={18} color={Colors.textLight} />
-                  <Text style={d.noDocText}>Document not yet uploaded</Text>
-                </View>
-              )}
-            </View>
+              </View>
 
           </View>
         </ScrollView>
@@ -594,6 +597,7 @@ function EmptyState({ tab }: { tab: Tab }) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function MyPoliciesScreen() {
+  const { user } = useAuth();
   const [policies,   setPolicies]   = useState<ApiPolicy[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -601,6 +605,7 @@ export default function MyPoliciesScreen() {
   const [error,      setError]      = useState<string | null>(null);
   const [selected,   setSelected]   = useState<ApiPolicy | null>(null);
   const [searchReg,  setSearchReg]  = useState('');
+  const [reportModalData, setReportModalData] = useState<ReportData | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -752,7 +757,35 @@ export default function MyPoliciesScreen() {
         </ScrollView>
       )}
 
-      <PolicySheet policy={selected} onClose={() => setSelected(null)} />
+      <PolicySheet
+        policy={selected}
+        onClose={() => setSelected(null)}
+        onShowCertificate={(p) => {
+          setReportModalData({
+            type: 'certificate',
+            referenceId: p.policyNumber,
+            insuranceType: p.type,
+            status: p.status,
+            date: fmtDate(p.startDate),
+            validUntil: fmtDate(p.endDate),
+            customerName: (p as any)?.userName || user?.name || 'Policyholder',
+            customerPhone: (p as any)?.userPhone || user?.phone || '',
+            customerEmail: (p as any)?.userEmail || user?.email || '',
+            provider: p.provider,
+            planName: `${p.provider} Comprehensive ${p.type.toUpperCase()}`,
+            sumInsured: p.sumInsured,
+            premium: p.premium,
+            details: {
+              registrationNumber: (p as any)?.registrationNumber,
+            },
+          });
+        }}
+      />
+      <ReportModal
+        visible={!!reportModalData}
+        data={reportModalData}
+        onClose={() => setReportModalData(null)}
+      />
     </SafeAreaView>
   );
 }

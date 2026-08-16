@@ -7,27 +7,59 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { pospExamApi } from '@/lib/api';
+import { examStore } from '@/lib/examStore';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
+import { useAuth } from '@/context/auth';
+import { generatePospCertificateHtml } from '@/lib/certificateGenerator';
+import * as WebBrowser from 'expo-web-browser';
 
 export default function PospRegisterScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [email, setEmail] = useState(user?.email || '');
+
+  useEffect(() => {
+    if (user?.name && !name) setName(user.name);
+    if (user?.phone && !phone) setPhone(user.phone);
+    if (user?.email && !email) setEmail(user.email);
+  }, [user]);
+
   // KYC Upload States
-  const [passedExamId, setPassedExamId] = useState<string | null>(null);
-  const [passedScore, setPassedScore] = useState<number | null>(null);
+  const [passedExamId, setPassedExamId] = useState<string | null>(() => {
+    const res = examStore.getResults();
+    return res && res.passed && res.attemptId ? res.attemptId : null;
+  });
+  const [passedScore, setPassedScore] = useState<number | null>(() => {
+    const res = examStore.getResults();
+    return res && res.passed && res.score ? res.score : null;
+  });
   const [aadhaarNum, setAadhaarNum] = useState('');
   const [panNum, setPanNum] = useState('');
+
+  useEffect(() => {
+    const res = examStore.getResults();
+    if (res && res.passed && res.attemptId) {
+      setPassedExamId(res.attemptId);
+      setPassedScore(res.score);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phone.trim() || email.trim()) {
+      checkStatus();
+    }
+  }, [phone, email]);
+
   const [aadhaarDoc, setAadhaarDoc] = useState<{ uri: string; name: string } | null>(null);
   const [panDoc, setPanDoc] = useState<{ uri: string; name: string } | null>(null);
 
   // Status & Eligibility
-  const [checking, setChecking] = useState(false);
+  const [startingExam, setStartingExam] = useState(false);
   const [eligibility, setEligibility] = useState<{
     eligible: boolean;
     reason?: string;
@@ -45,11 +77,13 @@ export default function PospRegisterScreen() {
 
   const checkStatus = async () => {
     if (!phone.trim() && !email.trim()) return;
-    setChecking(true);
-    setErr('');
     try {
       const res = await pospExamApi.checkEligibility(phone.trim(), email.trim());
       setEligibility(res);
+      if ((res as any).passedAttempt) {
+        setPassedExamId((res as any).passedAttempt.attemptId);
+        setPassedScore((res as any).passedAttempt.score);
+      }
 
       const appRes = await pospExamApi.getApplicationStatus(phone.trim(), email.trim());
       if (appRes.hasApplication) {
@@ -59,38 +93,50 @@ export default function PospRegisterScreen() {
       }
     } catch {
       // ignore
-    } finally {
-      setChecking(false);
     }
   };
 
   const handleStartExam = async () => {
-    if (!name.trim() || !phone.trim() || !email.trim()) {
-      setErr('Please fill in your Full Name, Mobile Number, and Email ID.');
+    const candidateName = name.trim();
+    const candidatePhone = phone.trim();
+    const candidateEmail = email.trim();
+
+    if (!candidateName || candidateName.length < 2) {
+      setErr('Please enter your full name as per Aadhaar.');
       return;
     }
+    if (!candidatePhone || candidatePhone.length < 10) {
+      setErr('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!candidateEmail || !candidateEmail.includes('@')) {
+      setErr('Please enter a valid email address.');
+      return;
+    }
+
     setErr('');
-    setChecking(true);
+    setStartingExam(true);
     try {
       const res = await pospExamApi.startExam({
-        name: name.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
+        name: candidateName,
+        phone: candidatePhone,
+        email: candidateEmail,
       });
-      router.push({
-        pathname: '/posp-exam' as any,
-        params: {
-          attemptId: res.attemptId,
-          name: name.trim(),
-          phone: phone.trim(),
-          email: email.trim(),
-          questionsJson: JSON.stringify(res.questions),
-        },
+      examStore.setSession({
+        attemptId: res.attemptId,
+        candidateName,
+        candidatePhone,
+        candidateEmail,
+        durationMinutes: res.durationMinutes,
+        totalQuestions: res.totalQuestions,
+        passingScore: res.passingScore,
+        questions: res.questions,
       });
+      router.push('/posp-exam' as any);
     } catch (e: any) {
       setErr(e?.message || 'Failed to start exam. Check eligibility or cooldown time.');
     } finally {
-      setChecking(false);
+      setStartingExam(false);
     }
   };
 
@@ -224,6 +270,38 @@ export default function PospRegisterScreen() {
                 </View>
               )}
 
+              {applicationStatus.status === 'approved' && (
+                <TouchableOpacity
+                  style={[s.syllabusBtn, { marginTop: 12, backgroundColor: Colors.success }]}
+                  onPress={async () => {
+                    try {
+                      const html = generatePospCertificateHtml({
+                        applicationNumber: applicationStatus.applicationNumber,
+                        name: applicationStatus.name || name || 'Authorized POSP Advisor',
+                        phone: applicationStatus.phone || phone || '—',
+                        email: applicationStatus.email || email || '—',
+                        panNumber: applicationStatus.panNumber || panNum || '—',
+                        aadhaarNumber: applicationStatus.aadhaarNumber || aadhaarNum || '—',
+                        examScore: applicationStatus.examScore || 50,
+                        examPassedAt: applicationStatus.examPassedAt || applicationStatus.createdAt || new Date(),
+                        agentCode: applicationStatus.assignedAgentCode || applicationStatus.applicationNumber,
+                        approvedAt: applicationStatus.updatedAt || new Date(),
+                      });
+                      const certDataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+                      await WebBrowser.openBrowserAsync(certDataUri);
+                    } catch {
+                      const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://ask-api.bitopayments.com';
+                      const certUrl = `${baseUrl}/api/posp/certificate/${applicationStatus.applicationNumber}`;
+                      Linking.openURL(certUrl);
+                    }
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Icon name="ribbon-outline" size={18} color="#FFFFFF" />
+                  <Text style={s.syllabusBtnText}>🎓 View & Download POSP Certificate</Text>
+                </TouchableOpacity>
+              )}
+
               {applicationStatus.rejectionReason && (
                 <Text style={[s.cardSub, { color: Colors.error, marginTop: 4 }]}>Reason: {applicationStatus.rejectionReason}</Text>
               )}
@@ -281,12 +359,12 @@ export default function PospRegisterScreen() {
 
           {/* Start Exam Button */}
           <TouchableOpacity
-            style={[s.primaryBtn, (checking || (eligibility && !eligibility.eligible)) && { opacity: 0.6 }]}
+            style={[s.primaryBtn, startingExam && { opacity: 0.6 }]}
             onPress={handleStartExam}
-            disabled={checking || (eligibility ? !eligibility.eligible : false)}
+            disabled={startingExam}
             activeOpacity={0.85}
           >
-            {checking ? (
+            {startingExam ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>

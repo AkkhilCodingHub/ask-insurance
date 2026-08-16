@@ -307,6 +307,40 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
+            icon="car-sport-outline"
+            label="Vehicle Garage & Challan"
+            sub="mParivahan RC & Traffic Fines"
+            onPress={() => router.push('/garage' as any)}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
+            icon="medical-outline"
+            label="Cashless Network Locator"
+            sub="10,000+ Hospitals & Garages"
+            onPress={() => router.push('/locator' as any)}
+            badge="Cashless"
+            badgeColor="#059669"
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
+            icon="warning-outline"
+            label="24x7 Emergency Claim SOS"
+            sub="Roadside assistance & helpline"
+            onPress={() => router.push('/emergency-sos' as any)}
+            badge="24×7"
+            badgeColor="#DC2626"
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
+            icon="school-outline"
+            label="POSP Advisor Portal & Exam"
+            sub="IRDAI Certification, Training & Sales"
+            onPress={() => router.push('/posp-register' as any)}
+            badge="IRDAI"
+            badgeColor="#10B981"
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
             icon="qr-code-outline"
             label="Link POSP Advisor"
             sub="Scan QR code or enter POSP code"

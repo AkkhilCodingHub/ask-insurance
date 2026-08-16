@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   Dimensions, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
-  Animated, Image,
+  Animated, Image, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,29 +11,29 @@ import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 
 const SEEN_KEY = 'seen_welcome_v1';
-const FULL_TEXT = 'ASK INSURANCE BROKERS';
+const FULL_TEXT = 'ASK INSURANCE';
 
-const { width: W } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
 
 const SLIDES = [
   {
     icon: 'search-outline',
     title: 'Compare & Save',
     sub: 'Browse 38+ IRDAI-regulated insurers side-by-side and find the best plan for your needs.',
-    bg: Colors.primaryLight,
-    accent: Colors.primary,
+    bg: '#EFF6FF',
+    accent: '#2563EB',
   },
   {
     icon: 'flash-outline',
-    title: 'Quick Claims',
-    sub: 'File a claim in under 3 minutes. Track status in real-time with live updates.',
+    title: 'Instant Quotes & Claims',
+    sub: 'Fast, paperless quotes in seconds. File and track claims with live status updates.',
     bg: '#ECFDF5',
-    accent: Colors.success,
+    accent: '#10B981',
   },
   {
     icon: 'shield-outline',
-    title: 'Expert Advice',
-    sub: 'Our licensed ASK advisors are available 24/7 to help you choose the right cover.',
+    title: 'Licensed POSP Advisors',
+    sub: 'Certified insurance advisors available 24/7 to help you secure the ideal coverage.',
     bg: '#F5F3FF',
     accent: '#7C3AED',
   },
@@ -43,55 +43,111 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [typedText, setTypedText] = useState('');
-  const [typingComplete, setTypingComplete] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [introFinished, setIntroFinished] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const [cursorVisible, setCursorVisible] = useState(true);
-
-  // Animation values
-  const logoScale = useRef(new Animated.Value(0.4)).current;
+  // Animated values for Apple "hello" sequence
+  // 1. Text container vertical translation (from center of screen down to top header position)
+  const textTranslateY = useRef(new Animated.Value(0)).current;
+  const textScale = useRef(new Animated.Value(1.3)).current;
+  
+  // 2. Logo appear above text
   const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const logoTranslateY = useRef(new Animated.Value(-20)).current;
 
-  // 1. Typewriter Effect
+  // 3. Carousel and footer content fade-in
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(30)).current;
+
+  // 4. Background glow pulse
+  const glowOpacity = useRef(new Animated.Value(0.3)).current;
+
   useEffect(() => {
-    let index = 0;
-    const typingInterval = setInterval(() => {
-      if (index <= FULL_TEXT.length) {
-        setTypedText(FULL_TEXT.slice(0, index));
-        index++;
-      } else {
-        clearInterval(typingInterval);
-        setTypingComplete(true);
-      }
-    }, 65);
+    // Initial center offset calculation (center of screen to top header)
+    textTranslateY.setValue(H * 0.28);
 
     // Blinking cursor
     const cursorInterval = setInterval(() => {
-      setCursorVisible(v => !v);
-    }, 400);
+      setCursorVisible((v) => !v);
+    }, 380);
+
+    // Typewriter effect (Apple "hello" style writing)
+    let charIdx = 0;
+    const typingInterval = setInterval(() => {
+      if (charIdx <= FULL_TEXT.length) {
+        setTypedText(FULL_TEXT.slice(0, charIdx));
+        charIdx++;
+      } else {
+        clearInterval(typingInterval);
+        
+        // Pause briefly after writing completes (Apple style pause)
+        setTimeout(() => {
+          triggerTransitionToHeader();
+        }, 600);
+      }
+    }, 85);
 
     return () => {
-      clearInterval(typingInterval);
       clearInterval(cursorInterval);
+      clearInterval(typingInterval);
     };
   }, []);
 
-  // 2. Logo Reveal when typing completes or during animation
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 6,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+  const triggerTransitionToHeader = () => {
+    // Text glides down to top position, Logo appears above, Carousel fades in
+    Animated.sequence([
+      // A. Text glides down smoothly while scaling from hero to header size
+      Animated.parallel([
+        Animated.timing(textTranslateY, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.bezier(0.25, 1, 0.5, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(textScale, {
+          toValue: 1.0,
+          duration: 900,
+          easing: Easing.bezier(0.25, 1, 0.5, 1),
+          useNativeDriver: true,
+        }),
+      ]),
+      // B. 3D Logo pops in above the text + content rises
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 45,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoTranslateY, {
+          toValue: 0,
+          duration: 600,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateY, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setIntroFinished(true);
+    });
+  };
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / W);
@@ -116,149 +172,260 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      {/* Top Header with Animated Typewriter Branding */}
+      {/* Background ambient glow aura */}
+      <View style={s.ambientBg}>
+        <View style={s.glowCircleTop} />
+      </View>
+
+      {/* Top / Animated Header Branding */}
       <View style={s.headerBranding}>
-        <Animated.View style={[s.logoContainer, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-          <Image
-            source={require('../../assets/images/logo-glow.png')}
-            style={s.appLogo}
-            resizeMode="contain"
-          />
+        {/* Skip button appears top right */}
+        <Animated.View style={[s.skipContainer, { opacity: contentOpacity }]}>
+          <TouchableOpacity onPress={skip} style={s.skipBtn} activeOpacity={0.7}>
+            <Text style={s.skipText}>Skip</Text>
+          </TouchableOpacity>
         </Animated.View>
-        
-        <View style={s.typewriterRow}>
-          <Text style={s.typewriterText}>{typedText}</Text>
-          <Text style={[s.cursorText, { opacity: cursorVisible ? 1 : 0 }]}>|</Text>
+
+        {/* 3D ASK Logo that appears above text */}
+        <Animated.View
+          style={[
+            s.logoContainer,
+            {
+              opacity: logoOpacity,
+              transform: [{ scale: logoScale }, { translateY: logoTranslateY }],
+            },
+          ]}
+        >
+          <View style={s.logoShadowWrapper}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={s.appLogo}
+              resizeMode="contain"
+            />
+          </View>
+        </Animated.View>
+
+        {/* Animated "ASK INSURANCE" Text (Apple hello style transition) */}
+        <Animated.View
+          style={[
+            s.typewriterWrapper,
+            {
+              transform: [
+                { translateY: textTranslateY },
+                { scale: textScale },
+              ],
+            },
+          ]}
+        >
+          <View style={s.typewriterRow}>
+            <Text style={s.typewriterText}>
+              {typedText}
+            </Text>
+            {!introFinished && (
+              <Text style={[s.cursorText, { opacity: cursorVisible ? 1 : 0 }]}>
+                |
+              </Text>
+            )}
+          </View>
+          <Animated.Text
+            style={[
+              s.brokerSubtitle,
+              { opacity: logoOpacity },
+            ]}
+          >
+            IRDAI LICENSED DIRECT BROKER
+          </Animated.Text>
+        </Animated.View>
+      </View>
+
+      {/* Carousel & Footer Content (Fades in after intro) */}
+      <Animated.View
+        style={[
+          s.mainContent,
+          {
+            opacity: contentOpacity,
+            transform: [{ translateY: contentTranslateY }],
+          },
+        ]}
+      >
+        {/* Slides */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          style={s.slider}
+        >
+          {SLIDES.map((sl, i) => (
+            <View key={i} style={[s.slide, { width: W }]}>
+              <View style={[s.iconBox, { backgroundColor: sl.bg }]}>
+                <Icon name={sl.icon} size={54} color={sl.accent} />
+                {/* Decorative rings */}
+                <View style={[s.ring, s.ring1, { borderColor: sl.accent + '25' }]} />
+                <View style={[s.ring, s.ring2, { borderColor: sl.accent + '12' }]} />
+              </View>
+              <Text style={[s.slideTitle, { color: '#0F172A' }]}>{sl.title}</Text>
+              <Text style={s.slideSub}>{sl.sub}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Dots */}
+        <View style={s.dots}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                s.dot,
+                i === activeIndex && { width: 24, backgroundColor: slide.accent },
+              ]}
+            />
+          ))}
         </View>
 
-        <TouchableOpacity onPress={skip} style={s.skipBtn}>
-          <Text style={s.skipText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Slides */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
-        style={s.slider}
-      >
-        {SLIDES.map((sl, i) => (
-          <View key={i} style={[s.slide, { width: W }]}>
-            <View style={[s.iconBox, { backgroundColor: sl.bg }]}>
-              <Icon name={sl.icon} size={60} color={sl.accent} />
-              {/* Decorative rings */}
-              <View style={[s.ring, s.ring1, { borderColor: sl.accent + '20' }]} />
-              <View style={[s.ring, s.ring2, { borderColor: sl.accent + '10' }]} />
-            </View>
-            <Text style={[s.slideTitle, { color: sl.accent }]}>{sl.title}</Text>
-            <Text style={s.slideSub}>{sl.sub}</Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Dots */}
-      <View style={s.dots}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              s.dot,
-              i === activeIndex && { width: 22, backgroundColor: slide.accent },
-            ]}
-          />
-        ))}
-      </View>
-
-      {/* Buttons */}
-      <View style={s.footer}>
-        <TouchableOpacity
-          onPress={goNext}
-          style={[s.nextBtn, { backgroundColor: slide.accent }]}
-          activeOpacity={0.85}
-        >
-          <Text style={s.nextBtnText}>
-            {activeIndex === SLIDES.length - 1 ? 'Get Started →' : 'Next →'}
-          </Text>
-        </TouchableOpacity>
-
-        {activeIndex === SLIDES.length - 1 && (
-          <TouchableOpacity onPress={() => router.push('/login')} style={s.registerLink}>
-            <Text style={s.registerLinkText}>
-              Already have an account? <Text style={{ color: slide.accent, fontWeight: '700' }}>Sign In</Text>
+        {/* Footer Navigation Buttons */}
+        <View style={s.footer}>
+          <TouchableOpacity
+            onPress={goNext}
+            style={[s.nextBtn, { backgroundColor: slide.accent }]}
+            activeOpacity={0.85}
+          >
+            <Text style={s.nextBtnText}>
+              {activeIndex === SLIDES.length - 1 ? 'Get Started →' : 'Next →'}
             </Text>
           </TouchableOpacity>
-        )}
-      </View>
+
+          {activeIndex === SLIDES.length - 1 && (
+            <TouchableOpacity onPress={() => router.push('/login')} style={s.registerLink}>
+              <Text style={s.registerLinkText}>
+                Already have an account? <Text style={{ color: slide.accent, fontWeight: '700' }}>Sign In</Text>
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.white },
-  
+  safe: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  ambientBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  glowCircleTop: {
+    position: 'absolute',
+    top: -100,
+    alignSelf: 'center',
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+  },
   headerBranding: {
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16,
     paddingHorizontal: 20,
-    position: 'relative',
+    minHeight: 180,
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  skipContainer: {
+    position: 'absolute',
+    right: 20,
+    top: 16,
+    zIndex: 20,
+  },
+  skipBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  skipText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '700',
   },
   logoContainer: {
-    width: 64,
-    height: 64,
-    marginBottom: 6,
+    width: 90,
+    height: 90,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoShadowWrapper: {
+    width: '100%',
+    height: '100%',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
   },
   appLogo: {
     width: '100%',
     height: '100%',
+    borderRadius: 18,
+  },
+  typewriterWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   typewriterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 24,
   },
   typewriterText: {
-    fontSize: 14,
+    fontSize: 22,
     fontWeight: '900',
-    color: Colors.primary,
-    letterSpacing: 1.5,
+    color: '#0F172A',
+    letterSpacing: 2.2,
+    textAlign: 'center',
   },
   cursorText: {
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: '900',
-    color: Colors.primary,
-    marginLeft: 2,
+    color: '#2563EB',
+    marginLeft: 3,
   },
-  skipBtn: {
-    position: 'absolute',
-    right: 20,
-    top: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  brokerSubtitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 1.8,
+    marginTop: 4,
+    textAlign: 'center',
   },
-  skipText: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    fontWeight: '600',
+  mainContent: {
+    flex: 1,
   },
-
-  slider: { flex: 1 },
+  slider: {
+    flex: 1,
+  },
   slide: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 36,
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   iconBox: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
     position: 'relative',
   },
   ring: {
@@ -266,19 +433,19 @@ const s = StyleSheet.create({
     borderRadius: 200,
     borderWidth: 1.5,
   },
-  ring1: { width: 200, height: 200 },
-  ring2: { width: 225, height: 225 },
+  ring1: { width: 170, height: 170 },
+  ring2: { width: 195, height: 195 },
 
   slideTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
     letterSpacing: -0.5,
-    marginBottom: 12,
+    marginBottom: 10,
     textAlign: 'center',
   },
   slideSub: {
     fontSize: 14,
-    color: Colors.textMuted,
+    color: '#64748B',
     lineHeight: 22,
     textAlign: 'center',
   },
@@ -288,22 +455,42 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 7,
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: '#E2E8F0',
   },
 
-  footer: { paddingHorizontal: 24, paddingBottom: 28, gap: 12 },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    gap: 12,
+  },
   nextBtn: {
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  nextBtnText: { fontSize: 15, fontWeight: '800', color: Colors.white, letterSpacing: 0.2 },
-  registerLink: { alignItems: 'center' },
-  registerLinkText: { fontSize: 14, color: Colors.textMuted },
+  nextBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  registerLink: {
+    alignItems: 'center',
+  },
+  registerLinkText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
 });
+

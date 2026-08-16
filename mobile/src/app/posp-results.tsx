@@ -4,26 +4,25 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { examStore } from '@/lib/examStore';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 
 interface QuestionReview {
-  id: number;
+  id: string;
   chapter: string;
   question: string;
   options: string[];
-  selectedAnswer: number | null;
   correctAnswer: number;
+  selectedAnswer: number | null;
   isCorrect: boolean;
-  explanation: string;
+  explanation?: string;
 }
 
 export default function PospResultsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ resultsJson: string }>();
-
-  const results = params.resultsJson ? JSON.parse(params.resultsJson) : null;
+  const results = examStore.getResults();
 
   const [activeTab, setActiveTab] = useState<'summary' | 'review'>('summary');
 
@@ -42,13 +41,7 @@ export default function PospResultsScreen() {
   } = results;
 
   const handleProceedRegistration = () => {
-    router.replace({
-      pathname: '/posp-register' as any,
-      params: {
-        passedExamId: attemptId,
-        passedScore: String(score),
-      },
-    });
+    router.replace('/posp-register' as any);
   };
 
   return (

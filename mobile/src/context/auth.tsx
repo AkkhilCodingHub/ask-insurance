@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import Constants from 'expo-constants';
 import { isDevice } from 'expo-device';
 import {
@@ -34,6 +34,11 @@ export async function requestNotificationPermission(): Promise<boolean> {
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
       });
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS,
+      ]);
     } catch {}
   }
   try {
@@ -125,10 +130,25 @@ export function mapApiUser(u: ApiUser): AuthUser {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-const firebaseAuth = getAuth();
+import firebase, { initializeApp, getApps } from '@react-native-firebase/app';
 
-if (__DEV__) {
-  firebaseAuth.settings.appVerificationDisabledForTesting = true;
+function getFirebaseAuth() {
+  try {
+    if (getApps().length === 0) {
+      initializeApp({
+        apiKey: "AIzaSyAOO0lS024bTXRNW_-eUptQFx5eV5GlNos",
+        appId: "1:879913171231:android:f214cb309918a1e4ea582a",
+        messagingSenderId: "879913171231",
+        projectId: "ask-in",
+        databaseURL: "https://ask-in-default-rtdb.firebaseio.com",
+        storageBucket: "ask-in.appspot.com"
+      });
+    }
+    return getAuth();
+  } catch (e) {
+    console.warn('[Auth] Firebase getAuth() initialization error:', e);
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -186,7 +206,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const finishFirebaseLogin = async (firebaseUser: FirebaseAuthTypes.User): Promise<{ isNewUser: boolean }> => {
     const idToken = await firebaseUser.getIdToken();
     // Sign out from Firebase — we only need the ID token, ASK issues its own JWT
-    await firebaseSignOut(firebaseAuth);
+    const fbAuth = getFirebaseAuth();
+    if (fbAuth) await firebaseSignOut(fbAuth);
 
     const result = await authApi.verifyFirebase(idToken);
     await setToken(result.token);
@@ -205,7 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Only active while pendingPhone is set to avoid firing on unrelated auth changes.
   useEffect(() => {
     if (!pendingPhone) return;
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+    const fbAuth = getFirebaseAuth();
+    if (!fbAuth) return;
+    const unsubscribe = onAuthStateChanged(fbAuth, async (firebaseUser) => {
       if (!firebaseUser) return;
       // Skip if verifyOTP is already handling this sign-in
       if (manualVerifyInProgressRef.current) return;
@@ -228,7 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authApi.sendOTP(phone).catch(err => console.warn('[Auth] background sendOTP error:', err));
     try {
       const formatted = phone.startsWith('+91') ? phone : `+91${phone}`;
-      const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted);
+      const fbAuth = getFirebaseAuth();
+      if (!fbAuth) throw new Error('Firebase Auth not initialized');
+      const confirmation = await signInWithPhoneNumber(fbAuth, formatted);
       confirmationRef.current = confirmation;
       setAutoVerified(null);
     } catch (firebaseErr) {

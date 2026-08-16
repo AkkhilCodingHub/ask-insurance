@@ -18,6 +18,58 @@ const generateOtp = (): string => {
 const hashOtp = async (otp: string): Promise<string> => bcrypt.hash(otp, OTP_SALT_ROUNDS);
 const compareOtp = async (otp: string, hash: string): Promise<boolean> => bcrypt.compare(otp, hash);
 
+async function sendSmsGateway(phone: string, otp: string): Promise<void> {
+  const fast2smsKey = process.env.FAST2SMS_API_KEY;
+  if (fast2smsKey) {
+    try {
+      const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+        method: 'POST',
+        headers: {
+          'authorization': fast2smsKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          route: 'otp',
+          variables_values: otp,
+          numbers: phone,
+        }),
+      });
+      const data = await response.json();
+      console.log('[SMS] Fast2SMS dispatch result:', data);
+      return;
+    } catch (err) {
+      console.error('[SMS] Fast2SMS dispatch error:', err);
+    }
+  }
+
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+  if (twilioSid && twilioToken && twilioPhone) {
+    try {
+      const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+      const authHeader = 'Basic ' + Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
+      const bodyParams = new URLSearchParams({
+        To: formattedPhone,
+        From: twilioPhone,
+        Body: `Your ASK Insurance verification code is ${otp}. Valid for 5 minutes.`,
+      });
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: bodyParams.toString(),
+      });
+      const data = await response.json();
+      console.log('[SMS] Twilio dispatch result:', data);
+    } catch (err) {
+      console.error('[SMS] Twilio dispatch error:', err);
+    }
+  }
+}
+
 export const createOtpChallenge = async (phone: string, userId?: string): Promise<string> => {
   await prisma.otpChallenge.deleteMany({ where: { phone } });
 
@@ -39,11 +91,14 @@ export const createOtpChallenge = async (phone: string, userId?: string): Promis
     data
   });
 
+  // Dispatch SMS in background via SMS gateway if configured
+  sendSmsGateway(phone, otp).catch(e => console.error('[SMS] Gateway async error:', e));
+
   return otp;
 };
 
 export const verifyOtpChallenge = async (phone: string, otp: string): Promise<{ success: boolean; error?: string; userId?: string }> => {
-  if ((process.env.OTP_FIXED && otp === process.env.OTP_FIXED) || otp === '123456') {
+  if (process.env.OTP_FIXED && otp === process.env.OTP_FIXED) {
     return { success: true };
   }
 

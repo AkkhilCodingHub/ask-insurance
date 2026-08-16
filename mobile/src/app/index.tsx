@@ -19,12 +19,9 @@ export default function Index() {
 
   if (loading || checking) return null;
 
-  // First install — show welcome/overview
-  if (!seenWelcome) return <Redirect href="/welcome" />;
-
-  // Returning user with active session
+  // If logged in, go straight to main tabs
   if (user) return <Redirect href="/(tabs)" />;
 
-  // Returning user but not logged in — go straight to login
-  return <Redirect href="/login" />;
+  // Otherwise, show welcome briefing screen (with Next/Skip buttons & app introduction)
+  return <Redirect href="/welcome" />;
 }

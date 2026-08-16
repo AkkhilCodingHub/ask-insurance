@@ -153,18 +153,26 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
     let verifiedStatus = true;
     let confidenceScore = 0.96;
 
+    let profileName = (req.body.name as string | undefined)?.trim();
+    if (!profileName && userId) {
+      try {
+        const u = await prisma.user.findUnique({ where: { id: userId } });
+        if (u?.name) profileName = u.name;
+      } catch {}
+    }
+    const resolvedName = (profileName || 'Verified Policyholder').toUpperCase();
+
     if (docType === 'pan') {
       const inputPan = (req.body.panNumber as string | undefined)?.toUpperCase().trim();
-      const panNum = inputPan && /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(inputPan) ? inputPan : 'ABCDE1234F';
+      const panNum = inputPan && /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(inputPan) ? inputPan : 'XXXXX0000X';
       extractedFields = {
         docType: 'PAN Card',
         panNumber: panNum,
-        fullName: 'AKKHIL SHARMA',
+        fullName: resolvedName,
         dateOfBirth: '1995-08-15',
-        fatherName: 'RAMESH SHARMA',
         status: 'VERIFIED_INCOME_TAX_DEPT',
       };
-      if (userId) {
+      if (userId && panNum !== 'XXXXX0000X') {
         await prisma.user.update({
           where: { id: userId },
           data: { panNumber: panNum, kycStatus: 'verified', kycVerifiedAt: new Date() }
@@ -172,13 +180,12 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
       }
     } else if (docType === 'aadhaar') {
       const inputAadhaar = (req.body.aadhaarNumber as string | undefined)?.replace(/\D/g, '');
-      const aadhaarNum = inputAadhaar && inputAadhaar.length === 12 ? inputAadhaar : '982145012389';
+      const aadhaarNum = inputAadhaar && inputAadhaar.length === 12 ? inputAadhaar : 'XXXXXXXXXXXX';
       extractedFields = {
         docType: 'Aadhaar Card',
         aadhaarNumber: `XXXXXXXX${aadhaarNum.slice(-4)}`,
-        fullAddress: 'H-12, Sector 62, Noida, Uttar Pradesh - 201301',
+        fullName: resolvedName,
         gender: 'Male',
-        dateOfBirth: '1995-08-15',
         status: 'VERIFIED_UIDAI',
       };
       if (userId) {
@@ -189,27 +196,29 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
       }
     } else if (docType === 'rc') {
       const cleanReg = (req.body.registrationNumber as string | undefined)?.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DL01AB1234';
+      const { getVehicleRcDetails } = await import('../lib/mparivahan');
+      const rcDetails = await getVehicleRcDetails(cleanReg);
       extractedFields = {
         docType: 'Vehicle RC Copy',
-        registrationNumber: cleanReg,
-        ownerName: 'AKKHIL SHARMA',
-        make: 'Maruti Suzuki',
-        model: 'Swift',
-        variant: 'ZXi+ BS6',
-        fuelType: 'PETROL',
-        cubicCapacity: '1197 CC',
-        chassisNumber: `MA3FJE81S${Date.now().toString().slice(-7)}`,
-        engineNumber: `K12N${Date.now().toString().slice(-6)}`,
-        registrationDate: '2021-04-10',
-        fitnessExpiry: '2036-04-09',
-        rtoLocation: 'DL-01 (Mall Road, New Delhi RTO)',
+        registrationNumber: rcDetails.registrationNumber,
+        ownerName: rcDetails.ownerName || resolvedName,
+        make: rcDetails.make,
+        model: rcDetails.model,
+        variant: rcDetails.variant,
+        fuelType: rcDetails.fuelType.toUpperCase(),
+        cubicCapacity: rcDetails.cubicCapacity || '1197 CC',
+        chassisNumber: rcDetails.chassisNumber,
+        engineNumber: rcDetails.engineNumber,
+        registrationDate: rcDetails.registrationDate,
+        fitnessExpiry: rcDetails.fitnessUpto || '2036-04-09',
+        rtoLocation: rcDetails.rtoName,
         status: 'VERIFIED_MPARIVAHAN',
       };
     } else if (docType === 'policy_copy') {
       extractedFields = {
         docType: 'Previous Policy Document',
         policyNumber: `POL-${Math.floor(100000 + Math.random() * 900000)}`,
-        previousInsurer: 'HDFC ERGO General Insurance Co. Ltd.',
+        previousInsurer: 'General Insurance Co. Ltd.',
         expiryDate: '2026-08-20',
         ncbPercentage: 50,
         claimFreeYear: 'Yes',
@@ -219,7 +228,7 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
       extractedFields = {
         docType: 'Driving License',
         dlNumber: 'DL-1420110012345',
-        holderName: 'AKKHIL SHARMA',
+        holderName: resolvedName,
         validTill: '2035-08-14',
         vehicleClassesAllowed: 'MCWG, LMV',
         status: 'VERIFIED_PARIVAHAN',

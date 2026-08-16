@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Keyboard,
+  ActivityIndicator, Keyboard, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -87,7 +87,11 @@ export default function LoginScreen() {
 
           <View style={s.logoRow}>
             <View style={s.logoCircle}>
-              <Text style={s.logoText}>ASK</Text>
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{ width: 68, height: 68, borderRadius: 16 }}
+                resizeMode="contain"
+              />
             </View>
           </View>
 
