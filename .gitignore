@@ -74,3 +74,6 @@ firebase-service-account.json
 features.md
 quote.pptx
 
+# Release bundles & binaries
+release-bundle/
+*.keystore
