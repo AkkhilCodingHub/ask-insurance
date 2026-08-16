@@ -44,16 +44,31 @@ export default function OTPScreen() {
     return () => listener.remove();
   }, []);
 
-  // Auto-read clipboard for Truecaller "Copy OTP" or copied SMS
+  // Auto-read clipboard for Truecaller "Copy OTP" or copied SMS (ignoring stale pre-existing clipboard)
   useEffect(() => {
     let active = true;
+    let baselineClipboard: string | null = null;
+    let baselineInitialized = false;
+
     const checkClipboard = async () => {
       if (!active) return;
       try {
         const text = await Clipboard.getStringAsync();
-        if (!text) return;
+        if (!text) {
+          baselineInitialized = true;
+          return;
+        }
         const cleaned = text.replace(/\D/g, '');
-        if (cleaned.length === OTP_LEN && processedCodeRef.current !== cleaned) {
+
+        // On first check on screen mount, record existing clipboard so stale OTPs are ignored
+        if (!baselineInitialized) {
+          baselineClipboard = cleaned;
+          baselineInitialized = true;
+          return;
+        }
+
+        // Only trigger if clipboard changed to a fresh 6-digit code after opening this screen
+        if (cleaned.length === OTP_LEN && cleaned !== baselineClipboard && processedCodeRef.current !== cleaned) {
           processedCodeRef.current = cleaned;
           setClipboardCode(cleaned);
           const arr = cleaned.split('');
