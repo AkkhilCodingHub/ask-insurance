@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Menu, X, Shield } from "lucide-react";
 
 const navLinks = [
-  { label: "Term Life", href: "/products?type=life" },
-  { label: "Health", href: "/products?type=health" },
-  { label: "Motor", href: "/products?type=motor" },
-  { label: "Investment 2.0", href: "/products?type=investment_20" },
-  { label: "Travel", href: "/products?type=travel" },
-  { label: "Claims", href: "/claims" },
+  { label: "Instant Quote", href: "/quote" },
+  { label: "Products", href: "/products" },
+  { label: "My Policies", href: "/my-policies" },
+  { label: "POSP Partner", href: "/posp" },
+  { label: "Cashless Locator", href: "/locator" },
+  { label: "Claims & SOS", href: "/claims" },
+  { label: "AI Assistant", href: "/chat" },
 ];
 
 export function Navbar() {
