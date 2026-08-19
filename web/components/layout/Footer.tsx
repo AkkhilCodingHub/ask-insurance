@@ -5,16 +5,37 @@ import { Shield } from "lucide-react";
 
 const footerLinks = [
   {
-    title: "Products",
-    links: ["Life Insurance", "Health Insurance", "Motor Insurance", "Travel Insurance", "Home Insurance", "Business Insurance"],
+    title: "Insurance Products",
+    links: [
+      { name: "Car Insurance", href: "/quote?type=motor" },
+      { name: "Two Wheeler", href: "/quote?type=two_wheeler" },
+      { name: "Health Insurance", href: "/quote?type=health" },
+      { name: "Term Life Insurance", href: "/quote?type=life" },
+      { name: "Investment 2.0 (ULIP)", href: "/quote?type=investment_20" },
+      { name: "Travel & Commercial", href: "/quote?type=travel" },
+    ],
   },
   {
-    title: "Company",
-    links: ["About Us", "Careers", "Blog", "Press"],
+    title: "Services & Portals",
+    links: [
+      { name: "My Active Policies", href: "/my-policies" },
+      { name: "Saved Quotes", href: "/my-quotes" },
+      { name: "Become a POSP Partner", href: "/posp" },
+      { name: "POSP Online Exam", href: "/posp/exam" },
+      { name: "Digital Document Locker", href: "/files" },
+      { name: "Tax Receipts (80D/80C)", href: "/payments" },
+    ],
   },
   {
-    title: "Support",
-    links: ["Claims", "Contact", "FAQ", "Grievance"],
+    title: "Help & Support",
+    links: [
+      { name: "Cashless Network Garages", href: "/locator" },
+      { name: "24x7 Roadside SOS", href: "/emergency-sos" },
+      { name: "File / Track a Claim", href: "/claims" },
+      { name: "Ask AI Assistant", href: "/chat" },
+      { name: "Knowledge Base & FAQs", href: "/faq" },
+      { name: "Central KYC (CKYC)", href: "/kyc" },
+    ],
   },
 ];
 
@@ -45,10 +66,10 @@ export function Footer() {
               />
             </div>
             <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, maxWidth: 240 }}>
-              IRDAI licensed insurance broker. Reg. No. IB-123-2023. Making insurance simple since 2023.
+              IRDAI licensed insurance broker. Direct Broker Reg. No. 882. Delivering transparent, 1-click digital insurance coverage.
             </p>
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              {["IRDAI", "ISO 27001", "SSL Secured"].map((badge) => (
+              {["IRDAI Certified", "ISO 27001", "256-Bit SSL"].map((badge) => (
                 <span
                   key={badge}
                   style={{
@@ -74,8 +95,8 @@ export function Footer() {
               </div>
               {links.map((l) => (
                 <Link
-                  key={l}
-                  href="#"
+                  key={l.name}
+                  href={l.href}
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -87,7 +108,7 @@ export function Footer() {
                   onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#38BDF8")}
                   onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#6B7280")}
                 >
-                  {l}
+                  {l.name}
                 </Link>
               ))}
             </div>
@@ -102,12 +123,16 @@ export function Footer() {
           }}
         >
           <span style={{ fontSize: 12, color: "#4B5563" }}>
-            © 2025 ASK Insurance Broker. All rights reserved.
+            © 2026 ASK Insurance Brokers Pvt. Ltd. All rights reserved.
           </span>
           <div style={{ display: "flex", gap: 20 }}>
-            {["Privacy Policy", "Terms of Service", "Disclaimer"].map((l) => (
-              <Link key={l} href="#" style={{ fontSize: 12, color: "#4B5563", textDecoration: "none" }}>
-                {l}
+            {[
+              { name: "Privacy Policy", href: "/privacy" },
+              { name: "Terms of Service", href: "/terms" },
+              { name: "Claims Grievance", href: "/faq" },
+            ].map((l) => (
+              <Link key={l.name} href={l.href} style={{ fontSize: 12, color: "#4B5563", textDecoration: "none" }}>
+                {l.name}
               </Link>
             ))}
           </div>
