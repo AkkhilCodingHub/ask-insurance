@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import {
   Clock,
   CheckCircle2,
@@ -164,6 +166,7 @@ export default function PospExamPage() {
   const currentQ = EXAM_QUESTIONS[currentIdx];
   const isAnswered = selectedAnswers[currentIdx] !== undefined;
   const answeredCount = Object.keys(selectedAnswers).length;
+  const totalQuestions = EXAM_QUESTIONS.length;
 
   const handleSubmitExam = () => {
     // Calculate score
@@ -178,208 +181,215 @@ export default function PospExamPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 16px 80px" }}>
-      <div style={{ maxWidth: 880, margin: "0 auto" }}>
-        {/* Header with Timer */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid var(--border)",
-            padding: "18px 24px",
-            marginBottom: 24,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase" }}>
-              IRDAI POSP Certification Examination
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>
-              Question {currentIdx + 1} of {EXAM_QUESTIONS.length}
-            </div>
-          </div>
-
+    <>
+      <Navbar />
+      <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "30px 16px 80px" }}>
+        <div style={{ maxWidth: 840, margin: "0 auto" }}>
+          {/* Top Timer Bar */}
           <div
             style={{
+              background: "white",
+              borderRadius: 14,
+              border: "1px solid var(--border)",
+              padding: "16px 24px",
               display: "flex",
+              justifyContent: "space-between",
               alignItems: "center",
-              gap: 8,
-              background: timeLeft < 180 ? "var(--error-light)" : "var(--primary-light)",
-              color: timeLeft < 180 ? "var(--error)" : "var(--primary)",
-              padding: "8px 16px",
-              borderRadius: 20,
-              fontWeight: 800,
-              fontSize: 15,
+              marginBottom: 24,
+              boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
             }}
           >
-            <Clock size={18} />
-            <span>Time Remaining: {formatTime(timeLeft)}</span>
-          </div>
-        </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase" }}>
+                IRDAI POSP Certification Exam
+              </div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", margin: "2px 0 0" }}>
+                Question {currentIdx + 1} of {totalQuestions}
+              </h2>
+            </div>
 
-        {/* Question Card */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 18,
-            border: "1px solid var(--border)",
-            padding: 36,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, marginBottom: 8 }}>
-            Module: Insurance Essentials & Rules
-          </div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", lineHeight: 1.4, marginBottom: 28 }}>
-            {currentQ.question}
-          </h2>
-
-          {/* Options */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
-            {currentQ.options.map((option, oIdx) => {
-              const isSelected = selectedAnswers[currentIdx] === oIdx;
-              return (
-                <div
-                  key={oIdx}
-                  onClick={() => handleSelect(oIdx)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "16px 20px",
-                    borderRadius: 12,
-                    border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border)",
-                    background: isSelected ? "var(--primary-light)" : "white",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border-dark)",
-                      background: isSelected ? "var(--primary)" : "white",
-                      color: isSelected ? "white" : "var(--text)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                      fontSize: 13,
-                    }}
-                  >
-                    {String.fromCharCode(65 + oIdx)}
-                  </div>
-                  <span style={{ fontSize: 15, fontWeight: isSelected ? 700 : 500, color: "var(--text)" }}>
-                    {option}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Navigation buttons */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-            <button
-              onClick={() => setCurrentIdx((prev) => Math.max(0, prev - 1))}
-              disabled={currentIdx === 0}
+            <div
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                gap: 6,
-                padding: "10px 20px",
-                background: "white",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontWeight: 600,
-                cursor: currentIdx === 0 ? "not-allowed" : "pointer",
-                opacity: currentIdx === 0 ? 0.4 : 1,
+                gap: 8,
+                background: timeLeft < 180 ? "var(--error-light)" : "var(--primary-light)",
+                color: timeLeft < 180 ? "var(--error)" : "var(--primary)",
+                padding: "8px 16px",
+                borderRadius: 10,
+                fontWeight: 800,
+                fontSize: 16,
               }}
             >
-              <ArrowLeft size={16} /> Previous
-            </button>
+              <Clock size={18} />
+              <span>{formatTime(timeLeft)}</span>
+            </div>
+          </div>
 
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {answeredCount} of {EXAM_QUESTIONS.length} Questions Answered
-            </span>
+          {/* Question Card */}
+          <div
+            style={{
+              background: "white",
+              borderRadius: 16,
+              border: "1px solid var(--border)",
+              padding: 32,
+              marginBottom: 24,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.02)",
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>
+              MODULE 0{Math.floor(currentIdx / 2) + 1} • General & Life Principles
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", lineHeight: 1.5, marginBottom: 24 }}>
+              {currentQ.question}
+            </h3>
 
-            {currentIdx < EXAM_QUESTIONS.length - 1 ? (
+            {/* Options */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {currentQ.options.map((opt, optIdx) => {
+                const isSelected = selectedAnswers[currentIdx] === optIdx;
+                return (
+                  <div
+                    key={optIdx}
+                    onClick={() => handleSelect(optIdx)}
+                    style={{
+                      padding: "16px 20px",
+                      borderRadius: 12,
+                      border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border)",
+                      background: isSelected ? "var(--primary-light)" : "white",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        border: isSelected ? "2px solid var(--primary)" : "1px solid var(--border)",
+                        background: isSelected ? "var(--primary)" : "white",
+                        color: isSelected ? "white" : "var(--text-muted)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 800,
+                        fontSize: 12,
+                      }}
+                    >
+                      {String.fromCharCode(65 + optIdx)}
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: isSelected ? 700 : 500, color: "var(--text)" }}>
+                      {opt}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Navigation buttons */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
               <button
-                onClick={() => setCurrentIdx((prev) => prev + 1)}
+                onClick={() => setCurrentIdx((p) => Math.max(0, p - 1))}
+                disabled={currentIdx === 0}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "10px 24px",
-                  background: "var(--primary)",
-                  color: "white",
-                  border: "none",
+                  padding: "10px 20px",
+                  background: "white",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Next <ArrowRight size={16} />
-              </button>
-            ) : (
-              <button
-                onClick={handleSubmitExam}
-                style={{
-                  padding: "12px 28px",
-                  background: "var(--success)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 8,
-                  fontWeight: 800,
                   fontSize: 14,
-                  cursor: "pointer",
-                  boxShadow: "0 4px 14px rgba(5,150,105,0.35)",
+                  fontWeight: 600,
+                  color: currentIdx === 0 ? "var(--text-light)" : "var(--text)",
+                  cursor: currentIdx === 0 ? "not-allowed" : "pointer",
                 }}
               >
-                Submit Exam & View Result
+                <ArrowLeft size={16} /> Previous
               </button>
-            )}
-          </div>
-        </div>
 
-        {/* Question Palette */}
-        <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--border)", padding: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase" }}>
-            Question Palette
+              <div style={{ display: "flex", gap: 10 }}>
+                {currentIdx < totalQuestions - 1 ? (
+                  <button
+                    onClick={() => setCurrentIdx((p) => Math.min(totalQuestions - 1, p + 1))}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "10px 24px",
+                      background: "var(--primary)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Next Question <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmitExam}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "10px 28px",
+                      background: "var(--success)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 8,
+                      fontSize: 14,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(5,150,105,0.3)",
+                    }}
+                  >
+                    Submit Exam & View Results <CheckCircle2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {EXAM_QUESTIONS.map((_, idx) => {
-              const isCurrent = currentIdx === idx;
-              const hasAnswered = selectedAnswers[idx] !== undefined;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentIdx(idx)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    border: isCurrent ? "2px solid var(--primary)" : "1px solid var(--border)",
-                    background: hasAnswered ? "var(--success)" : isCurrent ? "var(--primary-light)" : "var(--bg)",
-                    color: hasAnswered ? "white" : isCurrent ? "var(--primary)" : "var(--text)",
-                    fontWeight: 700,
-                    fontSize: 13,
-                    cursor: "pointer",
-                  }}
-                >
-                  {idx + 1}
-                </button>
-              );
-            })}
+
+          {/* Question Palette */}
+          <div style={{ background: "white", borderRadius: 14, border: "1px solid var(--border)", padding: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase" }}>
+              Question Palette
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {EXAM_QUESTIONS.map((_, idx) => {
+                const isCurrent = currentIdx === idx;
+                const hasAnswered = selectedAnswers[idx] !== undefined;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentIdx(idx)}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: isCurrent ? "2px solid var(--primary)" : "1px solid var(--border)",
+                      background: hasAnswered ? "var(--success)" : isCurrent ? "var(--primary-light)" : "var(--bg)",
+                      color: hasAnswered ? "white" : isCurrent ? "var(--primary)" : "var(--text)",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }

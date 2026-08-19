@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 import { FileText, Shield, Scale, Download, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
 
 const TERMS_SECTIONS = [
@@ -134,150 +136,154 @@ export default function TermsOfServicePage() {
   const [activeSection, setActiveSection] = useState("acceptance");
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 16px 80px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        {/* Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
-          <Link href="/" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Home</Link>
-          <span>/</span>
-          <span style={{ color: "var(--primary)", fontWeight: 600 }}>Terms of Service</span>
-        </div>
-
-        {/* Hero banner */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #0A1628 0%, #1580FF 100%)",
-            borderRadius: 20,
-            padding: "36px 32px",
-            color: "white",
-            marginBottom: 32,
-            boxShadow: "0 8px 32px rgba(21,128,255,0.15)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 20,
-          }}
-        >
-          <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 800, textTransform: "uppercase" }}>
-              <Scale size={14} /> IRDAI Broker License Reg. No. 882
-            </div>
-            <h1 style={{ fontSize: 32, fontWeight: 900, margin: "12px 0 6px" }}>
-              Terms of Service &amp; Broker Terms
-            </h1>
-            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0 }}>
-              Effective Date: August 2026 • Governed by Insurance Act 1938 &amp; IRDAI Regulations
-            </p>
+    <>
+      <Navbar />
+      <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 16px 80px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          {/* Breadcrumb */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+            <Link href="/" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Home</Link>
+            <span>/</span>
+            <span style={{ color: "var(--primary)", fontWeight: 600 }}>Terms of Service</span>
           </div>
 
-          <button
-            onClick={() => window.print()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 20px",
-              background: "white",
-              color: "var(--primary)",
-              borderRadius: 10,
-              border: "none",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            <Download size={15} /> Print / Save PDF
-          </button>
-        </div>
-
-        {/* Grid layout */}
-        <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 32, alignItems: "flex-start" }}>
-          {/* Left Table of Contents */}
+          {/* Hero banner */}
           <div
             style={{
-              background: "white",
-              borderRadius: 16,
-              border: "1px solid var(--border)",
-              padding: 20,
-              position: "sticky",
-              top: 90,
-              boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
+              background: "linear-gradient(135deg, #0A1628 0%, #1580FF 100%)",
+              borderRadius: 20,
+              padding: "36px 32px",
+              color: "white",
+              marginBottom: 32,
+              boxShadow: "0 8px 32px rgba(21,128,255,0.15)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 20,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 14, letterSpacing: "0.5px" }}>
-              Sections
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 800, textTransform: "uppercase" }}>
+                <Scale size={14} /> IRDAI Broker License Reg. No. 882
+              </div>
+              <h1 style={{ fontSize: 32, fontWeight: 900, margin: "12px 0 6px" }}>
+                Terms of Service &amp; Broker Terms
+              </h1>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", margin: 0 }}>
+                Effective Date: August 2026 • Governed by Insurance Act 1938 &amp; IRDAI Regulations
+              </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {TERMS_SECTIONS.map((sec) => (
-                <a
-                  key={sec.id}
-                  href={`#${sec.id}`}
-                  onClick={() => setActiveSection(sec.id)}
+
+            <button
+              onClick={() => window.print()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "12px 20px",
+                background: "white",
+                color: "var(--primary)",
+                borderRadius: 10,
+                border: "none",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              <Download size={15} /> Print / Save PDF
+            </button>
+          </div>
+
+          {/* Grid layout */}
+          <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 32, alignItems: "flex-start" }}>
+            {/* Left Table of Contents */}
+            <div
+              style={{
+                background: "white",
+                borderRadius: 16,
+                border: "1px solid var(--border)",
+                padding: 20,
+                position: "sticky",
+                top: 90,
+                boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 14, letterSpacing: "0.5px" }}>
+                Sections
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {TERMS_SECTIONS.map((sec) => (
+                  <a
+                    key={sec.id}
+                    href={`#${sec.id}`}
+                    onClick={() => setActiveSection(sec.id)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: activeSection === sec.id ? 700 : 500,
+                      color: activeSection === sec.id ? "var(--primary)" : "var(--text)",
+                      background: activeSection === sec.id ? "var(--primary-light)" : "transparent",
+                      textDecoration: "none",
+                      transition: "all 0.15s ease",
+                      display: "block",
+                    }}
+                  >
+                    {sec.title}
+                  </a>
+                ))}
+              </div>
+
+              <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
+                  Looking for Data Privacy?
+                </div>
+                <Link
+                  href="/privacy"
                   style={{
-                    padding: "8px 12px",
-                    borderRadius: 8,
+                    color: "var(--primary)",
                     fontSize: 13,
-                    fontWeight: activeSection === sec.id ? 700 : 500,
-                    color: activeSection === sec.id ? "var(--primary)" : "var(--text)",
-                    background: activeSection === sec.id ? "var(--primary-light)" : "transparent",
+                    fontWeight: 700,
                     textDecoration: "none",
-                    transition: "all 0.15s ease",
-                    display: "block",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  {sec.title}
-                </a>
+                  View Privacy Policy →
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Main Content */}
+            <div
+              style={{
+                background: "white",
+                borderRadius: 18,
+                border: "1px solid var(--border)",
+                padding: 36,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 32,
+              }}
+            >
+              {TERMS_SECTIONS.map((sec) => (
+                <section key={sec.id} id={sec.id} style={{ scrollMarginTop: 100 }}>
+                  <h2 style={{ fontSize: 19, fontWeight: 800, color: "var(--text)", marginBottom: 12, borderBottom: "1px solid var(--border)", paddingBottom: 8 }}>
+                    {sec.title}
+                  </h2>
+                  <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7 }}>
+                    {sec.content}
+                  </div>
+                </section>
               ))}
             </div>
-
-            <div style={{ marginTop: 24, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
-                Looking for Data Privacy?
-              </div>
-              <Link
-                href="/privacy"
-                style={{
-                  color: "var(--primary)",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                View Privacy Policy →
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Main Content */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: 18,
-              border: "1px solid var(--border)",
-              padding: 36,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 32,
-            }}
-          >
-            {TERMS_SECTIONS.map((sec) => (
-              <section key={sec.id} id={sec.id} style={{ scrollMarginTop: 100 }}>
-                <h2 style={{ fontSize: 19, fontWeight: 800, color: "var(--text)", marginBottom: 12, borderBottom: "1px solid var(--border)", paddingBottom: 8 }}>
-                  {sec.title}
-                </h2>
-                <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7 }}>
-                  {sec.content}
-                </div>
-              </section>
-            ))}
           </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }
