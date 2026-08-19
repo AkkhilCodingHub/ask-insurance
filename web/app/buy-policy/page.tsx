@@ -3,6 +3,9 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { api } from "@/lib/api";
 import {
   Shield,
   CheckCircle2,
@@ -74,8 +77,10 @@ function BuyPolicyContent() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 16px 80px" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <>
+      <Navbar />
+      <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "40px 16px 80px" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto" }}>
         {/* Header Breadcrumb */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>
@@ -558,7 +563,9 @@ function BuyPolicyContent() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }

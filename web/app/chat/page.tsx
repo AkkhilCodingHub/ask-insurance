@@ -2,6 +2,9 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { api } from "@/lib/api";
 import {
   Bot,
   Send,
@@ -127,213 +130,245 @@ export default function ChatPage() {
   };
 
   return (
-    <div style={{ minHeight: "calc(100vh - 64px)", background: "var(--bg)", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, maxWidth: 900, width: "100%", margin: "0 auto", padding: "24px 16px 20px", display: "flex", flexDirection: "column" }}>
-        {/* Top Header Card */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid var(--border)",
-            padding: "16px 20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                background: "var(--primary-light)",
-                color: "var(--primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Bot size={24} />
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-                ASK AI Insurance Assistant <Sparkles size={14} style={{ color: "var(--primary)" }} />
-              </div>
-              <div style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>
-                ● Online • Instant answers powered by IRDAI Insurance Knowledge
-              </div>
-            </div>
-          </div>
-
-          <Link
-            href="/quote"
+    <>
+      <Navbar />
+      <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "30px 16px 80px" }}>
+        <div style={{ maxWidth: 840, margin: "0 auto" }}>
+          {/* Header */}
+          <div
             style={{
-              padding: "8px 16px",
-              background: "var(--primary-light)",
-              color: "var(--primary)",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: "none",
+              background: "white",
+              borderRadius: "16px 16px 0 0",
+              border: "1px solid var(--border)",
+              borderBottom: "none",
+              padding: "16px 24px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            Get Live Quote →
-          </Link>
-        </div>
-
-        {/* Messages Scroll Area */}
-        <div
-          style={{
-            flex: 1,
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid var(--border)",
-            padding: 24,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-            maxHeight: "calc(100vh - 280px)",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
-          }}
-        >
-          {messages.map((m) => {
-            const isBot = m.sender === "bot";
-            return (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div
-                key={m.id}
                 style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: "linear-gradient(135deg, #1580FF 0%, #0056B3 100%)",
+                  color: "white",
                   display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  alignSelf: isBot ? "flex-start" : "flex-end",
-                  maxWidth: "80%",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {isBot && (
-                  <div
+                <Bot size={24} />
+              </div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <h1 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>
+                    ASK AI Insurance Expert
+                  </h1>
+                  <span
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 8,
-                      background: "var(--primary-light)",
-                      color: "var(--primary)",
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
+                      gap: 4,
+                      fontSize: 11,
+                      background: "var(--success-light)",
+                      color: "var(--success)",
+                      padding: "2px 8px",
+                      borderRadius: 10,
+                      fontWeight: 700,
                     }}
                   >
-                    <Bot size={18} />
-                  </div>
-                )}
-
-                <div>
-                  <div
-                    style={{
-                      background: isBot ? "var(--bg)" : "var(--primary)",
-                      color: isBot ? "var(--text)" : "white",
-                      padding: "14px 18px",
-                      borderRadius: 14,
-                      borderTopLeftRadius: isBot ? 2 : 14,
-                      borderTopRightRadius: !isBot ? 2 : 14,
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {m.text}
-                  </div>
-
-                  {/* Suggestion action pills */}
-                  {m.suggestions && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                      {m.suggestions.map((s, idx) => (
-                        <Link
-                          key={idx}
-                          href={s.link}
-                          style={{
-                            fontSize: 12,
-                            padding: "6px 12px",
-                            borderRadius: 20,
-                            background: "white",
-                            border: "1px solid var(--border)",
-                            color: "var(--primary)",
-                            fontWeight: 700,
-                            textDecoration: "none",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          {s.label} →
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: 10, color: "var(--text-light)", marginTop: 4, textAlign: isBot ? "left" : "right" }}>
-                    {m.timestamp}
-                  </div>
+                    ● Online
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  24/7 AI Insurance Guidance • Direct IRDAI Policy Matching
                 </div>
               </div>
-            );
-          })}
-
-          {isTyping && (
-            <div style={{ display: "flex", gap: 10, alignItems: "center", color: "var(--text-muted)", fontSize: 13 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--primary-light)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Bot size={18} />
-              </div>
-              <span>ASK AI Assistant is typing...</span>
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        {/* Input Bar */}
-        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Ask about car insurance, health cover, claim process, POSP exam..."
+            <button
+              onClick={() => setMessages(INITIAL_MESSAGES)}
+              style={{
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                padding: "6px 12px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-muted)",
+                cursor: "pointer",
+              }}
+            >
+              Reset Chat
+            </button>
+          </div>
+
+          {/* Chat Messages Body */}
+          <div
             style={{
-              flex: 1,
-              padding: "14px 20px",
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              fontSize: 14,
-              outline: "none",
               background: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          />
-          <button
-            onClick={() => handleSend()}
-            style={{
-              padding: "14px 24px",
-              background: "var(--primary)",
-              color: "white",
-              border: "none",
-              borderRadius: 12,
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              boxShadow: "0 4px 14px rgba(21,128,255,0.3)",
+              border: "1px solid var(--border)",
+              height: 480,
+              overflowY: "auto",
+              padding: 24,
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
             }}
           >
-            <Send size={16} /> Send
-          </button>
+            {messages.map((msg) => {
+              const isUser = msg.sender === "user";
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: isUser ? "flex-end" : "flex-start",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      maxWidth: "80%",
+                      flexDirection: isUser ? "row-reverse" : "row",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        background: isUser ? "var(--text)" : "var(--primary-light)",
+                        color: isUser ? "white" : "var(--primary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isUser ? <User size={16} /> : <Bot size={16} />}
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          background: isUser ? "var(--primary)" : "var(--bg)",
+                          color: isUser ? "white" : "var(--text)",
+                          padding: "12px 18px",
+                          borderRadius: isUser ? "16px 4px 16px 16px" : "4px 16px 16px 16px",
+                          fontSize: 14,
+                          lineHeight: 1.5,
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.02)",
+                        }}
+                      >
+                        {msg.text}
+                      </div>
+
+                      {/* Bot interactive suggestions pills */}
+                      {msg.suggestions && msg.suggestions.length > 0 && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                          {msg.suggestions.map((sugg, i) => (
+                            <Link
+                              key={i}
+                              href={sugg.link}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                background: "white",
+                                border: "1px solid var(--primary)",
+                                color: "var(--primary)",
+                                padding: "6px 12px",
+                                borderRadius: 14,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                textDecoration: "none",
+                              }}
+                            >
+                              {sugg.label} <ArrowRight size={12} />
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: 10, color: "var(--text-light)", marginTop: 4, textAlign: isUser ? "right" : "left" }}>
+                        {msg.timestamp}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {isTyping && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 12 }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: "var(--primary-light)",
+                    color: "var(--primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Bot size={14} />
+                </div>
+                <span>ASK AI Assistant is typing...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Bar */}
+          <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="Ask about car insurance, health cover, claim process, POSP exam..."
+              style={{
+                flex: 1,
+                padding: "14px 20px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                fontSize: 14,
+                outline: "none",
+                background: "white",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+              }}
+            />
+            <button
+              onClick={() => handleSend()}
+              style={{
+                padding: "14px 24px",
+                background: "var(--primary)",
+                color: "white",
+                border: "none",
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 4px 14px rgba(21,128,255,0.3)",
+              }}
+            >
+              <Send size={16} /> Send
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }
