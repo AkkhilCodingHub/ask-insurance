@@ -58,8 +58,8 @@
       [
         "expo-notifications",
         {
-          "icon": "../icons/appstore.png",
-          "color": "#208AEF",
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#1580FF",
           "sounds": []
         }
       ],
