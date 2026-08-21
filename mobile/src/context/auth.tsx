@@ -140,8 +140,9 @@ function getFirebaseAuth() {
         appId: "1:879913171231:android:f214cb309918a1e4ea582a",
         messagingSenderId: "879913171231",
         projectId: "ask-in",
+        authDomain: "ask-in.firebaseapp.com",
         databaseURL: "https://ask-in-default-rtdb.firebaseio.com",
-        storageBucket: "ask-in.appspot.com"
+        storageBucket: "ask-in.firebasestorage.app"
       });
     }
     return getAuth();
