@@ -11,6 +11,7 @@ import { usersApi, plansApi, ApiPolicy, ApiPlan, DashboardData } from '@/lib/api
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 import { useLanguage, useThemeColors } from '@/context/agent';
+import { dispatchSystemPolicyAlerts } from '@/lib/notifications';
 
 const { width: W } = Dimensions.get('window');
 
@@ -185,7 +186,10 @@ export default function HomeTab() {
     }
   }, [user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    dispatchSystemPolicyAlerts();
+  }, [load]);
 
   const activePolicies = dashboard?.activePolicies ?? 0;
   const openClaims     = (dashboard?.recentClaims ?? []).filter(
@@ -252,65 +256,6 @@ export default function HomeTab() {
         {/* ── Body ───────────────────────────────────── */}
         <View style={[s.body, { backgroundColor: colors.bg }]}>
 
-          {/* ── Feature 4: In-App Notification Hub (Expiry, Renewals & New Policies) ── */}
-          <View style={{ marginBottom: 18, backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 16 }}>🔔</Text>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text }}>Notification Hub & Alerts</Text>
-              </View>
-              <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#B45309' }}>3 UNREAD ALERTS</Text>
-              </View>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-              {/* Alert 1: Policy Expiring */}
-              <TouchableOpacity
-                style={{ width: W * 0.72, backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECACA' }}
-                onPress={() => router.push('/quote?category=motor')}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#DC2626' }}>⚠️ POLICY EXPIRING SOON</Text>
-                  <Text style={{ fontSize: 9, color: '#991B1B' }}>5 Days Left</Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#991B1B', marginBottom: 2 }}>Maruti Swift (DL01AB1234)</Text>
-                <Text style={{ fontSize: 10, color: '#B91C1C', lineHeight: 14 }}>
-                  Motor insurance expires on Aug 20. Renew today to save your 50% NCB discount!
-                </Text>
-              </TouchableOpacity>
-
-              {/* Alert 2: Renewal Pending */}
-              <TouchableOpacity
-                style={{ width: W * 0.72, backgroundColor: '#FFFBEB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FDE68A' }}
-                onPress={() => router.push('/my-policies')}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#D97706' }}>⏳ RENEWAL PENDING</Text>
-                  <Text style={{ fontSize: 9, color: '#92400E' }}>Action Required</Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#92400E', marginBottom: 2 }}>HDFC ERGO Optima Secure</Text>
-                <Text style={{ fontSize: 10, color: '#B45309', lineHeight: 14 }}>
-                  Policy #POL-88219 renewal invoice ready. Tap to complete instant premium payment.
-                </Text>
-              </TouchableOpacity>
-
-              {/* Alert 3: New Policy Added */}
-              <TouchableOpacity
-                style={{ width: W * 0.72, backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#A7F3D0' }}
-                onPress={() => router.push('/plans')}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '900', color: '#059669' }}>🆕 NEW POLICY RELEASED</Text>
-                  <Text style={{ fontSize: 9, color: '#065F46' }}>Just Added</Text>
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: '#065F46', marginBottom: 2 }}>Star Health 2026 Family Floater</Text>
-                <Text style={{ fontSize: 10, color: '#047857', lineHeight: 14 }}>
-                  Zero waiting period for pre-existing diseases with ₹1 Cr restore cover.
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
 
           {/* ── Feature 3: Smart App-Search & Intent Policy Recommendation Hub ── */}
           <View style={{ marginBottom: 18, backgroundColor: Colors.white, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: Colors.border }}>

@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
+import { initSystemNotifications } from '@/lib/notifications';
+
 // Prevent splash screen auto-hiding while loading fonts
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -19,6 +21,8 @@ function RootContent() {
   const router = useRouter();
 
   useEffect(() => {
+    initSystemNotifications();
+
     const onBackPress = () => {
       if (!router.canGoBack()) {
         BackHandler.exitApp();
