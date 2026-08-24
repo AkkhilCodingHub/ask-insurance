@@ -129,14 +129,14 @@ function QuoteContent() {
 
   const [step, setStep] = useState(1);
   const [insuranceType, setInsuranceType] = useState(prefilledType);
-  const [regNumber, setRegNumber] = useState("DL01AB1234");
-  const [vehicleData, setVehicleData] = useState(CAR_CATALOG[0]);
-  const [idv, setIdv] = useState(CAR_CATALOG[0].idv);
-  const [ncb, setNcb] = useState(35);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>(["zero_dep", "rsa"]);
-  const [customerName, setCustomerName] = useState(user?.name || "Akkhil Sharma");
-  const [customerPhone, setCustomerPhone] = useState(user?.phone || "+91 7497007881");
-  const [customerEmail, setCustomerEmail] = useState("support@askinsurance.in");
+  const [regNumber, setRegNumber] = useState("");
+  const [vehicleData, setVehicleData] = useState<any>(null);
+  const [idv, setIdv] = useState(0);
+  const [ncb, setNcb] = useState(0);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [customerName, setCustomerName] = useState(user?.name || "");
+  const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
+  const [customerEmail, setCustomerEmail] = useState(user?.email || "");
   const [sortBy, setSortBy] = useState<"price_asc" | "rating" | "csr">("price_asc");
 
   // Sum total addons cost

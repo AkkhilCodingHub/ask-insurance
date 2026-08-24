@@ -1,47 +1,29 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
+# Expo and Metro Caches
 .expo/
 dist/
 web-build/
 expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
 .metro-health-check*
 
-# debug
+# Native Build Caches
+.kotlin/
+*.orig.*
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Debug Logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# macOS
+# OS Caches
 .DS_Store
-*.pem
+Thumbs.db
 
-# Firebase
-# google-services.json & GoogleService-Info.plist tracked intentionally for EAS Build
-*firebase-adminsdk*.json
-
-# local env files
-.env*.local
-
-# typescript
+# TypeScript Cache
 *.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android

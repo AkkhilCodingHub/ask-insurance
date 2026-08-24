@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import { getApps, initializeApp } from '@react-native-firebase/app';
+import { getAuth, signInWithPhoneNumber, FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { plansApi, policiesApi, paymentsApi, authApi, kycApi, ApiPlan } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';
@@ -40,9 +42,21 @@ export default function BuyPolicyScreen() {
   const [nomineeRelation, setNomineeRelation] = useState('Spouse');
   const [nomineeAge, setNomineeAge] = useState('');
 
+  useEffect(() => {
+    if (user) {
+      if (user.name) setFullName(user.name);
+      if (user.phone) setPhone(user.phone);
+      if (user.email) setEmail(user.email);
+      if (user.dob) setDob(user.dob);
+      if (user.gender) setGender(user.gender);
+      if (user.address) setAddress(user.address);
+      if (user.pincode) setPincode(user.pincode);
+    }
+  }, [user]);
+
   // Flow State
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Proposer, 2: Nominee, 3: Review & OTP
-  const [declChecked, setDeclChecked] = useState(true);
+  const [declChecked, setDeclChecked] = useState(false);
 
   // OTP Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -71,31 +85,92 @@ export default function BuyPolicyScreen() {
   const sumInsured = plan?.maxCover || 1000000;
   const color = plan?.insurer?.brandColor || Colors.primary;
 
+  const confirmationRef = React.useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
+
   const handleSendConsentOtp = async () => {
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      alert({ type: 'error', title: 'Invalid Mobile Number', message: 'Please enter a valid 10-digit mobile number to receive your OTP.' });
+      return;
+    }
     if (!declChecked) {
       alert({ type: 'error', title: 'Declaration required', message: 'Please accept the statutory IRDAI declaration to proceed.' });
       return;
     }
     setOtpSending(true);
+    setOtpCode('');
     try {
-      await authApi.sendOTP(phone || '7497007881');
+      const formattedPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
+      let sentViaFirebase = false;
+      try {
+        if (getApps().length === 0) {
+          initializeApp({
+            apiKey: "AIzaSyAOO0lS024bTXRNW_-eUptQFx5eV5GlNos",
+            appId: "1:879913171231:android:f214cb309918a1e4ea582a",
+            messagingSenderId: "879913171231",
+            projectId: "ask-in",
+            authDomain: "ask-in.firebaseapp.com",
+            databaseURL: "https://ask-in-default-rtdb.firebaseio.com",
+            storageBucket: "ask-in.firebasestorage.app"
+          });
+        }
+        const confirmation = await signInWithPhoneNumber(getAuth(), formattedPhone);
+        confirmationRef.current = confirmation;
+        sentViaFirebase = true;
+      } catch (fbErr) {
+        console.warn('[Firebase Consent SMS] fallback to backend SMS gateway:', fbErr);
+        await authApi.sendOTP(cleanPhone);
+      }
       setShowOtpModal(true);
+      alert({
+        type: 'success',
+        title: 'Consent OTP Sent',
+        message: `A secure 6-digit verification code has been sent via SMS to +91 ${cleanPhone}. Please enter it to authorize your policy purchase.`,
+      });
     } catch (e: any) {
-      // Still show OTP modal with test fallback
-      setShowOtpModal(true);
+      alert({ type: 'error', title: 'OTP Dispatch Failed', message: e?.message || 'Could not send verification code. Please check network connection.' });
     } finally {
       setOtpSending(false);
     }
   };
 
   const handleVerifyAndPay = async () => {
-    if (!otpCode || otpCode.length !== 6) {
-      alert({ type: 'error', title: 'Invalid OTP', message: 'Please enter a valid 6-digit OTP code (e.g. 123456).' });
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      alert({ type: 'error', title: 'Invalid OTP', message: 'Please enter the 6-digit OTP code received on your phone.' });
       return;
     }
 
     setVerifying(true);
     try {
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+      const cleanName = fullName.trim();
+      const cleanPan = panNumber.trim().toUpperCase();
+      const cleanAadhaar = aadhaarNumber.replace(/\D/g, '').slice(-12);
+
+      // 1. Verify OTP with Firebase or Backend
+      if (confirmationRef.current) {
+        try {
+          await confirmationRef.current.confirm(cleanOtp);
+        } catch (fbErr) {
+          console.warn('[Firebase Consent OTP] fallback backend check:', fbErr);
+          await authApi.verifyOTP(cleanPhone, cleanOtp);
+        }
+      } else {
+        await authApi.verifyOTP(cleanPhone, cleanOtp);
+      }
+
+      // 2. Sync verified KYC profile
+      await kycApi.verifyInstant({
+        name: cleanName,
+        panNumber: cleanPan,
+        aadhaarNumber: cleanAadhaar,
+        dob: dob.trim(),
+        gender,
+        address: address.trim(),
+        pincode: pincode.trim(),
+      });
+
       const rawType = (plan?.type || params.type || 'health').toLowerCase();
       let normalizedType: 'life' | 'health' | 'motor' | 'travel' | 'home' | 'business' = 'health';
       if (['health', 'mediclaim', 'critical_illness'].includes(rawType)) normalizedType = 'health';
@@ -105,27 +180,35 @@ export default function BuyPolicyScreen() {
       else if (['home', 'property'].includes(rawType)) normalizedType = 'home';
       else normalizedType = 'business';
 
-      // Create policy directly
+      // 3. Create real policy record in database
       const polRes = await policiesApi.create({
         type: normalizedType,
         provider: plan?.insurer?.name || 'ASK Insurance Underwriters',
         sumInsured,
         premium: totalPayable,
         durationDays: 365,
+        nomineeName: nomineeName.trim(),
+        nomineeRelation,
       });
 
       const newPolicy = polRes.policy;
 
-      // Try test payment activation if available
-      try {
-        await paymentsApi.verifyTestPayment(undefined, newPolicy.id);
-      } catch {}
+      // 4. Create and launch live Razorpay payment gateway
+      const linkRes = await paymentsApi.createRazorpayLink(newPolicy.id);
+      setShowOtpModal(false);
+
+      if (linkRes?.paymentUrl) {
+        try {
+          await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
+        } catch {
+          await WebBrowser.openBrowserAsync(linkRes.paymentUrl);
+        }
+      }
 
       setCreatedPolicy(newPolicy);
-      setShowOtpModal(false);
       await refreshUser();
     } catch (e: any) {
-      alert({ type: 'error', title: 'Purchase failed', message: e?.message || 'Could not complete policy purchase.' });
+      alert({ type: 'error', title: 'Transaction Failed', message: e?.message || 'Could not complete verification or payment.' });
     } finally {
       setVerifying(false);
     }
@@ -217,8 +300,8 @@ export default function BuyPolicyScreen() {
                   {/* Header */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 2, borderColor: '#E2E8F0', paddingBottom: 16, marginBottom: 16 }}>
                     <View>
-                      <Text style={{ fontSize: 22, fontWeight: '900', color: Colors.primary }}>ASK INSURANCE</Text>
-                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2, fontWeight: '600' }}>IRDAI Reg. No: 102/2024 · CIN: U66010DL2024</Text>
+                      <Text style={{ fontSize: 20, fontWeight: '900', color: Colors.primary }}>ASK INSURANCE BROKERS</Text>
+                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2, fontWeight: '700' }}>Direct Insurance Broker · IRDAI Reg: 102/2024</Text>
                     </View>
                     <View style={{ backgroundColor: '#ECFDF5', borderColor: '#10B981', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
                       <Text style={{ color: '#047857', fontSize: 11, fontWeight: '800' }}>✓ ACTIVE & PAID</Text>
@@ -305,8 +388,8 @@ export default function BuyPolicyScreen() {
                       Electronically generated document under IT Act, 2000. Valid without physical signature.
                     </Text>
                     <View style={{ borderWidth: 2, borderColor: Colors.primary, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, alignItems: 'center' }}>
-                      <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: '900' }}>ASK INSURANCE</Text>
-                      <Text style={{ color: '#64748B', fontSize: 8 }}>Digitally Verified</Text>
+                      <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: '900' }}>ASK INSURANCE BROKERS</Text>
+                      <Text style={{ color: '#64748B', fontSize: 8 }}>Digitally Verified & Sealed</Text>
                     </View>
                   </View>
                 </View>
@@ -324,13 +407,22 @@ export default function BuyPolicyScreen() {
       {/* Header */}
       <View style={s.header}>
         <BackButton onPress={() => (step > 1 ? setStep((s) => (s - 1) as any) : router.back())} />
-        <Text style={s.headerTitle}>Policy Proposal & Checkout</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={s.headerTitle}>Policy Proposal & Checkout</Text>
+          <Text style={{ fontSize: 11, color: Colors.primary, fontWeight: '800' }}>ASK Insurance Brokers</Text>
+        </View>
         <Text style={s.stepIndicator}>Step {step} of 3</Text>
       </View>
 
       {/* Plan Summary Card */}
       <View style={[s.planBanner, { borderColor: color + '40' }]}>
         <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <View style={{ backgroundColor: Colors.primary + '15', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: '900' }}>🛡️ ASK INSURANCE BROKERS</Text>
+            </View>
+            <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700' }}>Direct Broker</Text>
+          </View>
           <Text style={s.planInsurer}>{plan?.insurer?.name || 'Selected Insurance Plan'}</Text>
           <Text style={s.planTitle}>{plan?.name || params.planName || 'Comprehensive Cover'}</Text>
           <Text style={s.planCover}>Cover: ₹{(sumInsured / 100000).toFixed(0)} Lakh</Text>
@@ -467,6 +559,10 @@ export default function BuyPolicyScreen() {
                 <Text style={s.summaryVal}>{panNumber || '—'} · {aadhaarNumber ? `**** ${aadhaarNumber.slice(-4)}` : '—'}</Text>
               </View>
               <View style={s.summaryRow}>
+                <Text style={s.summaryLbl}>Brokered By</Text>
+                <Text style={[s.summaryValBold, { color: Colors.primary }]}>ASK Insurance Brokers</Text>
+              </View>
+              <View style={s.summaryRow}>
                 <Text style={s.summaryLbl}>Appointed Nominee</Text>
                 <Text style={s.summaryVal}>{nomineeName || 'Nominee'} ({nomineeRelation}{nomineeAge ? `, ${nomineeAge} yrs` : ''})</Text>
               </View>
@@ -495,18 +591,51 @@ export default function BuyPolicyScreen() {
             style={s.primaryBtn}
             onPress={() => {
               const cleanName = fullName.trim();
+              const cleanPhone = phone.replace(/\D/g, '').slice(-10);
               const cleanPan = panNumber.trim().toUpperCase();
-              const cleanAadhaar = aadhaarNumber.replace(/\D/g, '').slice(0, 12);
+              const cleanAadhaar = aadhaarNumber.replace(/\D/g, '').slice(-12);
+              const cleanDob = dob.trim();
+              const cleanAddress = address.trim();
+              const cleanPincode = pincode.trim();
+
+              if (!cleanName) {
+                alert({ type: 'warning', title: 'Full Name Required', message: 'Please enter your full legal name as per government ID.' });
+                return;
+              }
+              if (!cleanPhone || cleanPhone.length !== 10) {
+                alert({ type: 'warning', title: 'Valid Mobile Required', message: 'Please enter a valid 10-digit mobile number.' });
+                return;
+              }
+              if (!cleanDob) {
+                alert({ type: 'warning', title: 'Date of Birth Required', message: 'Please enter your date of birth (DD/MM/YYYY).' });
+                return;
+              }
+              if (!cleanPan || cleanPan.length !== 10) {
+                alert({ type: 'warning', title: 'Valid PAN Required', message: 'Please enter a valid 10-character PAN number.' });
+                return;
+              }
+              if (!cleanAadhaar || cleanAadhaar.length !== 12) {
+                alert({ type: 'warning', title: 'Valid Aadhaar Required', message: 'Please enter a valid 12-digit Aadhaar number.' });
+                return;
+              }
+              if (!cleanAddress) {
+                alert({ type: 'warning', title: 'Address Required', message: 'Please enter your communication address.' });
+                return;
+              }
+              if (!cleanPincode || cleanPincode.length !== 6) {
+                alert({ type: 'warning', title: 'Valid Pincode Required', message: 'Please enter a valid 6-digit postal pincode.' });
+                return;
+              }
 
               // Auto-sync KYC to database & Admin Panel
               kycApi.verifyInstant({
                 name: cleanName,
                 panNumber: cleanPan,
                 aadhaarNumber: cleanAadhaar,
-                dob,
+                dob: cleanDob,
                 gender,
-                address,
-                pincode,
+                address: cleanAddress,
+                pincode: cleanPincode,
               }).then(() => refreshUser()).catch(() => {});
 
               setStep(2);
@@ -520,7 +649,19 @@ export default function BuyPolicyScreen() {
         {step === 2 && (
           <TouchableOpacity
             style={s.primaryBtn}
-            onPress={() => setStep(3)}
+            onPress={() => {
+              const cleanNominee = nomineeName.trim();
+              const ageNum = parseInt(nomineeAge.trim(), 10);
+              if (!cleanNominee) {
+                alert({ type: 'warning', title: 'Nominee Name Required', message: 'Please enter the nominee legal full name.' });
+                return;
+              }
+              if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+                alert({ type: 'warning', title: 'Valid Nominee Age Required', message: 'Please enter a valid age between 1 and 120.' });
+                return;
+              }
+              setStep(3);
+            }}
             activeOpacity={0.85}
           >
             <Text style={s.primaryBtnText}>Review Proposal & E-Sign →</Text>
@@ -552,13 +693,14 @@ export default function BuyPolicyScreen() {
             </View>
             <Text style={s.modalTitle}>E-Sign Consent OTP</Text>
             <Text style={s.modalSub}>
-              Enter the 6-digit verification OTP sent to <Text style={{ fontWeight: '800' }}>+91 {phone}</Text> to sign and authorize your policy purchase.
+              Enter the 6-digit verification code sent via SMS to <Text style={{ fontWeight: '800', color: Colors.primary }}>+91 {phone}</Text> to sign and authorize your insurance purchase.
             </Text>
 
-            <View style={[af.inputRow, { marginTop: 16 }]}>
+            <View style={[af.inputRow, { marginTop: 20 }]}>
               <TextInput
-                style={[af.input, { textAlign: 'center', fontSize: 22, letterSpacing: 8, fontWeight: '900' }]}
-                placeholder="123456"
+                style={[af.input, { textAlign: 'center', fontSize: 24, letterSpacing: 10, fontWeight: '900', color: '#0F172A' }]}
+                placeholder="------"
+                placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
                 maxLength={6}
                 value={otpCode}
@@ -570,15 +712,23 @@ export default function BuyPolicyScreen() {
             <TouchableOpacity
               style={[s.primaryBtn, { marginTop: 20 }]}
               onPress={handleVerifyAndPay}
-              disabled={verifying}
+              disabled={verifying || otpCode.trim().length !== 6}
               activeOpacity={0.85}
             >
-              {verifying ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryBtnText}>Confirm Purchase & Issue Policy</Text>}
+              {verifying ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryBtnText}>Confirm & Pay via Razorpay →</Text>}
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.cancelBtn} onPress={() => setShowOtpModal(false)}>
-              <Text style={s.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 14, gap: 16 }}>
+              <TouchableOpacity onPress={handleSendConsentOtp} disabled={otpSending}>
+                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>
+                  {otpSending ? 'Sending SMS...' : 'Resend OTP'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ color: '#CBD5E1' }}>•</Text>
+              <TouchableOpacity onPress={() => setShowOtpModal(false)}>
+                <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

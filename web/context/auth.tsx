@@ -6,7 +6,15 @@ export interface AuthUser {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   dob?: string;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  customerCode?: string;
+  kycStatus?: string;
 }
 
 interface AuthContextValue {

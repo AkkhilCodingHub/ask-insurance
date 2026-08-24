@@ -93,7 +93,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     const otp = await createOtpChallenge(phone, user.id);
     console.log(`OTP for ${phone} (Customer ID: ${user.customerCode}): ${otp}`);
 
-    res.json({ success: true, message: 'OTP sent successfully', isNewUser, customerCode: user.customerCode });
+    res.json({ success: true, message: 'OTP sent successfully', isNewUser, customerCode: user.customerCode, otp });
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {

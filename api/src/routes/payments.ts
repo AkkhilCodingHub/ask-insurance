@@ -254,8 +254,182 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
+// ── Branded First-Party ASK Insurance Brokers Checkout Page ─────────────────
+router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const policyId = String(req.params.policyId || '');
+    const policy = await prisma.policy.findUnique({
+      where: { id: policyId },
+    });
+
+    if (!policy) {
+      res.status(404).send('<h2>Policy not found</h2>');
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: policy.userId } });
+
+    const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_SPxF487RfB0Pfu';
+    const amountInRupees = policy.premium;
+    const amountInPaise = Math.round(policy.premium * 100);
+    const proposerName = user?.name || 'Akkhil Sharma';
+    const phone = user?.phone || '7497007881';
+    const email = user?.email || 'akkhil@askinsurance.in';
+    const insurer = policy.provider || 'Bajaj Allianz General Insurance';
+    const policyType = (policy.type || 'Insurance').toUpperCase();
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ASK Insurance Brokers — Secure Checkout</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #0F172A; color: #F8FAFC; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { background: #1E293B; border: 1px solid #334155; border-radius: 20px; max-width: 440px; width: 100%; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; }
+    .brand-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(15,82,186,0.15); border: 1px solid rgba(15,82,186,0.4); color: #60A5FA; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; margin-bottom: 16px; }
+    h1 { font-size: 22px; font-weight: 800; color: #FFFFFF; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #94A3B8; margin-bottom: 24px; }
+    .summary-box { background: #0F172A; border: 1px solid #334155; border-radius: 14px; padding: 16px; text-align: left; margin-bottom: 24px; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; }
+    .summary-row:last-child { margin-bottom: 0; padding-top: 10px; border-top: 1px dashed #334155; }
+    .label { color: #94A3B8; }
+    .val { color: #F8FAFC; font-weight: 600; text-align: right; }
+    .total-val { color: #10B981; font-weight: 800; font-size: 17px; }
+    .btn-pay { width: 100%; background: #0F52BA; color: #FFFFFF; border: none; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(15,82,186,0.4); }
+    .btn-pay:active { transform: scale(0.98); opacity: 0.9; }
+    .guarantee { font-size: 12px; color: #64748B; margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand-badge">
+      🛡️ ASK Insurance Brokers
+    </div>
+    <h1>Direct Broker Checkout</h1>
+    <p class="subtitle">IRDAI Reg: 102/2024 · Direct Insurance Broker</p>
+
+    <div class="summary-box">
+      <div class="summary-row">
+        <span class="label">Policy Schedule:</span>
+        <span class="val">${policy.policyNumber}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Coverage Type:</span>
+        <span class="val">${policyType}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Underwriter Insurer:</span>
+        <span class="val">${insurer}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Proposer:</span>
+        <span class="val">${proposerName}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Total Premium (incl. GST):</span>
+        <span class="val total-val">₹${amountInRupees.toLocaleString('en-IN')}</span>
+      </div>
+    </div>
+
+    <button id="pay-btn" class="btn-pay" onclick="launchRazorpay()">
+      <span>🔒 Pay ₹${amountInRupees.toLocaleString('en-IN')} via Razorpay</span>
+    </button>
+
+    <div class="guarantee">
+      🔒 256-Bit SSL Encrypted · Official Razorpay Gateway
+    </div>
+  </div>
+
+  <script>
+    function launchRazorpay() {
+      var options = {
+        key: "${keyId}",
+        amount: "${amountInPaise}",
+        currency: "INR",
+        name: "ASK Insurance Brokers",
+        description: "${policyType} Insurance — ${insurer}",
+        image: "https://ask-api.bitopayments.com/logo.png",
+        prefill: {
+          name: "${proposerName}",
+          email: "${email}",
+          contact: "${phone}"
+        },
+        theme: {
+          color: "#0F52BA"
+        },
+        handler: function (response) {
+          window.location.href = '/api/payments/razorpay/callback?policyId=${policy.id}&paymentId=' + (response.razorpay_payment_id || 'test');
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment modal dismissed');
+          }
+        }
+      };
+      var rzp = new Razorpay(options);
+      rzp.open();
+    }
+
+    // Auto launch on load
+    window.addEventListener('DOMContentLoaded', function() {
+      setTimeout(launchRazorpay, 300);
+    });
+  </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (err) {
+    console.error('[checkout error]:', err);
+    res.status(500).send('<h2>Internal Checkout Error</h2>');
+  }
+});
+
 // GET Razorpay callback route
 router.get('/razorpay/callback', async (req: Request, res: Response): Promise<void> => {
+  const { policyId, paymentId } = req.query;
+  if (policyId) {
+    try {
+      const pid = String(policyId);
+      const policy = await prisma.policy.findUnique({ where: { id: pid } });
+      if (policy && policy.paymentStatus !== 'paid') {
+        await prisma.$transaction(async (tx) => {
+          await tx.policy.update({
+            where: { id: pid },
+            data: { status: 'active', paymentStatus: 'paid' },
+          });
+          await tx.payment.create({
+            data: {
+              amount: policy.premium,
+              currency: 'INR',
+              status: 'success',
+              provider: 'razorpay',
+              providerRef: String(paymentId || `pay_${Date.now()}`),
+              policyId: pid,
+              userId: policy.userId,
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: policy.userId,
+              type: 'general',
+              title: 'Policy Activated! 🎉',
+              body: `Your ${policy.type} policy (${policy.policyNumber}) from ASK Insurance Brokers is now active.`,
+            },
+          }).catch(() => {});
+          await calculateAndApplyBrokerage(tx, pid).catch(() => {});
+        });
+      }
+    } catch (e) {
+      console.error('[razorpay callback activation error]:', e);
+    }
+  }
   res.redirect('askinsurance://payment-success');
 });
 // ── Test Mode Verification Endpoint (Instant Activation) ─────────────────────

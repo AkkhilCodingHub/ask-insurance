@@ -3,65 +3,17 @@ node_modules/
 .pnp
 .pnp.js
 
-# Build outputs
+# Build Outputs & Caches
+.cache/
+**/.cache/
+.turbo/
 .next/
-out/
 dist/
-build/
-*.aab
-*.apk
-
-# Environment variables
-.env
-.env.prod
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Expo
-.expo/
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
-web-build/
-
-# Firebase / Google credentials
-**/google-services.json
-**/GoogleService-Info.plist
-**/*firebase-adminsdk*.json
-
-# TypeScript
+api/dist/
+api/src/generated/
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/dev/
-api/src/generated/
-
-.vercel
-.env*.local
-firebase-service-account.json
-
-# Native Caches & Large Binaries
+# Native Build Caches
 .gradle/
 **/android/.gradle/
 **/android/build/
@@ -69,11 +21,17 @@ firebase-service-account.json
 **/ios/build/
 **/ios/Pods/
 **/ios/DerivedData/
+.expo/
 
-# Project proposal features checklist & binary presentations
-features.md
-quote.pptx
+# System / OS Caches
+.DS_Store
+Thumbs.db
 
-# Release bundles & binaries
-release-bundle/
-*.keystore
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local environment secrets
+.env*.local
