@@ -47,22 +47,22 @@ function BuyPolicyContent() {
   const [checkoutStep, setCheckoutStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Form Details
-  const [fullName, setFullName] = useState(user?.name || "Akkhil Sharma");
-  const [phone, setPhone] = useState(user?.phone || "+91 7497007881");
-  const [email, setEmail] = useState("support@askinsurance.in");
-  const [dob, setDob] = useState("15/08/1998");
-  const [panNumber, setPanNumber] = useState("ABCDE1234F");
-  const [address, setAddress] = useState("Sector 62, Noida, Uttar Pradesh");
-  const [pincode, setPincode] = useState("201309");
+  const [fullName, setFullName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [dob, setDob] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [address, setAddress] = useState(user?.address || "");
+  const [pincode, setPincode] = useState(user?.pincode || "");
 
   // Nominee Details
-  const [nomineeName, setNomineeName] = useState("Priya Sharma");
+  const [nomineeName, setNomineeName] = useState("");
   const [nomineeRelation, setNomineeRelation] = useState("Spouse");
-  const [nomineeAge, setNomineeAge] = useState("26");
+  const [nomineeAge, setNomineeAge] = useState("");
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking">("upi");
-  const [upiId, setUpiId] = useState("7497007881@okaxis");
+  const [upiId, setUpiId] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatedPolicyNum, setGeneratedPolicyNum] = useState("");
 
@@ -94,6 +94,14 @@ function BuyPolicyContent() {
             <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--text)", margin: 0 }}>
               Complete Your Policy Purchase
             </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+              <span style={{ background: "rgba(21,128,255,0.1)", color: "var(--primary)", padding: "2px 10px", borderRadius: 6, fontSize: 12, fontWeight: 800 }}>
+                🛡️ ASK Insurance Brokers
+              </span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
+                IRDAI Registered Direct Insurance Broker
+              </span>
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--success)", fontWeight: 700 }}>
             <Lock size={15} /> 256-Bit SSL Encrypted & IRDAI Licensed
@@ -522,12 +530,17 @@ function BuyPolicyContent() {
                   boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, borderBottom: "1px solid var(--border)", paddingBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, borderBottom: "1px solid var(--border)", paddingBottom: 14 }}>
                   <Shield size={26} style={{ color: "var(--primary)" }} />
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{insurer}</div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{planTitle}</div>
                   </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, background: "rgba(21,128,255,0.08)", padding: "6px 10px", borderRadius: 8 }}>
+                  <Shield size={14} style={{ color: "var(--primary)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--primary)" }}>Brokered by ASK Insurance Brokers</span>
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 8 }}>

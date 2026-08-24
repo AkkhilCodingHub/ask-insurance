@@ -384,7 +384,7 @@ const del = <T>(path: string, auth = false) =>
 
 export const authApi = {
   sendOTP: (phone: string) =>
-    post<{ success: boolean; isNewUser: boolean }>('/api/auth/send-otp', { phone }),
+    post<{ success: boolean; isNewUser: boolean; otp?: string; customerCode?: string }>('/api/auth/send-otp', { phone }),
 
   verifyOTP: (phone: string, otp: string) =>
     post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(

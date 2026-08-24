@@ -21,13 +21,13 @@ import { useAuth } from "@/context/auth";
 export default function KycPage() {
   const { user } = useAuth();
 
-  const [pan, setPan] = useState("ABCDE1234F");
-  const [aadhaar, setAadhaar] = useState("4589 1234 9876");
-  const [dob, setDob] = useState("15/08/1998");
-  const [fatherName, setFatherName] = useState("Rajesh Sharma");
+  const [pan, setPan] = useState("");
+  const [aadhaar, setAadhaar] = useState("");
+  const [dob, setDob] = useState("");
+  const [fatherName, setFatherName] = useState("");
   const [kycStatus, setKycStatus] = useState<"pending" | "verifying" | "verified">("pending");
-  const [uploadedPan, setUploadedPan] = useState<string | null>("pan_card_front.jpg");
-  const [uploadedAadhaar, setUploadedAadhaar] = useState<string | null>("aadhaar_front.jpg");
+  const [uploadedPan, setUploadedPan] = useState<string | null>(null);
+  const [uploadedAadhaar, setUploadedAadhaar] = useState<string | null>(null);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();

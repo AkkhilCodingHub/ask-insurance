@@ -16,6 +16,42 @@ function getRazorpay(): Razorpay | null {
   return razorpayClient;
 }
 
+export async function createRazorpayOrder(opts: {
+  amount: number;
+  policyId: string;
+  policyNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  description: string;
+}) {
+  const client = getRazorpay();
+  const amountPaise = Math.max(100, Math.round(opts.amount * 100));
+  if (client) {
+    try {
+      const order = await (client.orders as any).create({
+        amount: amountPaise,
+        currency: 'INR',
+        receipt: opts.policyId.slice(0, 40),
+        notes: {
+          policyId: opts.policyId,
+          policyNumber: opts.policyNumber,
+          customerName: opts.customerName,
+          customerPhone: opts.customerPhone ?? '',
+        },
+      });
+      return order;
+    } catch (err: any) {
+      console.error('[razorpay] order.create error:', err);
+    }
+  }
+  return {
+    id: `order_sim_${Date.now()}`,
+    amount: amountPaise,
+    currency: 'INR',
+    status: 'created',
+  };
+}
+
 export async function createPaymentLink(opts: {
   amount: number;      // in INR (we convert to paise)
   policyId: string;
@@ -24,44 +60,12 @@ export async function createPaymentLink(opts: {
   customerPhone?: string;
   description: string;
 }) {
-  const phone = opts.customerPhone ? opts.customerPhone.replace(/\D/g, '') : '';
-  const validPhone = phone.length >= 10 ? phone.slice(-10) : undefined;
-
-  const payload: any = {
-    amount:          Math.max(100, Math.round(opts.amount * 100)), // paise (min 1 INR)
-    currency:        'INR',
-    accept_partial:   false,
-    description:     `ASK Insurance — ${opts.description}`.slice(0, 200),
-    customer: {
-      name: (opts.customerName || 'Customer').slice(0, 50),
-      ...(validPhone ? { contact: validPhone } : {}),
-    },
-    notify: { sms: false, email: false },
-    reminder_enable: false,
-    notes: { policyId: opts.policyId, policyNumber: opts.policyNumber },
-  };
-
-  if (process.env.RAZORPAY_CALLBACK_URL && process.env.RAZORPAY_CALLBACK_URL.startsWith('http')) {
-    payload.callback_url = process.env.RAZORPAY_CALLBACK_URL;
-    payload.callback_method = 'get';
-  }
-
-  const client = getRazorpay();
-  if (client) {
-    try {
-      const link = await (client.paymentLink as any).create(payload);
-      return link as { id: string; short_url: string; amount: number; status: string };
-    } catch (err: any) {
-      console.error('[razorpay] paymentLink.create API error details:', JSON.stringify(err, null, 2));
-    }
-  }
-
-  // Fallback to Razorpay simulator callback / test payment link
-  console.warn('[razorpay] Using Razorpay test mode payment URL for simulation/testing');
   const apiUrl = process.env.API_BASE_URL || 'https://ask-api.bitopayments.com';
+  
+  // Return the first-party branded ASK Insurance Brokers checkout interface
   return {
-    id: `plink_test_${Date.now()}`,
-    short_url: `${apiUrl}/api/payments/razorpay/callback?policyId=${opts.policyId}`,
+    id: `plink_ask_${Date.now()}`,
+    short_url: `${apiUrl}/api/payments/checkout/${opts.policyId}`,
     amount: opts.amount,
     status: 'created',
   };

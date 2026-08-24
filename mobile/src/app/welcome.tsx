@@ -235,6 +235,14 @@ export default function WelcomeScreen() {
           >
             IRDAI LICENSED DIRECT BROKER
           </Animated.Text>
+          <Animated.Text
+            style={[
+              s.creditText,
+              { opacity: logoOpacity },
+            ]}
+          >
+            made by NEOTA PRIVATE LIMITED
+          </Animated.Text>
         </Animated.View>
       </View>
 
@@ -405,6 +413,14 @@ const s = StyleSheet.create({
     color: '#64748B',
     letterSpacing: 1.8,
     marginTop: 4,
+    textAlign: 'center',
+  },
+  creditText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginTop: 3,
     textAlign: 'center',
   },
   mainContent: {

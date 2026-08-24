@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "879913171231",
+    "project_id": "ask-in",
+    "storage_bucket": "ask-in.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:879913171231:android:f214cb309918a1e4ea582a",
+        "android_client_info": {
+          "package_name": "com.ask.insurance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "879913171231-0asl8biejfcokqbrh3a93en07m99cmqg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAOO0lS024bTXRNW_-eUptQFx5eV5GlNos"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "879913171231-0asl8biejfcokqbrh3a93en07m99cmqg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

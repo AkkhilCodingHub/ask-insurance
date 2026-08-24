@@ -21,17 +21,17 @@ import {
 export default function PospRegisterPage() {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState("Akkhil Sharma");
-  const [email, setEmail] = useState("support@askinsurance.in");
-  const [phone, setPhone] = useState("+91 7497007881");
-  const [dob, setDob] = useState("15/08/1998");
-  const [panNumber, setPanNumber] = useState("ABCDE1234F");
-  const [aadhaarNumber, setAadhaarNumber] = useState("4589 1234 9876");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [education, setEducation] = useState("Graduate / Post Graduate");
-  const [accountNumber, setAccountNumber] = useState("9182374910293");
-  const [ifscCode, setIfscCode] = useState("HDFC0001234");
-  const [city, setCity] = useState("New Delhi");
-  const [pincode, setPincode] = useState("110001");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
