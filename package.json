@@ -25,7 +25,9 @@
     "clean": "rm -rf node_modules mobile/node_modules admin/.next web/.next mobile/.expo mobile/android/.gradle mobile/android/build mobile/android/app/build mobile/ios/build mobile/ios/Pods dist api/dist"
   },
   "devDependencies": {
-    "concurrently": "^9.2.4",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
+    "concurrently": "^10.0.4",
+    "lightningcss-win32-x64-msvc": "^1.33.0",
     "typescript": "5.7.3"
   },
   "engines": {
