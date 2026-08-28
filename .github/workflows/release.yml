@@ -227,7 +227,17 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || vars.EXPO_TOKEN }}
         run: |
           mkdir -p ../ios-artifacts
-          eas build --platform ios --profile production --non-interactive --wait --output=../ios-artifacts/ask-insurance-release.ipa
+          BUILD_JSON=$(eas build --platform ios --profile production --non-interactive --wait --json)
+          echo "$BUILD_JSON"
+          IPA_URL=$(echo "$BUILD_JSON" | jq -r 'if type=="array" then .[0].artifacts.buildUrl else .artifacts.buildUrl end')
+          if [ -n "$IPA_URL" ] && [ "$IPA_URL" != "null" ]; then
+            echo "Downloading IPA from: $IPA_URL"
+            curl -fsSL -o ../ios-artifacts/ask-insurance-release.ipa "$IPA_URL"
+            ls -lh ../ios-artifacts/
+          else
+            echo "Failed to retrieve IPA artifact URL from EAS build output."
+            exit 1
+          fi
 
       - name: Upload iOS Build Artifacts
         uses: actions/upload-artifact@v4
