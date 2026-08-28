@@ -214,11 +214,8 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Setup EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN || vars.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Install Mobile dependencies
         working-directory: mobile
@@ -230,7 +227,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || vars.EXPO_TOKEN }}
         run: |
           mkdir -p ../ios-artifacts
-          npx eas-cli build --platform ios --profile production --non-interactive --wait --output=../ios-artifacts/ask-insurance-release.ipa
+          eas build --platform ios --profile production --non-interactive --wait --output=../ios-artifacts/ask-insurance-release.ipa
 
       - name: Upload iOS Build Artifacts
         uses: actions/upload-artifact@v4
