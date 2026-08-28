@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.1.0)'
+        description: 'Release Tag (e.g. v1.3.1)'
         required: true
-        default: 'v1.1.0'
+        default: 'v1.3.1'
       is_prerelease:
         description: 'Mark as Pre-release'
         type: boolean
@@ -25,7 +25,7 @@ permissions:
   packages: write
 
 jobs:
-  # ── 1. API Quality & Build Check ───────────────────────────────────────────
+  # 🔒 1. API Quality & Build Check 🔒
   verify-api:
     name: Check API Backend
     runs-on: ubuntu-latest
@@ -58,7 +58,7 @@ jobs:
         working-directory: api
         run: npm run build || npx tsc
 
-  # ── 2. Admin Portal Quality & Build Check ──────────────────────────────────
+  # 🔒 2. Admin Portal Quality & Build Check 🔒
   verify-admin:
     name: Check Admin Portal
     runs-on: ubuntu-latest
@@ -72,9 +72,8 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Admin dependencies
-        working-directory: admin
-        run: npm install --legacy-peer-deps
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Typecheck Admin Portal
         working-directory: admin
@@ -86,7 +85,7 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://ask-insurance.onrender.com' }}
         run: npm run build
 
-  # ── 3. Customer Web App Quality & Build Check ──────────────────────────────
+  # 🔒 3. Customer Web App Quality & Build Check 🔒
   verify-web:
     name: Check Web App
     runs-on: ubuntu-latest
@@ -100,9 +99,8 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Web dependencies
-        working-directory: web
-        run: npm install --legacy-peer-deps
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Typecheck Web App
         working-directory: web
@@ -114,7 +112,7 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://ask-insurance.onrender.com' }}
         run: npm run build
 
-  # ── 4. Mobile App Quality & Verification Check ─────────────────────────────
+  # 🔒 4. Mobile App Quality & Verification Check 🔒
   verify-mobile:
     name: Check Mobile App
     runs-on: ubuntu-latest
@@ -142,7 +140,7 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL || 'https://ask-insurance.onrender.com' }}
         run: npx expo export --no-bytecode || true
 
-  # ── 5. Build Android Release Bundle (.aab & .apk) ──────────────────────────
+  # 🤖 5. Build Android Release Bundle (.aab & .apk) 🤖
   build-android:
     name: Build Android Bundle (.aab & .apk)
     needs: [verify-api, verify-admin, verify-web, verify-mobile]
@@ -201,10 +199,50 @@ jobs:
           path: artifacts/*
           retention-days: 7
 
-  # ── 6. Publish Categorized Pre-Release ──────────────────────────────────────
+  # 🍏 6. Build iOS Release Package (.ipa) via EAS 🍏
+  build-ios:
+    name: Build iOS Production (.ipa)
+    needs: [verify-api, verify-admin, verify-web, verify-mobile]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN || vars.EXPO_TOKEN }}
+
+      - name: Install Mobile dependencies
+        working-directory: mobile
+        run: npm install --legacy-peer-deps
+
+      - name: Build iOS Production IPA on EAS & Download
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || vars.EXPO_TOKEN }}
+        run: |
+          mkdir -p ../ios-artifacts
+          npx eas-cli build --platform ios --profile production --non-interactive --wait --output=../ios-artifacts/ask-insurance-release.ipa
+
+      - name: Upload iOS Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-binaries
+          path: ios-artifacts/*
+          retention-days: 7
+
+  # 📦 7. Publish Categorized Pre-Release 📦
   publish-release:
     name: Publish GitHub Pre-Release
-    needs: [build-android]
+    needs: [build-android, build-ios]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -216,6 +254,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-release-binaries
+          path: release-assets
+
+      - name: Download iOS Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-release-binaries
           path: release-assets
 
       - name: Determine Tag Name & Release Flag
@@ -246,15 +290,15 @@ jobs:
 
           echo "Extracting categorized commits from $RANGE"
           
-          FEAT=$(git log $RANGE --no-merges --grep="^feat" --pretty=format:"• %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
-          FIX=$(git log $RANGE --no-merges --grep="^fix" --pretty=format:"• %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
-          PERF=$(git log $RANGE --no-merges --grep="^perf\|^optimize" --pretty=format:"• %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
-          SEC=$(git log $RANGE --no-merges --grep="^sec\|^security" --pretty=format:"• %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
-          OTHER=$(git log $RANGE --no-merges --invert-grep --grep="^feat\|^fix\|^perf\|^optimize\|^sec\|^security" --pretty=format:"• %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null | head -n 10 || true)
+          FEAT=$(git log $RANGE --no-merges --grep="^feat" --pretty=format:"  %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
+          FIX=$(git log $RANGE --no-merges --grep="^fix" --pretty=format:"  %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
+          PERF=$(git log $RANGE --no-merges --grep="^perf\|^optimize" --pretty=format:"  %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
+          SEC=$(git log $RANGE --no-merges --grep="^sec\|^security" --pretty=format:"  %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null || true)
+          OTHER=$(git log $RANGE --no-merges --invert-grep --grep="^feat\|^fix\|^perf\|^optimize\|^sec\|^security" --pretty=format:"  %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" 2>/dev/null | head -n 10 || true)
 
           cat << 'EOF' > release_body.md
-          ### 📱 ASK Insurance Release Package
-          This pre-release includes production-ready client bundles, API backend verification, and admin portal builds.
+          ### 🚀 ASK Insurance Release Package
+          This pre-release includes production-ready client bundles for Android and iOS, API backend verification, and admin portal builds.
 
           ---
 
@@ -263,10 +307,11 @@ jobs:
           | :--- | :--- | :--- |
           | **`ask-insurance-release.aab`** | **Google Play Console** | Production App Bundle with Android 15 & 16 compatibility |
           | **`ask-insurance-release.apk`** | **Android Devices** | Standalone installable APK for instant testing |
+          | **`ask-insurance-release.ipa`** | **iOS / App Store Connect** | Production signed iOS package for App Store & TestFlight |
 
           ---
 
-          ### 🚀 Highlights & Changes
+          ### 📋 Highlights & Changes
           EOF
 
           if [ -n "${{ steps.vars.outputs.custom_summary }}" ]; then
@@ -276,7 +321,7 @@ jobs:
           fi
 
           if [ -n "$FEAT" ]; then
-            echo "#### 🌟 Features" >> release_body.md
+            echo "#### ✨ Features" >> release_body.md
             echo "$FEAT" >> release_body.md
             echo "" >> release_body.md
           fi
@@ -294,20 +339,20 @@ jobs:
           fi
 
           if [ -n "$SEC" ]; then
-            echo "#### 🛡️ Security & Compliance" >> release_body.md
+            echo "#### 🔒 Security & Compliance" >> release_body.md
             echo "$SEC" >> release_body.md
             echo "" >> release_body.md
           fi
 
           if [ -n "$OTHER" ]; then
-            echo "#### 📦 Maintenance & Updates" >> release_body.md
+            echo "#### 🔧 Maintenance & Updates" >> release_body.md
             echo "$OTHER" >> release_body.md
             echo "" >> release_body.md
           fi
 
           cat << 'EOF' >> release_body.md
           ---
-          > **Verification Status**: ✅ API Typecheck & Build Passed | ✅ Admin Portal Passed | ✅ Web App Passed | ✅ Mobile Engine Verified
+          > **Verification Status**: ✅ API Typecheck & Build Passed | ✅ Admin Portal Passed | ✅ Web App Passed | ✅ Mobile Android & iOS Verified
           EOF
 
       - name: Create or Update GitHub Release
@@ -320,5 +365,6 @@ jobs:
           files: |
             release-assets/ask-insurance-release.aab
             release-assets/ask-insurance-release.apk
+            release-assets/ask-insurance-release.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
