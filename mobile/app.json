@@ -18,7 +18,8 @@
         "keychain-access-groups": [
           "$(AppIdentifierPrefix)com.ask.insurance"
         ]
-      }
+      },
+      "buildNumber": "6"
     },
     "android": {
       "versionCode": 6,
