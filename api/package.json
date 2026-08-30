@@ -10,8 +10,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate || true"
+    "db:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -20,21 +19,19 @@
     "@ask/shared": "*",
     "@aws-sdk/client-s3": "^3.1033.0",
     "@prisma/adapter-mariadb": "^7.9.1",
-    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@types/multer": "^2.1.0",
-    "bcryptjs": "^3.0.3",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "express-rate-limit": "^7.4.1",
+    "express": "^4.22.2",
+    "express-rate-limit": "^8.6.2",
     "firebase-admin": "^14.2.0",
     "google-auth-library": "^10.9.1",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
     "mysql2": "^3.11.3",
-    "pg": "^8.23.0",
     "razorpay": "^2.9.2",
     "zod": "^4.4.3"
   },
@@ -43,9 +40,8 @@
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^26.1.2",
-    "@types/pg": "^8.21.0",
     "prisma": "^7.9.1",
     "tsx": "^4.23.1",
-    "typescript": "^5.7.3"
+    "typescript": "^7.0.2"
   }
 }
