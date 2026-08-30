@@ -36,7 +36,7 @@ function PospResultsContent() {
   const isPassed = score >= 40;
 
   const candidateName = user?.name || "Akkhil Sharma";
-  const certificateId = `ASK-POSP-${Math.floor(100000 + Math.random() * 900000)}`;
+  const [certificateId] = useState(() => `ASK-POSP-${Math.floor(100000 + Math.random() * 900000)}`);
   const issueDate = "19-Aug-2026";
 
   return (
