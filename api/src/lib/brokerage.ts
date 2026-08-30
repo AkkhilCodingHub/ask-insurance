@@ -1,5 +1,3 @@
-import { Prisma } from '../generated/prisma/client';
-
 export async function calculateAndApplyBrokerage(
   tx: any,
   policyId: string

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
-import { uploadToR2, r2KeyFromUrl, deleteFromR2 } from '../lib/r2';
+import { uploadToR2, deleteFromR2 } from '../lib/r2';
 
 const router = Router();
 

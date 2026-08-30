@@ -2,7 +2,6 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon } from './Icon';
-import { Colors } from '@/constants/theme';
 import { useThemeColors } from '@/context/agent';
 
 interface BackButtonProps {

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { createAuthToken, verifyAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
+import { createAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
 import { getFirebaseAdmin } from '../lib/firebase';
 import { authenticate } from '../middleware/auth';
@@ -94,6 +94,13 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     console.log(`OTP for ${phone} (Customer ID: ${user.customerCode}): ${otp}`);
 
     res.json({ success: true, message: 'OTP sent successfully', isNewUser, customerCode: user.customerCode, otp });
+    res.json({
+      success: true,
+      message: 'OTP sent successfully',
+      isNewUser,
+      customerCode: user.customerCode,
+      ...(process.env.NODE_ENV === 'test' ? { otp } : {})
+    });
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {

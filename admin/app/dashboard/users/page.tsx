@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, Phone, Mail, Calendar, MessageSquare, FileText, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Search, X, Phone, Mail, MessageSquare, FileText, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { adminApi, AdminUser, AdminPolicy, AdminClaim } from "@/lib/api";
 
 function StatusBadge({ status }: { status: string }) {

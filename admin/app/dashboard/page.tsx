@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  FileText, Shield, Users, TrendingUp, AlertCircle, Clock, CheckCircle2,
-  PhoneCall, ArrowRight, Award, Layers, Zap, Filter, Search, ChevronRight,
+  FileText, Shield, Users, TrendingUp, Clock,
+  PhoneCall, Award, Layers, Zap, ChevronRight,
   Send, AlertTriangle, FileCheck, RefreshCw, BadgeCheck, DollarSign
 } from "lucide-react";
 import { adminApi, DashboardStats, AdminClaim, AdminUser, AnalyticsData } from "@/lib/api";

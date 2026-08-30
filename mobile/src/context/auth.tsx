@@ -9,7 +9,7 @@ import {
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
-  setRefreshToken, clearRefreshToken,
+  setRefreshToken,
   registerSessionExpiredCallback,
   paymentsApi,
 } from '@/lib/api';

@@ -28,7 +28,7 @@ export interface PospCertificateData {
   approvedAt?: Date | string;
 }
 
-function escapeHtml(str: string | number | null | undefined): string {
+export function escapeHtml(str: string | number | null | undefined): string {
   if (str === null || str === undefined) return '';
   return String(str)
     .replace(/&/g, '&amp;')

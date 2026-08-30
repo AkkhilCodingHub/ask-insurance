@@ -5,7 +5,7 @@ import { adminApi, AgentRecord } from "@/lib/api";
 import {
   UserCog, Plus, Trash2, Pencil, ShieldCheck, Shield,
   ToggleLeft, ToggleRight, KeyRound, X, Eye, EyeOff, RefreshCw,
-  Upload, Download, CheckCircle, AlertCircle, FileText
+  Upload, Download, CheckCircle, AlertCircle
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

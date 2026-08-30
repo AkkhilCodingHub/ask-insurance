@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, CheckCircle, XCircle, Clock, Eye, ChevronDown, X, FileText, User } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Clock, Eye, X, FileText, User } from "lucide-react";
 import { adminApi, KycSubmission } from "@/lib/api";
 
 const DOC_LABELS: Record<string, string> = {

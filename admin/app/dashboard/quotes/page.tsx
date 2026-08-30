@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Search, RefreshCw, Send, X, Link, CheckCircle, Clock,
-  AlertCircle, Copy, ExternalLink, User, Phone, Mail,
-  FileText, ChevronRight, Zap, UserCog, ChevronDown,
+  Search, RefreshCw, Send, X, Link, CheckCircle,
+  AlertCircle, Copy, ExternalLink, Phone,
+  FileText, ChevronRight, Zap, UserCog,
 } from "lucide-react";
 import { adminApi, type AdminQuote, type AdminQuoteResponse, type AgentRecord } from "@/lib/api";
 
