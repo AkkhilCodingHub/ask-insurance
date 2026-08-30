@@ -253,7 +253,12 @@ export interface ApiUser {
   pincode:         string | null;
   kycStatus:       string;          // pending | verified | rejected
   aadhaarVerified: boolean;
+  panNumber?:      string | null;
+  kycDocType?:     string | null;
+  kycDocUrl?:      string | null;
   kycVerifiedAt:   string | null;
+  kycSubmittedAt?: string | null;
+  kycRejectionReason?: string | null;
 }
 
 export interface ApiInsurer {
@@ -454,6 +459,8 @@ export const policiesApi = {
     registrationNumber?: string;
     nomineeName?: string;
     nomineeRelation?: string;
+    panNumber?: string;
+    aadhaarNumber?: string;
   }) => post<{ policy: ApiPolicy }>('/api/policies', data, true),
   renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
   fetchLiveProviderQuotes: (payload: {
@@ -902,6 +909,27 @@ export const kycApi = {
       kycDocType: string | null; kycDocUrl: string | null;
       kycRejectionReason: string | null; kycSubmittedAt: string | null;
     }>('/api/kyc/status', {}, true),
+
+  getDigiLockerDetails: () =>
+    request<{
+      isDigiLockerLinked: boolean;
+      kycStatus: string;
+      name: string;
+      dob: string | null;
+      gender: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      panNumber: string | null;
+      aadhaarNumber: string | null;
+      drivingLicenseNumber: string | null;
+      rcNumber: string | null;
+      panDoc: { name: string; uri: string; source: string } | null;
+      aadhaarDoc: { name: string; uri: string; source: string } | null;
+      drivingLicenseDoc: { name: string; uri: string; source: string } | null;
+      rcDoc: { name: string; uri: string; source: string } | null;
+    }>('/api/kyc/digilocker-details', {}, true),
 
   verifyInstant: (data: {
     name: string;

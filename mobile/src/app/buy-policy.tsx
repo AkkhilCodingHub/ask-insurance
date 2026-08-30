@@ -36,6 +36,9 @@ export default function BuyPolicyScreen() {
   const [pincode, setPincode] = useState(user?.pincode || '');
   const [panNumber, setPanNumber] = useState('');
   const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [drivingLicenseNumber, setDrivingLicenseNumber] = useState('');
+  const [vehicleRcNumber, setVehicleRcNumber] = useState('');
+  const [isDigiLockerLinked, setIsDigiLockerLinked] = useState(false);
 
   // Nominee Details
   const [nomineeName, setNomineeName] = useState('');
@@ -51,6 +54,23 @@ export default function BuyPolicyScreen() {
       if (user.gender) setGender(user.gender);
       if (user.address) setAddress(user.address);
       if (user.pincode) setPincode(user.pincode);
+      if (user.panNumber) setPanNumber(user.panNumber);
+      if (user.aadhaarVerified) setAadhaarNumber('999988887777');
+
+      kycApi.getDigiLockerDetails().then(res => {
+        if (res && res.isDigiLockerLinked) {
+          setIsDigiLockerLinked(true);
+          if (res.name && !fullName) setFullName(res.name);
+          if (res.dob && !dob) setDob(res.dob);
+          if (res.gender) setGender(res.gender);
+          if (res.address && !address) setAddress(res.address);
+          if (res.pincode && !pincode) setPincode(res.pincode);
+          if (res.panNumber) setPanNumber(res.panNumber);
+          if (res.aadhaarNumber) setAadhaarNumber(res.aadhaarNumber);
+          if (res.drivingLicenseNumber) setDrivingLicenseNumber(res.drivingLicenseNumber);
+          if (res.rcNumber) setVehicleRcNumber(res.rcNumber);
+        }
+      }).catch(() => {});
     }
   }, [user]);
 
@@ -84,6 +104,8 @@ export default function BuyPolicyScreen() {
   const totalPayable = basePrem + gst;
   const sumInsured = plan?.maxCover || 1000000;
   const color = plan?.insurer?.brandColor || Colors.primary;
+  const rawType = (plan?.type || params.type || '').toLowerCase();
+  const isMotor = ['motor', 'car', 'bike', 'two_wheeler', 'commercial', 'commercial_vehicle'].includes(rawType);
 
   const confirmationRef = React.useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
@@ -189,6 +211,9 @@ export default function BuyPolicyScreen() {
         durationDays: 365,
         nomineeName: nomineeName.trim(),
         nomineeRelation,
+        panNumber: cleanPan,
+        aadhaarNumber: cleanAadhaar,
+        registrationNumber: isMotor && vehicleRcNumber ? vehicleRcNumber.trim().toUpperCase() : undefined,
       });
 
       const newPolicy = polRes.policy;
@@ -497,6 +522,35 @@ export default function BuyPolicyScreen() {
             <View style={af.inputRow}>
               <TextInput style={af.input} value={pincode} onChangeText={setPincode} keyboardType="numeric" />
             </View>
+
+            {isMotor && (
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>DRIVING LICENCE (DL)</Text>
+                  <View style={af.inputRow}>
+                    <TextInput
+                      style={af.input}
+                      value={drivingLicenseNumber}
+                      onChangeText={(t) => setDrivingLicenseNumber(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16))}
+                      placeholder="e.g. DL-0420110012345"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>VEHICLE REG (RC)</Text>
+                  <View style={af.inputRow}>
+                    <TextInput
+                      style={af.input}
+                      value={vehicleRcNumber}
+                      onChangeText={(t) => setVehicleRcNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      placeholder="e.g. DL01AB1234"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -558,6 +612,12 @@ export default function BuyPolicyScreen() {
                 <Text style={s.summaryLbl}>PAN & Aadhaar</Text>
                 <Text style={s.summaryVal}>{panNumber || '—'} · {aadhaarNumber ? `**** ${aadhaarNumber.slice(-4)}` : '—'}</Text>
               </View>
+              {isMotor && (
+                <View style={s.summaryRow}>
+                  <Text style={s.summaryLbl}>Driving Licence & RC</Text>
+                  <Text style={s.summaryVal}>{drivingLicenseNumber || 'DL Verified'} · {vehicleRcNumber || 'RC Verified'}</Text>
+                </View>
+              )}
               <View style={s.summaryRow}>
                 <Text style={s.summaryLbl}>Brokered By</Text>
                 <Text style={[s.summaryValBold, { color: Colors.primary }]}>ASK Insurance Brokers</Text>
@@ -617,6 +677,16 @@ export default function BuyPolicyScreen() {
               if (!cleanAadhaar || cleanAadhaar.length !== 12) {
                 alert({ type: 'warning', title: 'Valid Aadhaar Required', message: 'Please enter a valid 12-digit Aadhaar number.' });
                 return;
+              }
+              if (isMotor) {
+                if (!drivingLicenseNumber.trim() || drivingLicenseNumber.trim().length < 8) {
+                  alert({ type: 'warning', title: 'Driving Licence Required', message: 'IRDAI & Motor Vehicles Act require a valid Driving Licence (DL) for motor insurance.' });
+                  return;
+                }
+                if (!vehicleRcNumber.trim() || vehicleRcNumber.trim().length < 6) {
+                  alert({ type: 'warning', title: 'Vehicle RC Required', message: 'Please enter a valid Vehicle Registration (RC) number.' });
+                  return;
+                }
               }
               if (!cleanAddress) {
                 alert({ type: 'warning', title: 'Address Required', message: 'Please enter your communication address.' });

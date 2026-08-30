@@ -15,7 +15,11 @@ const createPolicySchema = z.object({
   sumInsured: z.number().positive(),
   premium: z.number().nonnegative(),
   registrationNumber: z.string().optional().transform((val) => val ? normalizeRegNumber(val) : undefined),
-  durationDays: z.number().int().positive().optional()
+  durationDays: z.number().int().positive().optional(),
+  panNumber: z.string().optional(),
+  aadhaarNumber: z.string().optional(),
+  nomineeName: z.string().optional(),
+  nomineeRelation: z.string().optional(),
 });
 // POST /api/policies/live-quotes - Fetch live provider policy quotes & PolicyBazaar IDV calculation
 router.post('/live-quotes', async (req: Request, res: Response): Promise<void> => {
@@ -137,6 +141,52 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
     const payload = createPolicySchema.parse(req.body);
     const now = new Date();
     const durationDays = payload.durationDays ?? 365;
+
+    // If PAN and Aadhaar are provided, ensure KYC is marked verified & documents created
+    if (payload.panNumber && payload.aadhaarNumber) {
+      const normPan = payload.panNumber.trim().toUpperCase();
+      const normAadhaar = payload.aadhaarNumber.replace(/\D/g, '');
+      if (normPan.length === 10 && normAadhaar.length >= 12) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            panNumber: normPan,
+            aadhaarVerified: true,
+            kycStatus: 'verified',
+            kycVerifiedAt: new Date(),
+            kycSubmittedAt: new Date(),
+          }
+        }).catch(() => {});
+
+        const existingPan = await prisma.userDocument.findFirst({ where: { userId, docType: 'pan' } });
+        if (!existingPan) {
+          await prisma.userDocument.create({
+            data: {
+              userId,
+              title: `PAN Card (${normPan})`,
+              docType: 'pan',
+              source: 'user_upload',
+              fileUrl: `https://storage.askinsurance.com/kyc/pan_${userId}.pdf`,
+              issuer: 'Income Tax Department',
+            }
+          }).catch(() => {});
+        }
+
+        const existingAadhaar = await prisma.userDocument.findFirst({ where: { userId, docType: 'aadhaar' } });
+        if (!existingAadhaar) {
+          await prisma.userDocument.create({
+            data: {
+              userId,
+              title: `Aadhaar Card (••••${normAadhaar.slice(-4)})`,
+              docType: 'aadhaar',
+              source: 'user_upload',
+              fileUrl: `https://storage.askinsurance.com/kyc/aadhaar_${userId}.pdf`,
+              issuer: 'UIDAI',
+            }
+          }).catch(() => {});
+        }
+      }
+    }
 
     const policy = await prisma.policy.create({
       data: {

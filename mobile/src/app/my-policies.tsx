@@ -375,7 +375,6 @@ function PolicySheet({
                   <Text style={d.infoText}>
                     {policy.paymentStatus === 'paid' ? 'Payment Confirmed' : 'Payment Pending'}
                   </Text>
-                  <Text style={d.infoSub}>₹{policy.premium.toLocaleString('en-IN')} / year</Text>
                 </View>
               </View>
             </View>

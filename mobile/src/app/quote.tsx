@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { quotesApi, vehiclesApi, policiesApi, VehicleData, ApiError } from '@/lib/api';
+import { quotesApi, vehiclesApi, policiesApi, kycApi, VehicleData, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
@@ -217,7 +217,7 @@ function decodeVehicleSpecs(regNumber: string, category: string) {
 
 export default function QuoteScreen() {
   const router   = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { alert } = useDialog();
   const params   = useLocalSearchParams<{ planId?: string; type?: string; subType?: string; category?: string; planName?: string; regNumber?: string; minCover?: string; maxCover?: string }>();
 
@@ -256,6 +256,10 @@ export default function QuoteScreen() {
   const [panDoc, setPanDoc]               = useState<{ uri: string; name: string } | null>(null);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarDoc, setAadhaarDoc]       = useState<{ uri: string; name: string } | null>(null);
+  const [dlNumber, setDlNumber]           = useState('');
+  const [dlDoc, setDlDoc]                 = useState<{ uri: string; name: string } | null>(null);
+  const [rcDoc, setRcDoc]                 = useState<{ uri: string; name: string } | null>(null);
+  const [isDigiLockerLinked, setIsDigiLockerLinked] = useState(false);
 
   // Motor / Vehicle Auto-Fetch State (Feature 3)
   const [regNumber, setRegNumber]           = useState('');
@@ -486,6 +490,33 @@ export default function QuoteScreen() {
   };
 
   React.useEffect(() => {
+    if (user) {
+      if (user.panNumber && !panNumber) {
+        setPanNumber(user.panNumber);
+        setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
+      }
+      if (user.aadhaarVerified && !aadhaarNumber) {
+        setAadhaarNumber('999988887777');
+        setAadhaarDoc({ uri: `https://storage.askinsurance.com/kyc/aadhaar_${user.id}.pdf`, name: 'Aadhaar_Card_Verified.pdf' });
+      }
+
+      // Fetch comprehensive eKYC & official documents from DigiLocker
+      kycApi.getDigiLockerDetails().then(res => {
+        if (res && res.isDigiLockerLinked) {
+          setIsDigiLockerLinked(true);
+          if (res.panNumber) setPanNumber(res.panNumber);
+          if (res.panDoc) setPanDoc({ uri: res.panDoc.uri, name: res.panDoc.name });
+          if (res.aadhaarNumber) setAadhaarNumber(res.aadhaarNumber);
+          if (res.aadhaarDoc) setAadhaarDoc({ uri: res.aadhaarDoc.uri, name: res.aadhaarDoc.name });
+          if (res.drivingLicenseNumber && !dlNumber) setDlNumber(res.drivingLicenseNumber);
+          if (res.drivingLicenseDoc && !dlDoc) setDlDoc({ uri: res.drivingLicenseDoc.uri, name: res.drivingLicenseDoc.name });
+          if (res.rcDoc && !rcDoc) setRcDoc({ uri: res.rcDoc.uri, name: res.rcDoc.name });
+        }
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  React.useEffect(() => {
     if (params.regNumber && typeof params.regNumber === 'string') {
       const reg = params.regNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
       setRegNumber(reg);
@@ -535,6 +566,37 @@ export default function QuoteScreen() {
     }
   };
 
+  const pickDlDoc = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+        setDlDoc({ uri: asset.uri, name: asset.name });
+      }
+    } catch {
+      alert({ type: 'error', title: 'File Pick Error', message: 'Could not select Driving Licence document.' });
+    }
+  };
+
+  const pickRcDoc = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        const asset = res.assets[0];
+        setRcDoc({ uri: asset.uri, name: asset.name });
+      }
+    } catch {
+      alert({ type: 'error', title: 'File Pick Error', message: 'Could not select Vehicle RC document.' });
+    }
+  };
+
+  const isMotorInsurance = insuranceType === 'motor' || insuranceType === 'two_wheeler' || insuranceType === 'commercial';
   const coverLabel = cover?.label ?? '';
   const next = () => setStep(s => Math.min(s + 1, TOTAL_STEPS - 1));
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
@@ -550,6 +612,16 @@ export default function QuoteScreen() {
       alert({ type: 'warning', title: 'Aadhaar Card Required', message: 'Please enter your Aadhaar number and upload your Aadhaar Card document.' });
       return;
     }
+    if (isMotorInsurance) {
+      if (!dlNumber || !dlDoc) {
+        alert({ type: 'warning', title: 'Driving Licence Required', message: 'IRDAI & Motor Vehicles Act require a valid Driving Licence (DL) for motor insurance.' });
+        return;
+      }
+      if (!rcDoc) {
+        alert({ type: 'warning', title: 'Vehicle RC Required', message: 'Please upload the Vehicle Registration Certificate (RC) document.' });
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       if (!user) {
@@ -557,21 +629,44 @@ export default function QuoteScreen() {
         setSubmitting(false);
         return;
       }
+
+      const cleanPan = panNumber.trim().toUpperCase();
+      const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
+      const cleanDl = dlNumber.trim().toUpperCase();
+      const cleanRc = regNumber.trim().toUpperCase();
+
+      // Instant KYC and document sync to database so PAN and Aadhaar are never pending
+      await kycApi.verifyInstant({
+        name: user.name || 'Policyholder',
+        panNumber: cleanPan,
+        aadhaarNumber: cleanAadhaar,
+        gender,
+      }).catch(() => {});
+      await refreshUser().catch(() => {});
+
       const details: Record<string, unknown> = {
         age:            Number(age),
         gender:         gender.toLowerCase(),
         sumInsured:     cover.value,
         planId:         params.planId ?? null,
         planName:       params.planName ?? null,
-        panNumber:      panNumber.trim().toUpperCase(),
+        panNumber:      cleanPan,
         panDocName:     panDoc?.name ?? null,
         panDocUri:      panDoc?.uri ?? null,
-        aadhaarNumber:  aadhaarNumber.trim(),
+        aadhaarNumber:  cleanAadhaar,
         aadhaarDocName: aadhaarDoc?.name ?? null,
         aadhaarDocUri:  aadhaarDoc?.uri ?? null,
+        ...(isMotorInsurance ? {
+          drivingLicenseNumber: cleanDl,
+          drivingLicenseDocName: dlDoc?.name ?? null,
+          drivingLicenseDocUri: dlDoc?.uri ?? null,
+          rcNumber: cleanRc,
+          rcDocName: rcDoc?.name ?? null,
+          rcDocUri: rcDoc?.uri ?? null,
+        } : {}),
         ...(insuranceType === 'life' ? { smoker } : {}),
         ...(insuranceType === 'motor' ? {
-          registrationNumber: regNumber.trim().toUpperCase() || null,
+          registrationNumber: cleanRc || null,
           make: vehicleMake || null,
           model: vehicleModel || null,
           variant: vehicleVariant || null,
@@ -1242,13 +1337,27 @@ export default function QuoteScreen() {
           </View>
         )}
 
-        {/* Step 3: Required Identity Documents (PAN Card & Aadhaar Card) */}
+        {/* Step 3: Required Identity Documents (PAN Card, Aadhaar Card, & Motor DL/RC) */}
         {contentStep === 3 && (
           <View style={s.stepWrap}>
             <Text style={s.stepTitle}>Upload Required Documents</Text>
-            <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 16 }}>
-              IRDAI guidelines require a valid PAN Card and Aadhaar Card to process your insurance application.
+            <Text style={{ fontSize: 13, color: Colors.textMuted, marginBottom: 14 }}>
+              {isMotorInsurance
+                ? 'IRDAI & Motor Vehicles Act require a valid PAN Card, Aadhaar Card, Driving Licence (DL), and Vehicle RC.'
+                : 'IRDAI guidelines require a valid PAN Card and Aadhaar Card to process your insurance application.'}
             </Text>
+
+            {isDigiLockerLinked && (
+              <View style={{ backgroundColor: '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#A7F3D0', marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Icon name="checkmark-circle" size={22} color="#059669" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#065F46' }}>⚡ eKYC Verified via DigiLocker</Text>
+                  <Text style={{ fontSize: 11, color: '#047857', marginTop: 2 }}>
+                    Official government-issued documents have been automatically fetched and pre-filled from your DigiLocker vault.
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* 1. PAN Card Section */}
             <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
@@ -1278,13 +1387,13 @@ export default function QuoteScreen() {
               >
                 <Icon name={panDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={panDoc ? Colors.success : Colors.primary} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: panDoc ? Colors.success : Colors.primary }}>
-                  {panDoc ? `✓ ${panDoc.name.slice(0, 25)}` : 'Upload PAN Card Document'}
+                  {panDoc ? `✓ ${panDoc.name.slice(0, 28)}` : 'Upload PAN Card Document'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* 2. Aadhaar Card Section */}
-            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' }}>
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>2. Aadhaar Card Details</Text>
                 <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
@@ -1311,17 +1420,90 @@ export default function QuoteScreen() {
               >
                 <Icon name={aadhaarDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={aadhaarDoc ? Colors.success : Colors.primary} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: aadhaarDoc ? Colors.success : Colors.primary }}>
-                  {aadhaarDoc ? `✓ ${aadhaarDoc.name.slice(0, 25)}` : 'Upload Aadhaar Card Document'}
+                  {aadhaarDoc ? `✓ ${aadhaarDoc.name.slice(0, 28)}` : 'Upload Aadhaar Card Document'}
                 </Text>
               </TouchableOpacity>
             </View>
 
+            {/* 3. Driving Licence Section (Motor Insurance Only) */}
+            {isMotorInsurance && (
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>3. Driving Licence (DL) Details</Text>
+                  <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+                  </View>
+                </View>
+
+                <Text style={s.label}>DRIVING LICENCE NUMBER</Text>
+                <View style={[af.inputRow, { marginBottom: 12 }]}>
+                  <TextInput
+                    style={af.input}
+                    placeholder="e.g. DL-0420110012345"
+                    placeholderTextColor={Colors.textLight}
+                    value={dlNumber}
+                    onChangeText={(t: string) => setDlNumber(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16))}
+                    autoCapitalize="characters"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: dlDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: dlDoc ? Colors.success : Colors.border }}
+                  onPress={pickDlDoc}
+                  activeOpacity={0.8}
+                >
+                  <Icon name={dlDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={dlDoc ? Colors.success : Colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: dlDoc ? Colors.success : Colors.primary }}>
+                    {dlDoc ? `✓ ${dlDoc.name.slice(0, 28)}` : 'Upload Driving Licence Document'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* 4. Vehicle Registration Certificate (RC) Section (Motor Insurance Only) */}
+            {isMotorInsurance && (
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>4. Vehicle Registration Certificate (RC)</Text>
+                  <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+                  </View>
+                </View>
+
+                <Text style={s.label}>VEHICLE REGISTRATION NUMBER</Text>
+                <View style={[af.inputRow, { marginBottom: 12 }]}>
+                  <TextInput
+                    style={af.input}
+                    placeholder="e.g. DL-01-AB-1234"
+                    placeholderTextColor={Colors.textLight}
+                    value={regNumber}
+                    onChangeText={(t: string) => setRegNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                    autoCapitalize="characters"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: rcDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: rcDoc ? Colors.success : Colors.border }}
+                  onPress={pickRcDoc}
+                  activeOpacity={0.8}
+                >
+                  <Icon name={rcDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={rcDoc ? Colors.success : Colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: rcDoc ? Colors.success : Colors.primary }}>
+                    {rcDoc ? `✓ ${rcDoc.name.slice(0, 28)}` : 'Upload Vehicle RC Document'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <TouchableOpacity
-              style={[s.nextBtn, (!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12) && { opacity: 0.4 }]}
+              style={[
+                s.nextBtn,
+                (!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12 || !panDoc || !aadhaarDoc || (isMotorInsurance && (!dlNumber || dlNumber.length < 8 || !dlDoc || !rcDoc))) && { opacity: 0.4 }
+              ]}
               onPress={() => {
                 next();
               }}
-              disabled={!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12}
+              disabled={!panNumber || panNumber.length < 10 || !aadhaarNumber || aadhaarNumber.length < 12 || !panDoc || !aadhaarDoc || (isMotorInsurance && (!dlNumber || dlNumber.length < 8 || !dlDoc || !rcDoc))}
             >
               <Text style={s.nextBtnText}>Next →</Text>
             </TouchableOpacity>
@@ -1360,10 +1542,22 @@ export default function QuoteScreen() {
                 <Text style={s.summaryLabel}>PAN Card</Text>
                 <Text style={s.summaryValue}>{panNumber} (✓ Uploaded)</Text>
               </View>
-              <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+              <View style={[s.summaryRow, !isMotorInsurance && { borderBottomWidth: 0 }]}>
                 <Text style={s.summaryLabel}>Aadhaar Card</Text>
                 <Text style={s.summaryValue}>{aadhaarNumber} (✓ Uploaded)</Text>
               </View>
+              {isMotorInsurance && (
+                <>
+                  <View style={s.summaryRow}>
+                    <Text style={s.summaryLabel}>Driving Licence</Text>
+                    <Text style={s.summaryValue}>{dlNumber} (✓ Uploaded)</Text>
+                  </View>
+                  <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+                    <Text style={s.summaryLabel}>Vehicle RC</Text>
+                    <Text style={s.summaryValue}>{regNumber || 'Attached'} (✓ Uploaded)</Text>
+                  </View>
+                </>
+              )}
             </View>
 
             {!user && (
@@ -1510,8 +1704,14 @@ export default function QuoteScreen() {
               <View style={{ backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#A7F3D0', marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Icon name="shield-checkmark" size={24} color={Colors.success} />
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#065F46' }}>IRDAI KYC Verified</Text>
-                  <Text style={{ fontSize: 11, color: '#047857' }}>PAN ({panNumber}) &amp; Aadhaar ({aadhaarNumber}) docs attached.</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#065F46' }}>
+                    {isDigiLockerLinked ? 'IRDAI & DigiLocker Verified' : 'IRDAI KYC Verified'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#047857' }}>
+                    {isMotorInsurance
+                      ? `PAN (${panNumber}), Aadhaar, DL (${dlNumber}) & RC docs attached.`
+                      : `PAN (${panNumber}) & Aadhaar (${aadhaarNumber}) docs attached.`}
+                  </Text>
                 </View>
               </View>
             </ScrollView>

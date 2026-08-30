@@ -81,6 +81,7 @@ export interface AuthUser {
   pincode?:        string;
   kycStatus:          string;     // pending | submitted | verified | rejected
   aadhaarVerified:    boolean;
+  panNumber?:         string | null;
   kycDocType?:        string | null;
   kycRejectionReason?: string | null;
   kycSubmittedAt?:    string | null;
@@ -122,6 +123,7 @@ export function mapApiUser(u: ApiUser): AuthUser {
     pincode:         u.pincode     ?? undefined,
     kycStatus:          u.kycStatus          ?? 'pending',
     aadhaarVerified:    u.aadhaarVerified    ?? false,
+    panNumber:          u.panNumber          ?? undefined,
     kycDocType:         (u as any).kycDocType         ?? null,
     kycRejectionReason: (u as any).kycRejectionReason ?? null,
     kycSubmittedAt:     (u as any).kycSubmittedAt     ?? null,
