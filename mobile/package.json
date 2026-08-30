@@ -52,6 +52,11 @@
     "@types/react": "~19.2.2",
     "typescript": "~5.7.3"
   },
+  "overrides": {
+    "image-size": "1.2.1",
+    "nanoid": "3.3.18",
+    "uuid": "11.1.1"
+  },
   "private": true,
   "allowScripts": {
     "@firebase/util@1.15.1": true,
