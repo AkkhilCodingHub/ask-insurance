@@ -29,6 +29,7 @@ jobs:
   verify-api:
     name: Check API Backend
     runs-on: ubuntu-latest
+    environment: Production - ask-insurance-admin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -143,6 +144,7 @@ jobs:
     name: Build Android Bundle (.aab & .apk)
     needs: [verify-api, verify-admin, verify-web, verify-mobile]
     runs-on: ubuntu-latest
+    environment: Production - ask-insurance-admin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -203,6 +205,7 @@ jobs:
     name: Build iOS Production (.ipa)
     needs: [verify-api, verify-admin, verify-web, verify-mobile]
     runs-on: ubuntu-latest
+    environment: Production - ask-insurance-admin
     continue-on-error: true
     steps:
       - name: Checkout repository
