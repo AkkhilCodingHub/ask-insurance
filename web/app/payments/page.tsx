@@ -4,17 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import {
-  CreditCard,
-  Download,
-  CheckCircle2,
-  FileCheck,
-  Calendar,
-  ArrowRight,
-  Shield,
-  FileText,
-  DollarSign,
-} from "lucide-react";
+import { Download } from "lucide-react";
 
 interface PaymentRecord {
   id: string;

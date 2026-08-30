@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@/lib/api";
 import {
   Car,
   Bike,
@@ -17,21 +16,12 @@ import {
   Bot,
   Shield,
   DollarSign,
-  FileText,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
-  Filter,
   Sliders,
-  Sparkles,
-  Download,
-  Share2,
-  ExternalLink,
   ChevronRight,
   Layers,
-  HelpCircle,
-  Clock,
-  Award,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -136,7 +126,6 @@ function QuoteContent() {
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
-  const [customerEmail, setCustomerEmail] = useState(user?.email || "");
   const [sortBy, setSortBy] = useState<"price_asc" | "rating" | "csr">("price_asc");
 
   // Sum total addons cost

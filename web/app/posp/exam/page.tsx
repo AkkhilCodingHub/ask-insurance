@@ -1,19 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import {
   Clock,
   CheckCircle2,
-  AlertCircle,
-  Award,
   ArrowRight,
   ArrowLeft,
-  Shield,
-  HelpCircle,
 } from "lucide-react";
 
 interface Question {
@@ -164,8 +159,6 @@ export default function PospExamPage() {
   };
 
   const currentQ = EXAM_QUESTIONS[currentIdx];
-  const isAnswered = selectedAnswers[currentIdx] !== undefined;
-  const answeredCount = Object.keys(selectedAnswers).length;
   const totalQuestions = EXAM_QUESTIONS.length;
 
   const handleSubmitExam = () => {

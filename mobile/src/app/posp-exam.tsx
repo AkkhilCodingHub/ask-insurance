@@ -4,7 +4,7 @@ import {
   ScrollView, Alert, AppState, AppStateStatus, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { pospExamApi } from '@/lib/api';
 import { examStore, ExamQuestion } from '@/lib/examStore';
 import { Icon } from '@/components/Icon';

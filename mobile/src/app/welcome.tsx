@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { Icon } from '@/components/Icon';
-import { Colors } from '@/constants/theme';
 
 const SEEN_KEY = 'seen_welcome_v1';
 const FULL_TEXT = 'ASK INSURANCE';

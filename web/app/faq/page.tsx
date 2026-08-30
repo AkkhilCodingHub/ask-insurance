@@ -9,11 +9,6 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
-  Car,
-  HeartPulse,
-  Shield,
-  Wrench,
-  Award,
   PhoneCall,
   MessageSquare,
 } from "lucide-react";

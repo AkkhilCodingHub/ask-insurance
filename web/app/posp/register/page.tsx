@@ -6,17 +6,7 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { api } from "@/lib/api";
-import {
-  Award,
-  Upload,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  Lock,
-  Building2,
-  FileCheck,
-  Shield,
-} from "lucide-react";
+import { Award, ArrowRight } from "lucide-react";
 
 export default function PospRegisterPage() {
   const router = useRouter();
@@ -30,8 +20,6 @@ export default function PospRegisterPage() {
   const [education, setEducation] = useState("Graduate / Post Graduate");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
-  const [city, setCity] = useState("");
-  const [pincode, setPincode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,8 +36,6 @@ export default function PospRegisterPage() {
         education,
         accountNumber,
         ifscCode,
-        city,
-        pincode,
       });
     } catch {
       // Fallback seamlessly to exam

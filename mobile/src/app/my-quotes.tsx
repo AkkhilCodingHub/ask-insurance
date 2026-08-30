@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal,
   RefreshControl, ActivityIndicator, Linking, Animated, Dimensions,
-  TouchableWithoutFeedback, Platform, Image,
+  TouchableWithoutFeedback, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';

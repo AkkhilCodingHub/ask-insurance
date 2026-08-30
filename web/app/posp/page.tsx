@@ -1,27 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import {
-  Award,
   TrendingUp,
   Shield,
-  CheckCircle2,
   Users,
   Building2,
   BookOpen,
   DollarSign,
   ArrowRight,
-  Briefcase,
-  Clock,
-  Sparkles,
 } from "lucide-react";
 
 export default function PospLandingPage() {
-  const router = useRouter();
 
   return (
     <>

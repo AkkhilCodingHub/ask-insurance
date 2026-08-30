@@ -37,10 +37,9 @@ function PospResultsContent() {
 
   const candidateName = user?.name || "Akkhil Sharma";
   const [certificateId] = useState(() => {
-    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-      const arr = new Uint32Array(1);
-      window.crypto.getRandomValues(arr);
-      return `ASK-POSP-${100000 + (arr[0] % 900000)}`;
+    if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+      const hex = window.crypto.randomUUID().replace(/-/g, "").slice(0, 6);
+      return `ASK-POSP-${hex.toUpperCase()}`;
     }
     return "ASK-POSP-582910";
   });
