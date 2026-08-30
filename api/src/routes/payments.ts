@@ -6,7 +6,6 @@ import { authenticate, requireKyc } from '../middleware/auth';
 import { createPaymentLink } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
-import { escapeHtml } from '../lib/certificateGenerator';
 
 const router = Router();
 
@@ -278,28 +277,6 @@ router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<v
     const email = user?.email || 'akkhil@askinsurance.in';
     const insurer = policy.provider || 'Bajaj Allianz General Insurance';
     const policyType = (policy.type || 'Insurance').toUpperCase();
-    const safePolicyNumber = escapeHtml(policy.policyNumber);
-    const safePolicyType = escapeHtml(policyType);
-    const safeInsurer = escapeHtml(insurer);
-    const safeProposerName = escapeHtml(proposerName);
-    const safeAmountDisplay = escapeHtml(amountInRupees.toLocaleString('en-IN'));
-
-    const rzpOptions = JSON.stringify({
-      key: keyId,
-      amount: amountInPaise,
-      currency: "INR",
-      name: "ASK Insurance Brokers",
-      description: `${policyType} Insurance — ${insurer}`,
-      image: "https://ask-api.bitopayments.com/logo.png",
-      prefill: {
-        name: proposerName,
-        email: email,
-        contact: phone
-      },
-      theme: {
-        color: "#0F52BA"
-      }
-    });
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -340,33 +317,27 @@ router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<v
       <div class="summary-row">
         <span class="label">Policy Schedule:</span>
         <span class="val">${policy.policyNumber}</span>
-        <span class="val">${safePolicyNumber}</span>
       </div>
       <div class="summary-row">
         <span class="label">Coverage Type:</span>
         <span class="val">${policyType}</span>
-        <span class="val">${safePolicyType}</span>
       </div>
       <div class="summary-row">
         <span class="label">Underwriter Insurer:</span>
         <span class="val">${insurer}</span>
-        <span class="val">${safeInsurer}</span>
       </div>
       <div class="summary-row">
         <span class="label">Proposer:</span>
         <span class="val">${proposerName}</span>
-        <span class="val">${safeProposerName}</span>
       </div>
       <div class="summary-row">
         <span class="label">Total Premium (incl. GST):</span>
         <span class="val total-val">₹${amountInRupees.toLocaleString('en-IN')}</span>
-        <span class="val total-val">₹${safeAmountDisplay}</span>
       </div>
     </div>
 
     <button id="pay-btn" class="btn-pay" onclick="launchRazorpay()">
       <span>🔒 Pay ₹${amountInRupees.toLocaleString('en-IN')} via Razorpay</span>
-      <span>🔒 Pay ₹${safeAmountDisplay} via Razorpay</span>
     </button>
 
     <div class="guarantee">
@@ -375,7 +346,6 @@ router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<v
   </div>
 
   <script>
-    var baseOptions = ${rzpOptions};
     function launchRazorpay() {
       var options = {
         key: "${keyId}",
@@ -392,12 +362,8 @@ router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<v
         theme: {
           color: "#0F52BA"
         },
-      var options = Object.assign({}, baseOptions, {
         handler: function (response) {
           window.location.href = '/api/payments/razorpay/callback?policyId=${policy.id}&paymentId=' + (response.razorpay_payment_id || 'test');
-          var policyId = encodeURIComponent(${JSON.stringify(policy.id)});
-          var paymentId = encodeURIComponent(response.razorpay_payment_id || 'test');
-          window.location.href = '/api/payments/razorpay/callback?policyId=' + policyId + '&paymentId=' + paymentId;
         },
         modal: {
           ondismiss: function() {
@@ -405,7 +371,6 @@ router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<v
           }
         }
       };
-      });
       var rzp = new Razorpay(options);
       rzp.open();
     }

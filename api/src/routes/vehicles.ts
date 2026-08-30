@@ -74,6 +74,8 @@ router.get('/lookup/:registrationNumber', optionalAuth, async (req: Request, res
       return;
     }
 
+    const currentUserId = req.userId;
+
     // 1. Search in saved Vehicles model
     const vehicle = await prisma.vehicle.findFirst({
       where: {
@@ -88,9 +90,12 @@ router.get('/lookup/:registrationNumber', optionalAuth, async (req: Request, res
       }
     });
 
-    // 2. Fetch all matching vehicle policies
-    const policies = await prisma.policy.findMany({
+    const isOwner = Boolean(currentUserId && vehicle && vehicle.userId === currentUserId);
+
+    // 2. Fetch matching vehicle policies (only for owner)
+    const policies = isOwner ? await prisma.policy.findMany({
       where: {
+        userId: currentUserId!,
         OR: [
           { registrationNumber: { contains: regParam } },
           ...(vehicle ? [{ vehicleId: vehicle.id }] : [])
@@ -101,23 +106,35 @@ router.get('/lookup/:registrationNumber', optionalAuth, async (req: Request, res
         claims: true,
         renewal: true
       }
-    });
+    }) : [];
 
-    // 3. Fetch all matching vehicle quotes
-    const quotes = await prisma.quote.findMany({
+    // 3. Fetch matching vehicle quotes (only for owner)
+    const quotes = isOwner ? await prisma.quote.findMany({
       where: {
+        userId: currentUserId!,
         OR: [
           { registrationNumber: { contains: regParam } },
           ...(vehicle ? [{ vehicleId: vehicle.id }] : [])
         ]
       },
       orderBy: { createdAt: 'desc' }
-    });
+    }) : [];
+
+    // Strip sensitive user info if not owner
+    let safeVehicle: any = null;
+    if (vehicle) {
+      if (isOwner) {
+        safeVehicle = vehicle;
+      } else {
+        const { user: _ownerUser, ...vehiclePublicDetails } = vehicle;
+        safeVehicle = vehiclePublicDetails;
+      }
+    }
 
     res.json({
       registrationNumber: regParam,
       vehicleFound: Boolean(vehicle),
-      vehicle: vehicle || null,
+      vehicle: safeVehicle,
       policiesCount: policies.length,
       policies,
       quotesCount: quotes.length,

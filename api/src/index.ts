@@ -44,16 +44,34 @@ app.use(helmet({
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, server-to-server) or matching allowed origins
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.onrender.com') ||
-        origin.endsWith('.vercel.app')
-      ) {
+      if (!origin) {
+        // Non-browser or same-origin clients (mobile app, server-to-server)
         callback(null, true);
-      } else {
-        callback(null, true); // Permissive fallback for mobile/Render client connections
+        return;
+      }
+      try {
+        const url = new URL(origin);
+        const host = url.hostname.toLowerCase();
+        const isAllowed =
+          allowedOrigins.includes(origin) ||
+          host === 'localhost' ||
+          host === '127.0.0.1' ||
+          host === 'bitopayments.com' ||
+          host.endsWith('.bitopayments.com') ||
+          host === 'askinsurance.in' ||
+          host.endsWith('.askinsurance.in') ||
+          host === 'ask-insurance.in' ||
+          host.endsWith('.ask-insurance.in') ||
+          host.endsWith('.onrender.com') ||
+          host.endsWith('.vercel.app');
+
+        if (isAllowed) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      } catch {
+        callback(null, false);
       }
     },
     credentials: true,
