@@ -2,7 +2,7 @@
   "expo": {
     "extra": {
       "eas": {
-        "projectId": "5c033321-0330-420f-bc8f-793952ac9ec6"
+        "projectId": "7bc1e328-050a-4fc5-901f-9ba3afff8755"
       }
     },
     "android": {
@@ -10,4 +10,3 @@
     }
   }
 }
-
