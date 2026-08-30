@@ -25,7 +25,7 @@
     "clean": "rm -rf node_modules mobile/node_modules admin/.next web/.next mobile/.expo mobile/android/.gradle mobile/android/build mobile/android/app/build mobile/ios/build mobile/ios/Pods dist api/dist"
   },
   "devDependencies": {
-    "concurrently": "^9.2.4",
+    "concurrently": "^10.0.4",
     "typescript": "5.7.3"
   },
   "engines": {
