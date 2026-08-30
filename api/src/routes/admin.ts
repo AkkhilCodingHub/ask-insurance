@@ -3015,8 +3015,7 @@ router.post('/agents/bulk-import', adminAuthenticate, upload.single('file'), asy
         }
 
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        const agentCode = `AGT-${randomNum}`;
+        const agentCode = await generateAgentId();
 
         await prisma.admin.create({
           data: {

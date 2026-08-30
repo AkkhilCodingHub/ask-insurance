@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
@@ -217,7 +218,7 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
     } else if (docType === 'policy_copy') {
       extractedFields = {
         docType: 'Previous Policy Document',
-        policyNumber: `POL-${Math.floor(100000 + Math.random() * 900000)}`,
+        policyNumber: `POL-${crypto.randomInt(100000, 1000000)}`,
         previousInsurer: 'General Insurance Co. Ltd.',
         expiryDate: '2026-08-20',
         ncbPercentage: 50,

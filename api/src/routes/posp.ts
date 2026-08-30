@@ -306,7 +306,7 @@ router.post('/exam/start', async (req: Request, res: Response): Promise<void> =>
     }));
 
     const startedAt = new Date();
-    const fallbackId = `posp_att_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const fallbackId = `posp_att_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     let attemptRecord: any = null;
 
     try {
@@ -575,7 +575,7 @@ router.post('/apply', async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const appNum = `POSP-REQ-${Math.floor(100000 + Math.random() * 900000)}`;
+    const appNum = `POSP-REQ-${crypto.randomInt(100000, 1000000)}`;
     const now = new Date();
     let application: any = null;
 
@@ -681,7 +681,7 @@ router.get('/application/status', async (req: Request, res: Response): Promise<v
 router.post('/admin/approve', async (req: Request, res: Response): Promise<void> => {
   try {
     const { applicationNumber, phone, agentCode } = req.body;
-    const assignedAgentCode = agentCode || `ASK-POSP-${Math.floor(100000 + Math.random() * 900000)}`;
+    const assignedAgentCode = agentCode || `ASK-POSP-${crypto.randomInt(100000, 1000000)}`;
 
     let app: any = null;
     try {

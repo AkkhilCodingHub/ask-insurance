@@ -36,7 +36,14 @@ function PospResultsContent() {
   const isPassed = score >= 40;
 
   const candidateName = user?.name || "Akkhil Sharma";
-  const [certificateId] = useState(() => `ASK-POSP-${Math.floor(100000 + Math.random() * 900000)}`);
+  const [certificateId] = useState(() => {
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return `ASK-POSP-${100000 + (arr[0] % 900000)}`;
+    }
+    return "ASK-POSP-582910";
+  });
   const issueDate = "19-Aug-2026";
 
   return (
