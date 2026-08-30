@@ -8,6 +8,7 @@ import {
   buildAuthUrl, exchangeCode, fetchIssuedFiles, fetchUploadedFiles,
   generateState, parseState, generateCodeVerifier, deriveCodeChallenge,
 } from '../lib/digilocker';
+import { escapeHtml } from '../lib/certificateGenerator';
 
 const router = Router();
 
@@ -126,12 +127,11 @@ router.get('/callback', (req: Request, res: Response): void => {
   }
   const target = `${appRedirect}?${params.toString()}`;
   const targetJs = JSON.stringify(target);
-  const targetAttr = target
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const targetAttr = escapeHtml(target);
 
   if (errorParam) {
-    const errText = String(req.query.error_description || req.query.error || 'DigiLocker verification failed.');
+    const rawErrText = String(req.query.error_description || req.query.error || 'DigiLocker verification failed.');
+    const errText = escapeHtml(rawErrText);
     res.type('html').send(`<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -151,7 +151,7 @@ router.get('/callback', (req: Request, res: Response): void => {
 <body><div class="card">
   <div class="icon">✕</div>
   <h2>Verification Failed</h2>
-  <p>${errText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+  <p>${errText}</p>
   <a class="btn" href="${targetAttr}">Return to App</a>
 </div>
 <script>
