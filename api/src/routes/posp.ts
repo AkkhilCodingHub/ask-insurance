@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { IC38_QUESTION_BANK, Ic38Question } from '../lib/ic38Questions';
-import { generateAgentId } from '../lib/idGenerator';
+import { IC38_QUESTION_BANK } from '../lib/ic38Questions';
 import crypto from 'crypto';
 
 const router = Router();

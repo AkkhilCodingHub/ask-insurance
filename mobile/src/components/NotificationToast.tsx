@@ -13,7 +13,6 @@ import {
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
 import { supportChatFocusedRef } from '@/lib/supportChatFocused';
 import { router } from 'expo-router';
 import { Icon } from '@/components/Icon';

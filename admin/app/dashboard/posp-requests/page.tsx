@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { adminApi, PospApplicationRecord } from "@/lib/api";
 import {
   Award, CheckCircle, XCircle, Clock, Eye, RefreshCw,
-  Search, ShieldCheck, FileText, ExternalLink, X, AlertCircle
+  Search, FileText, ExternalLink, X
 } from "lucide-react";
 
 function fmtDate(s: string) {

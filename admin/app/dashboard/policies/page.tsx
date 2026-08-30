@@ -5,7 +5,7 @@ import {
   Search, RefreshCw, X, Save, Upload, FileText,
   ExternalLink, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Clock, XCircle, Shield, Activity,
-  TrendingUp, Banknote, Filter, MoreHorizontal,
+  TrendingUp, Banknote, Filter,
 } from "lucide-react";
 import { adminApi, type AdminPolicy } from "@/lib/api";
 

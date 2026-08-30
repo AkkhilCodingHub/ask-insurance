@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/api";
-import { BookTemplate, Plus, Trash2, RefreshCw, Save, MessageSquare, Mail, Bell, FileText, TrendingUp, X } from "lucide-react";
+import { BookTemplate, Trash2, RefreshCw, Save, MessageSquare, Mail, Bell, FileText, TrendingUp, X } from "lucide-react";
 
 type TabKey = "quotation" | "rateCharts" | "communication";
 

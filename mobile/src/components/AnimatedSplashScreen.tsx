@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, Animated, Image, Dimensions, Easing,
 } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { Colors } from '@/constants/theme';
 
 const { width: W, height: H } = Dimensions.get('window');
 const FULL_TEXT = 'ASK INSURANCE BROKERS';

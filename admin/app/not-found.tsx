@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldAlert, LayoutDashboard, ArrowLeft } from "lucide-react";
+import { ShieldAlert, LayoutDashboard } from "lucide-react";
 
 export default function AdminNotFound() {
   return (

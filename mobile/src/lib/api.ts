@@ -1,6 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
