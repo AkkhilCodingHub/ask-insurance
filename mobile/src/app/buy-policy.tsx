@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, Modal, Alert,
   StyleSheet, ActivityIndicator, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +15,6 @@ import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
-import { generatePolicyCertificateHtml } from '@/lib/certificateGenerator';
 
 export default function BuyPolicyScreen() {
   const router = useRouter();
@@ -39,7 +37,6 @@ export default function BuyPolicyScreen() {
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [drivingLicenseNumber, setDrivingLicenseNumber] = useState('');
   const [vehicleRcNumber, setVehicleRcNumber] = useState('');
-  const [isDigiLockerLinked, setIsDigiLockerLinked] = useState(false);
 
   // Nominee Details
   const [nomineeName, setNomineeName] = useState('');
@@ -60,7 +57,6 @@ export default function BuyPolicyScreen() {
 
       kycApi.getDigiLockerDetails().then(res => {
         if (res && res.isDigiLockerLinked) {
-          setIsDigiLockerLinked(true);
           if (res.name && !fullName) setFullName(res.name);
           if (res.dob && !dob) setDob(res.dob);
           if (res.gender) setGender(res.gender);
@@ -124,7 +120,6 @@ export default function BuyPolicyScreen() {
     setOtpCode('');
     try {
       const formattedPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
-      let sentViaFirebase = false;
       try {
         if (getApps().length === 0) {
           initializeApp({
@@ -139,7 +134,6 @@ export default function BuyPolicyScreen() {
         }
         const confirmation = await signInWithPhoneNumber(getAuth(), formattedPhone);
         confirmationRef.current = confirmation;
-        sentViaFirebase = true;
       } catch (fbErr) {
         console.warn('[Firebase Consent SMS] fallback to backend SMS gateway:', fbErr);
         await authApi.sendOTP(cleanPhone);

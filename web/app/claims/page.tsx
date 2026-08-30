@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
 import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
@@ -10,12 +9,10 @@ import {
   ShieldCheck,
   Clock3,
   Globe2,
-  ArrowRight,
   Plus,
   X,
   CheckCircle2,
 } from "lucide-react";
-import { useAuth } from "@/context/auth";
 
 export default function ClaimsPage() {
   return (
@@ -96,9 +93,6 @@ function ClaimsContent() {
         hospitalOrGarage: locationOrGarage,
         description: description.trim(),
       });
-      const randomSuffix = typeof window !== "undefined" && window.crypto?.getRandomValues
-        ? 10000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 90000)
-        : Date.now() % 100000;
       const randomSuffix = typeof window !== "undefined" && window.crypto?.randomUUID
         ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 5).toUpperCase()
         : String(Date.now()).slice(-5);

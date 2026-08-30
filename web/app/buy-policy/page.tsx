@@ -13,15 +13,9 @@ import {
   Lock,
   ArrowRight,
   ArrowLeft,
-  FileText,
-  User,
-  Users,
   Shield,
   Download,
-  AlertCircle,
-  Car,
   X,
-  CreditCard,
 } from "lucide-react";
 
 export default function BuyPolicyPage() {
@@ -150,9 +144,6 @@ function BuyPolicyContent() {
         nomineeRelation,
       });
 
-      const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
-        ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
-        : Date.now() % 1000000;
       const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
         ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
         : String(Date.now()).slice(-6);
@@ -174,9 +165,6 @@ function BuyPolicyContent() {
     } catch (err: any) {
       console.warn("[BuyPolicy] API payment fallback:", err);
       // Fallback
-      const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
-        ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
-        : Date.now() % 1000000;
       const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
         ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
         : String(Date.now()).slice(-6);
