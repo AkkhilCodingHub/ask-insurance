@@ -98,6 +98,9 @@ function ClaimsContent() {
       const randomSuffix = typeof window !== "undefined" && window.crypto?.getRandomValues
         ? 10000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 90000)
         : Date.now() % 100000;
+      const randomSuffix = typeof window !== "undefined" && window.crypto?.randomUUID
+        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 5).toUpperCase()
+        : String(Date.now()).slice(-5);
       const newClm: UserClaim = {
         id: `clm_${Date.now()}`,
         claimNumber: `CLM-${new Date().getFullYear()}-${randomSuffix}`,
