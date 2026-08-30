@@ -96,9 +96,12 @@ function ClaimsContent() {
         hospitalOrGarage: locationOrGarage,
         description: description.trim(),
       });
+      const randomSuffix = typeof window !== "undefined" && window.crypto?.getRandomValues
+        ? 10000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 90000)
+        : Date.now() % 100000;
       const newClm: UserClaim = {
         id: `clm_${Date.now()}`,
-        claimNumber: `CLM-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
+        claimNumber: `CLM-${new Date().getFullYear()}-${randomSuffix}`,
         policyNumber: policyNum,
         type: claimType,
         amount: parseInt(estAmount, 10) || 25000,

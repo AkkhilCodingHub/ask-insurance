@@ -254,13 +254,14 @@ export async function fetchFromMParivahanApi(regNumber: string): Promise<MPariva
 
 // ── Smart RC Database Decoder (Fallback & Offline Lookup) ────────────────────
 export function decodeVehicleFromRcNumber(regNumber: string): MParivahanVehicleDetails {
-  const norm = regNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const norm = (regNumber || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
   const stateCode = norm.substring(0, 2);
   const rtoCode = norm.substring(0, 4);
 
-  // Dynamic hash calculation based on registration number
+  // Dynamic hash calculation based on registration number (bounded loop)
   let charSum = 0;
-  for (let i = 0; i < norm.length; i++) {
+  const loopLimit = Math.min(norm.length, 15);
+  for (let i = 0; i < loopLimit; i++) {
     charSum = (charSum * 31 + norm.charCodeAt(i)) % 100000;
   }
 

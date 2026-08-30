@@ -6,10 +6,14 @@ const dbUrlString = process.env.DATABASE_URL || 'mysql://root:rootpassword@local
 
 function createPrismaClient(): PrismaClient {
   const url = new URL(dbUrlString);
+  const host = url.hostname.toLowerCase();
+  const isAiven = host === 'aivencloud.com' ||
+                  host.endsWith('.aivencloud.com') ||
+                  host === 'aiven.io' ||
+                  host.endsWith('.aiven.io');
   const isSsl = url.searchParams.get('ssl-mode') === 'REQUIRED' ||
                 url.searchParams.get('ssl') === 'true' ||
-                url.hostname.includes('aivencloud.com') ||
-                url.hostname.includes('aiven.io') ||
+                isAiven ||
                 process.env.DATABASE_SSL === 'true';
 
   const adapter = new PrismaMariaDb({

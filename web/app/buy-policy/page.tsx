@@ -152,9 +152,12 @@ function BuyPolicyContent() {
         nomineeRelation,
       });
 
+      const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
+        ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
+        : Date.now() % 1000000;
       const policyObj = buyRes?.policy || buyRes?.data || {
         id: `pol_${Date.now()}`,
-        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${Math.floor(100000 + Math.random() * 900000)}`,
+        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
         provider: insurer,
         type: isMotor ? "motor" : typeParam,
         sumInsured: idvParam || 500000,
@@ -170,9 +173,12 @@ function BuyPolicyContent() {
     } catch (err: any) {
       console.warn("[BuyPolicy] API payment fallback:", err);
       // Fallback
+      const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
+        ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
+        : Date.now() % 1000000;
       const polObj = {
         id: `pol_${Date.now()}`,
-        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${Math.floor(100000 + Math.random() * 900000)}`,
+        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
         provider: insurer,
         type: isMotor ? "motor" : typeParam,
         sumInsured: idvParam || 500000,
@@ -525,7 +531,7 @@ function BuyPolicyContent() {
 
                   <div style={{ background: "#F8FAFC", borderRadius: 14, border: "1px solid var(--border)", padding: 20, textAlign: "left", marginBottom: 24 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 13 }}>
-                      <div><span style={{ color: "var(--text-muted)" }}>Policy Number:</span> <strong style={{ color: "var(--primary)", fontFamily: "monospace" }}>{createdPolicy?.policyNumber || `ASK-MOT-2026-${Math.floor(100000 + Math.random() * 900000)}`}</strong></div>
+                      <div><span style={{ color: "var(--text-muted)" }}>Policy Number:</span> <strong style={{ color: "var(--primary)", fontFamily: "monospace" }}>{createdPolicy?.policyNumber || "ASK-MOT-2026-PENDING"}</strong></div>
                       <div><span style={{ color: "var(--text-muted)" }}>Insurer:</span> <strong>{createdPolicy?.provider || insurer}</strong></div>
                       <div><span style={{ color: "var(--text-muted)" }}>Premium Paid:</span> <strong>₹{totalPrice.toLocaleString("en-IN")}</strong></div>
                       <div><span style={{ color: "var(--text-muted)" }}>Status:</span> <strong style={{ color: "#16A34A" }}>✓ Active & Bound</strong></div>

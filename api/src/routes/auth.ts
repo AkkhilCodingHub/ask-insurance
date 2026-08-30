@@ -139,7 +139,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
     }
 
     if (!user) {
-      const customerCode = `CU-${Math.floor(100000 + Math.random() * 900000)}`;
+      const customerCode = await generateCustomerId();
       try {
         user = await Promise.race([
           prisma.user.create({
@@ -157,6 +157,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
           customerCode,
           name: null,
           email: null,
+          role: 'user',
           kycStatus: 'PENDING',
           aadhaarVerified: false
         };
@@ -276,21 +277,21 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 router.post('/verify-firebase', async (req: Request, res: Response): Promise<void> => {
   try {
     const { idToken } = req.body;
-    let phone = '';
-    try {
-      const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
-      const rawPhone = decoded.phone_number;
-      if (rawPhone) {
-        phone = rawPhone.replace(/^\+91/, '');
-      }
-    } catch (fbErr) {
-      if (req.body.phone) {
-        phone = cleanPhone(String(req.body.phone));
-      }
+    if (!idToken) {
+      res.status(400).json({ error: 'Firebase ID token is required' });
+      return;
     }
 
-    if (!phone) {
-      res.status(400).json({ error: 'Valid phone number required' });
+    const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
+    const rawPhone = decoded.phone_number;
+    if (!rawPhone) {
+      res.status(401).json({ error: 'Token does not contain a verified phone number' });
+      return;
+    }
+
+    const phone = rawPhone.replace(/^\+91/, '');
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Invalid phone number from token' });
       return;
     }
 
@@ -306,7 +307,7 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
 
     const isNewUser = !user;
     if (!user) {
-      const customerCode = `CU-${Math.floor(100000 + Math.random() * 900000)}`;
+      const customerCode = await generateCustomerId();
       try {
         user = await prisma.user.create({ data: { phone, customerCode } });
       } catch {

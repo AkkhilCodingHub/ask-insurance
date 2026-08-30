@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from './prisma';
 
 /**
@@ -6,7 +7,7 @@ import { prisma } from './prisma';
 export async function generateCustomerId(): Promise<string> {
   let attempts = 0;
   while (attempts < 10) {
-    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const randomDigits = crypto.randomInt(100000, 1000000);
     const code = `CU${randomDigits}`;
     const existing = await prisma.user.findUnique({ where: { customerCode: code } });
     if (!existing) return code;
@@ -22,7 +23,7 @@ export async function generateCustomerId(): Promise<string> {
 export async function generateAgentId(): Promise<string> {
   let attempts = 0;
   while (attempts < 10) {
-    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+    const randomDigits = crypto.randomInt(100000, 1000000);
     const code = `AS${randomDigits}`;
     const existing = await prisma.admin.findUnique({ where: { agentCode: code } });
     if (!existing) return code;

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 
@@ -10,7 +11,7 @@ const generateOtp = (): string => {
   if (process.env.OTP_FIXED) return process.env.OTP_FIXED;
   let otp = '';
   for (let i = 0; i < OTP_LENGTH; i += 1) {
-    otp += Math.floor(Math.random() * 10).toString();
+    otp += crypto.randomInt(0, 10).toString();
   }
   return otp;
 };

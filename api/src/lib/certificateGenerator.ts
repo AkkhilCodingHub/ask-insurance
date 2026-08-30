@@ -28,6 +28,16 @@ export interface PospCertificateData {
   approvedAt?: Date | string;
 }
 
+function escapeHtml(str: string | number | null | undefined): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function fmtMoney(amount: number): string {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 }
@@ -48,7 +58,7 @@ export function generatePolicyCertificateHtml(data: PolicyCertificateData): stri
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Policy Certificate - ${data.policyNumber}</title>
+  <title>Policy Certificate - ${escapeHtml(data.policyNumber)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -59,23 +69,21 @@ export function generatePolicyCertificateHtml(data: PolicyCertificateData): stri
     .brand-sub { font-size: 11px; color: #64748B; margin-top: 4px; font-weight: 500; }
     .badge { background: #ECFDF5; border: 1px solid #10B981; color: #047857; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 999px; text-transform: uppercase; }
     .title-banner { background: linear-gradient(135deg, #0284C7, #0369A1); color: #FFFFFF; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 800; text-align: center; margin-bottom: 24px; letter-spacing: 0.5px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px; }
     .card-title { font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom: 12px; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px; }
     .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
     .row:last-child { margin-bottom: 0; }
     .lbl { color: #64748B; font-weight: 500; }
     .val { color: #0F172A; font-weight: 700; }
-    .premium-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    .premium-table th, .premium-table td { padding: 12px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid #E2E8F0; }
-    .premium-table th { background: #F1F5F9; color: #475569; font-weight: 700; }
-    .premium-table tr.total td { font-size: 15px; font-weight: 900; color: #0284C7; background: #F0F9FF; }
+    .premium-box { background: #F0F9FF; border: 1.5px solid #0284C7; border-radius: 8px; padding: 18px; margin-bottom: 24px; }
+    .total-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #BAE6FD; padding-top: 10px; margin-top: 10px; font-size: 16px; font-weight: 900; color: #0284C7; }
     .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #E2E8F0; padding-top: 24px; margin-top: 24px; }
-    .legal { font-size: 10px; color: #94A3B8; max-width: 480px; line-height: 1.5; }
-    .sign-box { text-align: center; }
-    .stamp { width: 100px; height: 100px; border: 2px dashed #0284C7; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #0284C7; font-weight: 800; font-size: 10px; margin-bottom: 8px; }
+    .legal { font-size: 10px; color: #94A3B8; max-width: 450px; line-height: 1.5; }
+    .sign-box { text-align: right; }
+    .stamp { width: 100px; height: 100px; border: 2px dashed #0284C7; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #0284C7; font-weight: 800; font-size: 10px; text-align: center; margin-bottom: 8px; margin-left: auto; }
     .print-btn { background: #0284C7; color: #FFFFFF; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; position: fixed; bottom: 20px; right: 20px; box-shadow: 0 10px 20px rgba(2,132,199,0.4); }
-    @media print { .print-btn { display: none; } body { padding: 0; background: #FFF; } .page { box-shadow: none; max-width: 100%; padding: 20px; } }
+    @media print { .print-btn { display: none; } body { padding: 0; background: #FFF; } .page { box-shadow: none; max-width: 100%; } }
   </style>
 </head>
 <body>
@@ -86,66 +94,54 @@ export function generatePolicyCertificateHtml(data: PolicyCertificateData): stri
         <div class="brand-sub">IRDAI Direct Broker License: IRDAI/DB 792/19 | CIN: U66010DL2018PTC334589</div>
         <div class="brand-sub">Regd. Office: ASK Tower, B-4 Netaji Subhash Place, Pitampura, New Delhi - 110034</div>
       </div>
-      <div class="badge">Official Policy Schedule</div>
+      <div class="badge">Certificate of Insurance</div>
     </div>
 
     <div class="title-banner">
-      CERTIFICATE OF INSURANCE & POLICY SCHEDULE
+      OFFICIAL CERTIFICATE OF INSURANCE SCHEDULE
     </div>
 
     <div class="grid">
       <div class="card">
-        <div class="card-title">Policy & Coverage Details</div>
-        <div class="row"><span class="lbl">Policy Number:</span><span class="val">${data.policyNumber}</span></div>
-        <div class="row"><span class="lbl">Insurance Type:</span><span class="val" style="text-transform: capitalize;">${data.type}</span></div>
-        <div class="row"><span class="lbl">Underwriter / Insurer:</span><span class="val">${data.provider}</span></div>
-        <div class="row"><span class="lbl">Sum Insured:</span><span class="val" style="color:#0284C7;">${fmtMoney(data.sumInsured)}</span></div>
-        ${data.registrationNumber ? `<div class="row"><span class="lbl">Vehicle Reg No:</span><span class="val">${data.registrationNumber}</span></div>` : ''}
-        <div class="row"><span class="lbl">Period of Insurance:</span><span class="val">${issueDate} to ${expiryDate}</span></div>
+        <div class="card-title">Policyholder Details</div>
+        <div class="row"><span class="lbl">Insured Name:</span><span class="val">${escapeHtml(data.userName || 'Valued Customer')}</span></div>
+        <div class="row"><span class="lbl">Customer Code:</span><span class="val">${escapeHtml(data.customerCode || '—')}</span></div>
+        <div class="row"><span class="lbl">Contact Phone:</span><span class="val">+91 ${escapeHtml(data.userPhone || '—')}</span></div>
+        <div class="row"><span class="lbl">Email Address:</span><span class="val">${escapeHtml(data.userEmail || '—')}</span></div>
+        <div class="row"><span class="lbl">Address:</span><span class="val">${escapeHtml(data.userAddress || 'Registered on File')}</span></div>
       </div>
 
       <div class="card">
-        <div class="card-title">Policyholder Information</div>
-        <div class="row"><span class="lbl">Insured Name:</span><span class="val">${data.userName || 'Policy Holder'}</span></div>
-        <div class="row"><span class="lbl">Customer Code:</span><span class="val">${data.customerCode || 'ASK-CUST-VERIFIED'}</span></div>
-        <div class="row"><span class="lbl">Contact Phone:</span><span class="val">+91 ${data.userPhone || '—'}</span></div>
-        <div class="row"><span class="lbl">Email:</span><span class="val">${data.userEmail || '—'}</span></div>
-        <div class="row"><span class="lbl">Payment Status:</span><span class="val" style="color:#059669;">✓ CONFIRMED (PAID)</span></div>
+        <div class="card-title">Coverage & Insurer Details</div>
+        <div class="row"><span class="lbl">Policy Number:</span><span class="val" style="color: #0284C7;">${escapeHtml(data.policyNumber)}</span></div>
+        <div class="row"><span class="lbl">Insurance Provider:</span><span class="val">${escapeHtml(data.provider)}</span></div>
+        <div class="row"><span class="lbl">Policy Type:</span><span class="val" style="text-transform: capitalize;">${escapeHtml(data.type)} Insurance</span></div>
+        ${data.registrationNumber ? `<div class="row"><span class="lbl">Registration No:</span><span class="val">${escapeHtml(data.registrationNumber)}</span></div>` : ''}
+        <div class="row"><span class="lbl">Sum Insured:</span><span class="val" style="color: #059669;">${fmtMoney(data.sumInsured)}</span></div>
+        <div class="row"><span class="lbl">Period of Insurance:</span><span class="val">${escapeHtml(issueDate)} to ${escapeHtml(expiryDate)}</span></div>
+        <div class="row"><span class="lbl">Status:</span><span class="val" style="color: #059669; text-transform: uppercase;">● ${escapeHtml(data.paymentStatus)}</span></div>
       </div>
     </div>
 
-    <table class="premium-table">
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th style="text-align:right;">Amount (INR)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Base Premium (Annual)</td>
-          <td style="text-align:right;">${fmtMoney(net)}</td>
-        </tr>
-        <tr>
-          <td>Goods & Services Tax (GST @ 18%)</td>
-          <td style="text-align:right;">${fmtMoney(gst)}</td>
-        </tr>
-        <tr class="total">
-          <td>Total Premium Paid</td>
-          <td style="text-align:right;">${fmtMoney(data.premium)}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="premium-box">
+      <div class="card-title" style="border: none; margin-bottom: 8px;">Premium Calculation (INR)</div>
+      <div class="row"><span class="lbl">Net Premium:</span><span class="val">${fmtMoney(net)}</span></div>
+      <div class="row"><span class="lbl">Integrated GST (18%):</span><span class="val">${fmtMoney(gst)}</span></div>
+      <div class="total-row">
+        <span>Total Premium Paid:</span>
+        <span>${fmtMoney(data.premium)}</span>
+      </div>
+    </div>
 
     <div class="footer">
       <div class="legal">
-        <strong>Important Notice:</strong> This document serves as valid proof of insurance coverage issued by ASK Insurance Brokers Pvt. Ltd. in accordance with IRDAI regulations. For 24x7 cashless assistance, claims, or endorsements, call 1800-ASK-INS or email claims@askinsurancebrokers.in.
+        <strong>Important Notice:</strong> This Certificate of Insurance is issued subject to the terms, conditions, and exclusions of the original Policy Document issued by ${escapeHtml(data.provider)}. For 24x7 cashless claims assistance, call toll-free 1800-ASK-INS or email claims@askinsurancebrokers.in.
       </div>
       <div class="sign-box">
         <div class="stamp">
           <div>ASK BROKERS</div>
-          <div>★ VERIFIED ★</div>
-          <div>DIGITALLY SIGNED</div>
+          <div>★ IRDAI ★</div>
+          <div>REGISTERED</div>
         </div>
         <div style="font-size:11px; font-weight:700; color:#475569;">Authorized Signatory</div>
       </div>
@@ -166,7 +162,7 @@ export function generatePospCertificateHtml(data: PospCertificateData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POSP Certificate - ${data.name}</title>
+  <title>POSP Certificate - ${escapeHtml(data.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -195,10 +191,10 @@ export function generatePospCertificateHtml(data: PospCertificateData): string {
 
     <div class="cert-title">CERTIFICATE OF APPOINTMENT (POSP)</div>
     <div class="presented-to">This is to officially certify that</div>
-    <div class="candidate-name">${data.name.toUpperCase()}</div>
+    <div class="candidate-name">${escapeHtml(data.name.toUpperCase())}</div>
 
     <div class="cert-body">
-      has successfully completed the mandatory training and passed the <strong>IC-38 POSP Examination</strong> with a score of <strong>${data.examScore}/50</strong> in compliance with the guidelines laid down by the <strong>Insurance Regulatory and Development Authority of India (IRDAI)</strong>.
+      has successfully completed the mandatory training and passed the <strong>IC-38 POSP Examination</strong> with a score of <strong>${escapeHtml(data.examScore)}/50</strong> in compliance with the guidelines laid down by the <strong>Insurance Regulatory and Development Authority of India (IRDAI)</strong>.
       <br><br>
       The candidate is hereby officially authorized and appointed as a <strong>Point of Sales Person (POSP - Life & General Insurance)</strong> to solicit and procure retail insurance policies on behalf of ASK Insurance Brokers Pvt. Ltd.
     </div>
@@ -206,23 +202,23 @@ export function generatePospCertificateHtml(data: PospCertificateData): string {
     <div class="meta-box">
       <div class="meta-item">
         <div class="meta-lbl">Agent / POSP Code:</div>
-        <div class="meta-val">${data.agentCode || data.applicationNumber}</div>
+        <div class="meta-val">${escapeHtml(data.agentCode || data.applicationNumber)}</div>
       </div>
       <div class="meta-item">
         <div class="meta-lbl">Certificate Issue Date:</div>
-        <div class="meta-val">${issueDate}</div>
+        <div class="meta-val">${escapeHtml(issueDate)}</div>
       </div>
       <div class="meta-item">
         <div class="meta-lbl">Validity:</div>
-        <div class="meta-val">${issueDate} to ${expiryDate}</div>
+        <div class="meta-val">${escapeHtml(issueDate)} to ${escapeHtml(expiryDate)}</div>
       </div>
       <div class="meta-item">
         <div class="meta-lbl">PAN Number:</div>
-        <div class="meta-val">${data.panNumber}</div>
+        <div class="meta-val">${escapeHtml(data.panNumber)}</div>
       </div>
       <div class="meta-item">
         <div class="meta-lbl">Mobile Number:</div>
-        <div class="meta-val">+91 ${data.phone}</div>
+        <div class="meta-val">+91 ${escapeHtml(data.phone)}</div>
       </div>
       <div class="meta-item">
         <div class="meta-lbl">Accreditation:</div>
@@ -279,7 +275,7 @@ export function generateQuoteAcknowledgementHtml(data: QuoteAcknowledgementData)
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quote Acknowledgement - ${data.quoteId}</title>
+  <title>Quote Acknowledgement - ${escapeHtml(data.quoteId)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -323,7 +319,7 @@ export function generateQuoteAcknowledgementHtml(data: QuoteAcknowledgementData)
 
     <div class="highlight-box">
       <div style="font-size: 13px; font-weight: 800; color: #0369A1; margin-bottom: 6px;">
-        📌 Reference: REQ-${data.quoteId.slice(0, 12).toUpperCase()}
+        📌 Reference: REQ-${escapeHtml(data.quoteId.slice(0, 12).toUpperCase())}
       </div>
       <div style="font-size: 12px; color: #334155; line-height: 1.5;">
         Thank you for choosing ASK Insurance. Your insurance requirement has been registered in our central underwriting queue. A certified insurance advisor is comparing quotes from 38+ IRDAI approved insurers for you.
@@ -333,21 +329,21 @@ export function generateQuoteAcknowledgementHtml(data: QuoteAcknowledgementData)
     <div class="grid">
       <div class="card">
         <div class="card-title">Applicant Details</div>
-        <div class="row"><span class="lbl">Name:</span><span class="val">${data.userName || 'Customer'}</span></div>
-        <div class="row"><span class="lbl">Mobile Phone:</span><span class="val">+91 ${data.userPhone || '—'}</span></div>
-        <div class="row"><span class="lbl">Email:</span><span class="val">${data.userEmail || '—'}</span></div>
-        <div class="row"><span class="lbl">Submitted On:</span><span class="val">${submitDate}</span></div>
-        <div class="row"><span class="lbl">Quote Valid Until:</span><span class="val">${expiryDate}</span></div>
+        <div class="row"><span class="lbl">Name:</span><span class="val">${escapeHtml(data.userName || 'Customer')}</span></div>
+        <div class="row"><span class="lbl">Mobile Phone:</span><span class="val">+91 ${escapeHtml(data.userPhone || '—')}</span></div>
+        <div class="row"><span class="lbl">Email:</span><span class="val">${escapeHtml(data.userEmail || '—')}</span></div>
+        <div class="row"><span class="lbl">Submitted On:</span><span class="val">${escapeHtml(submitDate)}</span></div>
+        <div class="row"><span class="lbl">Quote Valid Until:</span><span class="val">${escapeHtml(expiryDate)}</span></div>
       </div>
 
       <div class="card">
         <div class="card-title">Coverage & Requirement Specs</div>
-        <div class="row"><span class="lbl">Insurance Type:</span><span class="val" style="text-transform: capitalize;">${data.type} Insurance</span></div>
-        ${data.details?.registrationNumber ? `<div class="row"><span class="lbl">Vehicle Reg No:</span><span class="val">${data.details.registrationNumber}</span></div>` : ''}
-        ${data.details?.make ? `<div class="row"><span class="lbl">Make & Model:</span><span class="val">${data.details.make} ${data.details.model || ''}</span></div>` : ''}
-        ${data.details?.registrationYear ? `<div class="row"><span class="lbl">Reg Year / Fuel:</span><span class="val">${data.details.registrationYear} (${data.details.fuelType || 'Petrol'})</span></div>` : ''}
+        <div class="row"><span class="lbl">Insurance Type:</span><span class="val" style="text-transform: capitalize;">${escapeHtml(data.type)} Insurance</span></div>
+        ${data.details?.registrationNumber ? `<div class="row"><span class="lbl">Vehicle Reg No:</span><span class="val">${escapeHtml(data.details.registrationNumber)}</span></div>` : ''}
+        ${data.details?.make ? `<div class="row"><span class="lbl">Make & Model:</span><span class="val">${escapeHtml(data.details.make)} ${escapeHtml(data.details.model || '')}</span></div>` : ''}
+        ${data.details?.registrationYear ? `<div class="row"><span class="lbl">Reg Year / Fuel:</span><span class="val">${escapeHtml(data.details.registrationYear)} (${escapeHtml(data.details.fuelType || 'Petrol')})</span></div>` : ''}
         ${coverAmount ? `<div class="row"><span class="lbl">Target Sum Insured:</span><span class="val" style="color: #0284C7;">${fmtMoney(coverAmount)}</span></div>` : ''}
-        ${data.details?.ncbPercentage ? `<div class="row"><span class="lbl">NCB Rollover:</span><span class="val" style="color: #059669;">${data.details.ncbPercentage}%</span></div>` : ''}
+        ${data.details?.ncbPercentage ? `<div class="row"><span class="lbl">NCB Rollover:</span><span class="val" style="color: #059669;">${escapeHtml(data.details.ncbPercentage)}%</span></div>` : ''}
       </div>
     </div>
 
@@ -356,10 +352,10 @@ export function generateQuoteAcknowledgementHtml(data: QuoteAcknowledgementData)
       <div style="font-size: 13px; font-weight: 800; color: #047857; margin-bottom: 8px;">
         ✓ Advisor Proposed Quote Available
       </div>
-      <div class="row"><span class="lbl">Recommended Insurer:</span><span class="val">${data.adminResponse.insurer}</span></div>
-      <div class="row"><span class="lbl">Plan Name:</span><span class="val">${data.adminResponse.planName}</span></div>
+      <div class="row"><span class="lbl">Recommended Insurer:</span><span class="val">${escapeHtml(data.adminResponse.insurer)}</span></div>
+      <div class="row"><span class="lbl">Plan Name:</span><span class="val">${escapeHtml(data.adminResponse.planName)}</span></div>
       <div class="row"><span class="lbl">Annual Premium (incl. GST):</span><span class="val" style="color: #047857; font-size: 14px;">${fmtMoney(data.adminResponse.totalPremium)}</span></div>
-      ${data.adminResponse.notes ? `<div class="row"><span class="lbl">Advisor Remarks:</span><span class="val">"${data.adminResponse.notes}"</span></div>` : ''}
+      ${data.adminResponse.notes ? `<div class="row"><span class="lbl">Advisor Remarks:</span><span class="val">"${escapeHtml(data.adminResponse.notes)}"</span></div>` : ''}
     </div>
     ` : ''}
 
