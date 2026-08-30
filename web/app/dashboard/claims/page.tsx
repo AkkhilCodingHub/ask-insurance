@@ -11,7 +11,7 @@ import {
   AlertCircle,
   XCircle,
 } from "lucide-react";
-import { MY_CLAIMS, PLANS } from "@/lib/mock";
+import { MY_CLAIMS } from "@/lib/mock";
 import type { Claim } from "@/lib/mock";
 
 type ClaimStatus = "Approved" | "Processing" | "Rejected" | "Settled";

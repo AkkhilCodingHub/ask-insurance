@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { api } from "@/lib/api";
@@ -34,11 +34,9 @@ export default function BuyPolicyPage() {
 
 function BuyPolicyContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { user, refreshUser } = useAuth();
 
   // Query Params
-  const planId = searchParams.get("planId") || "hdfc-optima";
   const insurer = searchParams.get("insurer") || "HDFC ERGO";
   const priceParam = parseInt(searchParams.get("price") || "8999", 10);
   const idvParam = parseInt(searchParams.get("idv") || "500000", 10);

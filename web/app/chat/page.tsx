@@ -4,21 +4,12 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@/lib/api";
 import {
   Bot,
   Send,
   User,
-  Sparkles,
-  Shield,
   ArrowRight,
-  HelpCircle,
-  Car,
-  HeartPulse,
-  DollarSign,
-  FileCheck,
 } from "lucide-react";
-import { useAuth } from "@/context/auth";
 
 interface Message {
   id: string;
@@ -44,7 +35,6 @@ const INITIAL_MESSAGES: Message[] = [
 ];
 
 export default function ChatPage() {
-  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);

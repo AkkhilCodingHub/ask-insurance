@@ -6,8 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { agentApi } from '@/lib/api';
-import { Colors, BottomTabInset } from '@/constants/theme';
-import { useAgent } from '@/context/agent';
+import { BottomTabInset } from '@/constants/theme';
 
 type RenewalStatus = 'pending' | 'contacted' | 'closed' | 'lost';
 

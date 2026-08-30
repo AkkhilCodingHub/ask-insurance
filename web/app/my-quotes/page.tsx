@@ -1,27 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@/lib/api";
 import {
   FileText,
   Car,
   HeartPulse,
   Shield,
-  Bike,
-  Plane,
   Download,
-  Share2,
   Trash2,
   ArrowRight,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   Plus,
-  Layers,
 } from "lucide-react";
 
 interface SavedQuote {

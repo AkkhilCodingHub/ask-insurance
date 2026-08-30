@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { Shield, Lock, FileText, CheckCircle2, ChevronRight, Mail, Phone, MapPin, Download } from "lucide-react";
+import { Lock, Download } from "lucide-react";
 
 const SECTIONS = [
   {

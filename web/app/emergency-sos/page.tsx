@@ -13,10 +13,7 @@ import {
   BatteryCharging,
   Fuel,
   Key,
-  Shield,
-  MapPin,
   CheckCircle2,
-  Navigation,
 } from "lucide-react";
 
 export default function EmergencySosPage() {

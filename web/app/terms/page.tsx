@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { FileText, Shield, Scale, Download, AlertCircle, CheckCircle2, HelpCircle } from "lucide-react";
+import { Scale, Download } from "lucide-react";
 
 const TERMS_SECTIONS = [
   {

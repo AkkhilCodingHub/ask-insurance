@@ -8,19 +8,12 @@ import { api } from "@/lib/api";
 import {
   ShieldCheck,
   CheckCircle2,
-  Lock,
   Upload,
-  Camera,
-  FileCheck,
-  AlertCircle,
   ArrowRight,
   Fingerprint,
 } from "lucide-react";
-import { useAuth } from "@/context/auth";
 
 export default function KycPage() {
-  const { user } = useAuth();
-
   const [pan, setPan] = useState("");
   const [aadhaar, setAadhaar] = useState("");
   const [dob, setDob] = useState("");

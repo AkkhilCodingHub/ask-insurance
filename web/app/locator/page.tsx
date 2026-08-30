@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@/lib/api";
 import {
   MapPin,
   Wrench,
@@ -12,11 +11,8 @@ import {
   Phone,
   Navigation,
   Search,
-  Filter,
   CheckCircle2,
-  ExternalLink,
   Shield,
-  Clock,
 } from "lucide-react";
 
 interface LocatorItem {

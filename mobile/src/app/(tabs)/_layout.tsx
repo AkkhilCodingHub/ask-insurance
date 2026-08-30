@@ -6,8 +6,6 @@ import { Animated } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/auth';
-import { Colors } from '@/constants/theme';
-
 import { useLanguage, useThemeColors } from '@/context/agent';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];

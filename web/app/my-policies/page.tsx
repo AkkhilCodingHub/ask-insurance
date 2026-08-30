@@ -9,21 +9,12 @@ import {
   Shield,
   Car,
   HeartPulse,
-  Bike,
-  Plane,
   Download,
-  RotateCcw,
-  AlertTriangle,
   CheckCircle2,
-  FileText,
-  Clock,
   Plus,
-  ArrowRight,
-  ExternalLink,
   Edit3,
   X,
 } from "lucide-react";
-import { useAuth } from "@/context/auth";
 
 interface Policy {
   id: string;
@@ -65,7 +56,6 @@ const FALLBACK_POLICIES: Policy[] = [
 ];
 
 export default function MyPoliciesPage() {
-  const { user } = useAuth();
   const [policies, setPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
   const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
   const [loading, setLoading] = useState(true);
@@ -200,7 +190,6 @@ export default function MyPoliciesPage() {
             {filtered.map((pol) => {
               const isMotor = pol.type?.toLowerCase().includes("motor") || Boolean(pol.registrationNumber);
               const isHealth = pol.type?.toLowerCase().includes("health");
-              const isLife = pol.type?.toLowerCase().includes("life");
               const IconComponent = isMotor ? Car : isHealth ? HeartPulse : Shield;
               const isActive = pol.status === "active";
 

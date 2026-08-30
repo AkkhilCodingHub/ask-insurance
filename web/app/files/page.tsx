@@ -4,19 +4,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@/lib/api";
 import {
-  Folder,
   FileText,
   Upload,
   Download,
   Trash2,
-  Share2,
-  Shield,
-  Eye,
-  Plus,
-  CheckCircle2,
-  Lock,
 } from "lucide-react";
 
 interface LockerFile {
