@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Shield } from "lucide-react";
 
-
 const footerLinks = [
   {
     title: "Insurance Products",

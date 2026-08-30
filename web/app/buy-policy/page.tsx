@@ -153,9 +153,6 @@ function BuyPolicyContent() {
       const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
         ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
         : Date.now() % 1000000;
-      const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
-        : String(Date.now()).slice(-6);
       const policyObj = buyRes?.policy || buyRes?.data || {
         id: `pol_${Date.now()}`,
         policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
@@ -177,9 +174,6 @@ function BuyPolicyContent() {
       const randomDigits = typeof window !== "undefined" && window.crypto?.getRandomValues
         ? 100000 + (window.crypto.getRandomValues(new Uint32Array(1))[0] % 900000)
         : Date.now() % 1000000;
-      const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
-        : String(Date.now()).slice(-6);
       const polObj = {
         id: `pol_${Date.now()}`,
         policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
