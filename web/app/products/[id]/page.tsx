@@ -4,8 +4,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getProductById } from "@/lib/products";
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = getProductById(params.id);
+export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const product = getProductById(id);
   if (!product) return notFound();
 
   const Icon = product.icon;
