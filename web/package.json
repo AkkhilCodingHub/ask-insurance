@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint"
   },
   "dependencies": {
     "@tailwindcss/oxide-win32-x64-msvc": "^4.2.2",
@@ -22,9 +22,9 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^10",
-    "eslint-config-next": "16.3.1",
+    "eslint": "^9.21.0",
+    "eslint-config-next": "16.3.3",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7"
+    "typescript": "^5.7.3"
   }
 }
