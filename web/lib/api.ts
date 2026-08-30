@@ -66,6 +66,8 @@ async function request<T = any>(
 // ── API Modules ───────────────────────────────────────────────────────────────
 
 export const api = {
+  baseUrl: API_BASE_URL,
+
   // ── Auth ──
   auth: {
     async sendOtp(phone: string) {
@@ -80,9 +82,18 @@ export const api = {
         body: JSON.stringify({ phone, otp }),
       });
     },
-    async completeProfile(data: { name: string; email?: string; dob?: string }) {
+    async completeProfile(data: { name: string; email?: string; dob?: string; gender?: string; address?: string; pincode?: string }) {
       return request("/auth/complete-profile", {
         method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    async getMe() {
+      return request("/users/me");
+    },
+    async updateProfile(data: any) {
+      return request("/users/me", {
+        method: "PATCH",
         body: JSON.stringify(data),
       });
     },
@@ -105,6 +116,12 @@ export const api = {
         body: JSON.stringify(quoteInput),
       });
     },
+    async getLiveQuotes(payload: any) {
+      return request("/policies/live-quotes", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
     async getMyQuotes() {
       return request("/quotes/my-quotes");
     },
@@ -114,32 +131,65 @@ export const api = {
         body: JSON.stringify(quoteData),
       });
     },
+    async requestQuote(quoteData: any) {
+      return request("/quotes/request", {
+        method: "POST",
+        body: JSON.stringify(quoteData),
+      });
+    },
   },
 
   // ── Policies ──
   policies: {
     async getMyPolicies() {
-      return request("/policies/my-policies");
+      const res = await request("/policies");
+      return res?.policies || res?.data || (Array.isArray(res) ? res : []);
     },
     async getById(id: string) {
       return request(`/policies/${id}`);
     },
     async buy(policyData: {
-      insurer: string;
-      planTitle: string;
+      type: string;
+      provider: string;
+      sumInsured: number;
       premium: number;
-      proposer: any;
-      nominee: any;
-      paymentId?: string;
+      registrationNumber?: string;
+      durationDays?: number;
+      panNumber?: string;
+      aadhaarNumber?: string;
+      nomineeName?: string;
+      nomineeRelation?: string;
     }) {
-      return request("/policies/buy", {
+      return request("/policies", {
         method: "POST",
         body: JSON.stringify(policyData),
       });
     },
-    async renew(policyNumber: string) {
-      return request(`/policies/renew/${policyNumber}`, {
+    async renew(id: string, durationDays: number = 365) {
+      return request(`/policies/${id}/renew`, {
+        method: "PUT",
+        body: JSON.stringify({ durationDays }),
+      });
+    },
+    async cancel(id: string) {
+      return request(`/policies/${id}/cancel`, {
+        method: "PUT",
+      });
+    },
+    getCertificateUrl(id: string): string {
+      return `${API_BASE_URL}/policies/${id}/certificate`;
+    },
+  },
+
+  // ── Endorsements ──
+  endorsements: {
+    async getByPolicy(policyId: string) {
+      return request(`/endorsements/policy/${policyId}`);
+    },
+    async create(data: { policyId: string; category: string; requestedChanges: string; documentUrl?: string }) {
+      return request("/endorsements", {
         method: "POST",
+        body: JSON.stringify(data),
       });
     },
   },
@@ -169,14 +219,16 @@ export const api = {
   // ── Claims ──
   claims: {
     async getMyClaims() {
-      return request("/claims");
+      const res = await request("/claims");
+      return res?.claims || res?.data || (Array.isArray(res) ? res : []);
     },
     async create(claimData: {
+      policyId?: string;
       policyNumber: string;
-      claimType: string;
+      type: string;
       incidentDate: string;
       description: string;
-      estimatedAmount?: number;
+      amount?: number;
       hospitalOrGarage?: string;
       location?: string;
     }) {
@@ -190,8 +242,24 @@ export const api = {
     },
   },
 
-  // ── Central KYC (CKYC) ──
   kyc: {
+    async getDigiLockerDetails() {
+      return request("/kyc/digilocker-details");
+    },
+    async verifyInstant(details: {
+      name: string;
+      panNumber: string;
+      aadhaarNumber: string;
+      dob?: string;
+      gender?: string;
+      address?: string;
+      pincode?: string;
+    }) {
+      return request("/kyc/verify-instant", {
+        method: "POST",
+        body: JSON.stringify(details),
+      });
+    },
     async getStatus() {
       return request("/kyc/status");
     },
@@ -211,6 +279,12 @@ export const api = {
       return request("/kyc/submit", {
         method: "POST",
         body: JSON.stringify(details),
+      });
+    },
+    async uploadDocument(formData: FormData) {
+      return request("/kyc/upload", {
+        method: "POST",
+        body: formData,
       });
     },
   },

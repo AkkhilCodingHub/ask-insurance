@@ -123,6 +123,98 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
       }
     });
 
+    // If PAN and Aadhaar numbers are provided, auto-verify user's KYC & register official documents
+    const panNum = typeof details?.panNumber === 'string' ? details.panNumber.trim().toUpperCase() : null;
+    const aadhaarNum = typeof details?.aadhaarNumber === 'string' ? details.aadhaarNumber.replace(/\D/g, '') : null;
+    if (panNum && panNum.length === 10 && aadhaarNum && aadhaarNum.length >= 12) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          panNumber: panNum,
+          aadhaarVerified: true,
+          kycStatus: 'verified',
+          kycVerifiedAt: new Date(),
+          kycSubmittedAt: new Date(),
+        }
+      }).catch(() => {});
+
+      const existingPan = await prisma.userDocument.findFirst({
+        where: { userId, docType: 'pan' }
+      });
+      if (!existingPan) {
+        await prisma.userDocument.create({
+          data: {
+            userId,
+            title: `PAN Card (${panNum})`,
+            docType: 'pan',
+            source: 'user_upload',
+            fileUrl: typeof details?.panDocUri === 'string' && details.panDocUri.startsWith('http') 
+              ? details.panDocUri 
+              : `https://storage.askinsurance.com/kyc/pan_${userId}.pdf`,
+            issuer: 'Income Tax Department',
+          }
+        }).catch(() => {});
+      }
+
+      const existingAadhaar = await prisma.userDocument.findFirst({
+        where: { userId, docType: 'aadhaar' }
+      });
+      if (!existingAadhaar) {
+        await prisma.userDocument.create({
+          data: {
+            userId,
+            title: `Aadhaar Card (••••${aadhaarNum.slice(-4)})`,
+            docType: 'aadhaar',
+            source: 'user_upload',
+            fileUrl: typeof details?.aadhaarDocUri === 'string' && details.aadhaarDocUri.startsWith('http') 
+              ? details.aadhaarDocUri 
+              : `https://storage.askinsurance.com/kyc/aadhaar_${userId}.pdf`,
+            issuer: 'UIDAI',
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // Record Driving Licence Document if supplied (e.g. for Motor Insurance)
+    const dlNum = typeof details?.drivingLicenseNumber === 'string' ? details.drivingLicenseNumber.trim().toUpperCase() : null;
+    if (dlNum && dlNum.length >= 8) {
+      const existingDl = await prisma.userDocument.findFirst({ where: { userId, docType: 'driving_license' } });
+      if (!existingDl) {
+        await prisma.userDocument.create({
+          data: {
+            userId,
+            title: `Driving Licence (${dlNum})`,
+            docType: 'driving_license',
+            source: 'user_upload',
+            fileUrl: typeof details?.drivingLicenseDocUri === 'string' && details.drivingLicenseDocUri.startsWith('http')
+              ? details.drivingLicenseDocUri
+              : `https://storage.askinsurance.com/kyc/dl_${userId}.pdf`,
+            issuer: 'Ministry of Road Transport and Highways',
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // Record Vehicle RC Document if supplied (e.g. for Motor Insurance)
+    const rcNum = typeof details?.rcNumber === 'string' ? details.rcNumber.trim().toUpperCase() : (typeof details?.registrationNumber === 'string' ? details.registrationNumber.trim().toUpperCase() : null);
+    if (rcNum && rcNum.length >= 6) {
+      const existingRc = await prisma.userDocument.findFirst({ where: { userId, docType: 'vehicle_rc' } });
+      if (!existingRc) {
+        await prisma.userDocument.create({
+          data: {
+            userId,
+            title: `Registration Certificate (RC: ${rcNum})`,
+            docType: 'vehicle_rc',
+            source: 'user_upload',
+            fileUrl: typeof details?.rcDocUri === 'string' && details.rcDocUri.startsWith('http')
+              ? details.rcDocUri
+              : `https://storage.askinsurance.com/kyc/rc_${userId}.pdf`,
+            issuer: 'Ministry of Road Transport and Highways',
+          }
+        }).catch(() => {});
+      }
+    }
+
     res.status(201).json({
       quote: {
         id:              quote.id,

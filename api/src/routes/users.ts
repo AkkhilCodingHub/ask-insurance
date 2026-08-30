@@ -35,6 +35,13 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
         state: true,
         pincode: true,
         kycStatus: true,
+        aadhaarVerified: true,
+        panNumber: true,
+        kycDocType: true,
+        kycDocUrl: true,
+        kycVerifiedAt: true,
+        kycSubmittedAt: true,
+        kycRejectionReason: true,
         createdAt: true
       }
     });
@@ -62,6 +69,13 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
           state: true,
           pincode: true,
           kycStatus: true,
+          aadhaarVerified: true,
+          panNumber: true,
+          kycDocType: true,
+          kycDocUrl: true,
+          kycVerifiedAt: true,
+          kycSubmittedAt: true,
+          kycRejectionReason: true,
           createdAt: true
         }
       });
@@ -75,7 +89,7 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
   }
 });
 
-router.put('/profile', authenticate, async (req: Request, res: Response): Promise<void> => {
+const updateProfileHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId!;
     const data = updateProfileSchema.parse(req.body);
@@ -99,7 +113,16 @@ router.put('/profile', authenticate, async (req: Request, res: Response): Promis
         address: true,
         city: true,
         state: true,
-        pincode: true
+        pincode: true,
+        kycStatus: true,
+        aadhaarVerified: true,
+        panNumber: true,
+        kycDocType: true,
+        kycDocUrl: true,
+        kycVerifiedAt: true,
+        kycSubmittedAt: true,
+        kycRejectionReason: true,
+        createdAt: true,
       }
     });
 
@@ -112,7 +135,10 @@ router.put('/profile', authenticate, async (req: Request, res: Response): Promis
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
+
+router.put('/profile', authenticate, updateProfileHandler);
+router.patch('/profile', authenticate, updateProfileHandler);
 
 router.get('/dashboard', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {

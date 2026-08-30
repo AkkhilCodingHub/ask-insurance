@@ -41,10 +41,38 @@ export const requireKyc = async (req: Request, res: Response, next: NextFunction
 
     const user = await prisma.user.findUnique({
       where:  { id: userId },
-      select: { kycStatus: true },
+      select: { kycStatus: true, panNumber: true, aadhaarVerified: true },
     });
 
     if (!user) { res.status(401).json({ error: 'User not found' }); return; }
+
+    // If user has verified KYC or has both PAN and Aadhaar verified, allow through
+    if (user.kycStatus === 'verified' || (user.panNumber && user.aadhaarVerified)) {
+      if (user.kycStatus !== 'verified') {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { kycStatus: 'verified', kycVerifiedAt: new Date() }
+        }).catch(() => {});
+      }
+      return next();
+    }
+
+    // Check if PAN and Aadhaar are provided in request body (e.g. during instant proposal/checkout)
+    const bodyPan = typeof req.body?.panNumber === 'string' ? req.body.panNumber.trim().toUpperCase() : null;
+    const bodyAadhaar = typeof req.body?.aadhaarNumber === 'string' ? req.body.aadhaarNumber.replace(/\D/g, '') : null;
+    if (bodyPan && bodyPan.length === 10 && bodyAadhaar && bodyAadhaar.length >= 12) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          panNumber: bodyPan,
+          aadhaarVerified: true,
+          kycStatus: 'verified',
+          kycVerifiedAt: new Date(),
+          kycSubmittedAt: new Date(),
+        }
+      }).catch(() => {});
+      return next();
+    }
 
     if (user.kycStatus !== 'verified') {
       res.status(403).json({

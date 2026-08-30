@@ -8,13 +8,17 @@ export interface AuthUser {
   phone: string;
   email?: string;
   dob?: string;
-  gender?: string;
+  gender?: "male" | "female" | "other" | string;
   address?: string;
   city?: string;
   state?: string;
   pincode?: string;
   customerCode?: string;
   kycStatus?: string;
+  panNumber?: string;
+  aadhaarNumber?: string;
+  drivingLicenseNumber?: string;
+  rcNumber?: string;
 }
 
 interface AuthContextValue {
@@ -24,6 +28,7 @@ interface AuthContextValue {
   sendOTP(phone: string): Promise<void>;
   verifyOTP(otp: string): Promise<{ isNewUser: boolean }>;
   completeProfile(name: string, dob: string): Promise<void>;
+  refreshUser(): Promise<void>;
   logout(): void;
 }
 
@@ -103,6 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
   }
 
+  async function refreshUser(): Promise<void> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed: AuthUser = JSON.parse(raw);
+        setUser(parsed);
+      }
+    } catch {}
+  }
+
   function logout() {
     setUser(null);
     setPendingPhone(null);
@@ -111,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, pendingPhone, sendOTP, verifyOTP, completeProfile, logout }}
+      value={{ user, loading, pendingPhone, sendOTP, verifyOTP, completeProfile, refreshUser, logout }}
     >
       {children}
     </AuthContext.Provider>
