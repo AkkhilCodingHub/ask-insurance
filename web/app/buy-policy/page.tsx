@@ -115,10 +115,15 @@ function BuyPolicyContent() {
 
     setVerifying(true);
     setErrorMessage("");
+    const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
+      ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
+      : String(Date.now()).slice(-6);
+
     try {
       // 1. Sync instant KYC to backend DB
       const cleanPan = panNumber.trim().toUpperCase() || "ABCDE1234F";
       const cleanAadhaar = aadhaarNumber.replace(/\D/g, "") || "999988887777";
+      const cleanPhone = phone.replace(/[^0-9]/g, "");
 
       await api.kyc.verifyInstant({
         name: fullName.trim() || user?.name || "Valued Customer",
@@ -130,10 +135,10 @@ function BuyPolicyContent() {
         pincode: pincode.trim(),
       }).catch(() => {});
 
-      // 2. Buy policy in backend database
+      // 2. Buy policy in backend database    
       const buyRes = await api.policies.buy({
-        type: isMotor ? "motor" : typeParam,
         provider: insurer,
+        type: isMotor ? "motor" : typeParam,
         sumInsured: idvParam || 500000,
         premium: priceParam,
         registrationNumber: isMotor ? vehicleRcNumber.trim().toUpperCase() : undefined,
@@ -144,9 +149,6 @@ function BuyPolicyContent() {
         nomineeRelation,
       });
 
-      const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
-        : String(Date.now()).slice(-6);
       const policyObj = buyRes?.policy || buyRes?.data || {
         id: `pol_${Date.now()}`,
         policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
@@ -165,9 +167,6 @@ function BuyPolicyContent() {
     } catch (err: any) {
       console.warn("[BuyPolicy] API payment fallback:", err);
       // Fallback
-      const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
-        : String(Date.now()).slice(-6);
       const polObj = {
         id: `pol_${Date.now()}`,
         policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,

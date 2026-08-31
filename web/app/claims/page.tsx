@@ -84,6 +84,9 @@ function ClaimsContent() {
   const handleFileClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const randomSuffix = typeof window !== "undefined" && window.crypto?.randomUUID
+      ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 5).toUpperCase()
+      : String(Date.now()).slice(-5);
     try {
       await api.claims.create({
         policyNumber: policyNum.trim(),
@@ -93,9 +96,6 @@ function ClaimsContent() {
         hospitalOrGarage: locationOrGarage,
         description: description.trim(),
       });
-      const randomSuffix = typeof window !== "undefined" && window.crypto?.randomUUID
-        ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 5).toUpperCase()
-        : String(Date.now()).slice(-5);
       const newClm: UserClaim = {
         id: `clm_${Date.now()}`,
         claimNumber: `CLM-${new Date().getFullYear()}-${randomSuffix}`,

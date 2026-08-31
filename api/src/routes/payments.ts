@@ -6,6 +6,7 @@ import { authenticate, requireKyc } from '../middleware/auth';
 import { createPaymentLink } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
+import { sanitizeLog } from '../lib/sanitize';
 
 const router = Router();
 
@@ -157,11 +158,11 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
       const amountPaise: number | undefined =
         event.payload?.payment?.entity?.amount;
 
-      console.log(`[razorpay webhook] policyId   : ${policyId ?? 'NOT FOUND IN NOTES'}`);
-      console.log(`[razorpay webhook] paymentId  : ${paymentId ?? 'n/a'}`);
-      console.log(`[razorpay webhook] amountPaise: ${amountPaise ?? 'n/a'} (₹${amountPaise ? amountPaise / 100 : 'n/a'})`);
-      console.log(`[razorpay webhook] notes (payment_link): ${JSON.stringify(event.payload?.payment_link?.entity?.notes)}`);
-      console.log(`[razorpay webhook] notes (payment)     : ${JSON.stringify(event.payload?.payment?.entity?.notes)}`);
+      console.log(`[razorpay webhook] policyId   : ${sanitizeLog(policyId ?? 'NOT FOUND IN NOTES')}`);
+      console.log(`[razorpay webhook] paymentId  : ${sanitizeLog(paymentId ?? 'n/a')}`);
+      console.log(`[razorpay webhook] amountPaise: ${sanitizeLog(amountPaise ?? 'n/a')} (₹${amountPaise ? Number(amountPaise) / 100 : 'n/a'})`);
+      console.log(`[razorpay webhook] notes (payment_link): ${sanitizeLog(JSON.stringify(event.payload?.payment_link?.entity?.notes))}`);
+      console.log(`[razorpay webhook] notes (payment)     : ${sanitizeLog(JSON.stringify(event.payload?.payment?.entity?.notes))}`);
 
       if (!policyId) {
         console.warn('[razorpay webhook] SKIPPED — policyId missing from notes');
@@ -174,22 +175,22 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
         include: { user: { select: { pushToken: true } } }
       });
 
-      console.log(`[razorpay webhook] policy found: ${policy ? `YES (status=${policy.status}, paymentStatus=${policy.paymentStatus})` : 'NO'}`);
+      console.log(`[razorpay webhook] policy found: ${policy ? `YES (status=${sanitizeLog(policy.status)}, paymentStatus=${sanitizeLog(policy.paymentStatus)})` : 'NO'}`);
 
       if (!policy) {
-        console.warn(`[razorpay webhook] SKIPPED — policy ${policyId} not found in DB`);
+        console.warn(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} not found in DB`);
         res.json({ ok: true });
         return;
       }
 
       if (policy.paymentStatus === 'paid') {
-        console.log(`[razorpay webhook] SKIPPED — policy ${policyId} already paid (idempotency)`);
+        console.log(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} already paid (idempotency)`);
         res.json({ ok: true });
         return;
       }
 
       // ── Transaction ───────────────────────────────────────────────────────
-      console.log(`[razorpay webhook] running activation transaction for policy ${policyId}…`);
+      console.log(`[razorpay webhook] running activation transaction for policy ${sanitizeLog(policyId)}…`);
       await prisma.$transaction(async (tx) => {
         await tx.policy.update({
           where: { id: policyId },
@@ -214,7 +215,7 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
           await tx.quote.update({
             where: { id: policy.quoteId },
             data:  { status: 'converted' }
-          }).catch((e) => console.warn(`[razorpay webhook]   ⚠ quote update failed (non-fatal):`, e));
+          }).catch((e) => console.warn(`[razorpay webhook]   ⚠ quote update failed (non-fatal):`, sanitizeLog(e?.message || e)));
           console.log(`[razorpay webhook]   ✓ quote marked converted`);
         }
 
@@ -232,7 +233,6 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
         await calculateAndApplyBrokerage(tx, policyId);
       });
 
-      console.log(`[razorpay webhook] policy ${policyId} fully activated ✓`);
 
       // ── Push notification ─────────────────────────────────────────────────
       const pushToken = policy.user?.pushToken;

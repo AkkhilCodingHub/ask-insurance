@@ -11,6 +11,7 @@ import { getAuth } from 'firebase-admin/auth';
 const router = Router();
 
 import { generateCustomerId } from '../lib/idGenerator';
+import { sanitizeLog } from '../lib/sanitize';
 
 const cleanPhone = (val: string) => val.replace(/\D/g, '').slice(-10);
 
@@ -54,10 +55,10 @@ export const autoAssignAgentToUser = async (userId: string) => {
         where: { id: userId },
         data: { agentId: agent.id }
       });
-      console.log(`[AutoAssign] Assigned agent ${agent.name} (${agent.id}) to user ${userId}`);
+      console.log(`[AutoAssign] Assigned agent ${sanitizeLog(agent.name)} (${sanitizeLog(agent.id)}) to user ${sanitizeLog(userId)}`);
     }
   } catch (err) {
-    console.error('[AutoAssign] Error:', err);
+    console.error('[AutoAssign] Error:', sanitizeLog(err instanceof Error ? err.message : String(err)));
   }
 };
 
@@ -91,16 +92,27 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     }
 
     const otp = await createOtpChallenge(phone, user.id);
-    console.log(`OTP for ${phone} (Customer ID: ${user.customerCode}): ${otp}`);
+    console.log(`OTP generated for ${sanitizeLog(phone)} (Customer ID: ${sanitizeLog(user.customerCode)})`);
 
-    res.json({ success: true, message: 'OTP sent successfully', isNewUser, customerCode: user.customerCode, otp });
+    const responsePayload: Record<string, any> = {
+      success: true,
+      message: 'OTP sent successfully',
+      isNewUser,
+      customerCode: user.customerCode
+    };
+
+    if (process.env.NODE_ENV === 'test') {
+      responsePayload.otp = otp;
+    }
+
+    res.json(responsePayload);
     return;
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
-    console.error(error);
+    console.error('[send-otp]', sanitizeLog(error instanceof Error ? error.message : String(error)));
     res.status(500).json({ error: 'Internal server error' });
     return;
   }
@@ -128,40 +140,21 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    let user: any = null;
-    try {
-      user = await Promise.race([
-        prisma.user.findUnique({ where: { phone } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Prisma timeout')), 1000))
-      ]);
-    } catch {
-      // ignore
-    }
+    let user = await prisma.user.findUnique({ where: { phone } });
 
     if (!user) {
       const customerCode = await generateCustomerId();
-      try {
-        user = await Promise.race([
-          prisma.user.create({
-            data: {
-              phone,
-              customerCode,
-            }
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Prisma timeout')), 1000))
-        ]);
-      } catch {
-        user = {
-          id: `usr_${phone}`,
+      user = await prisma.user.create({
+        data: {
           phone,
           customerCode,
-          name: null,
-          email: null,
-          role: 'user',
-          kycStatus: 'PENDING',
-          aadhaarVerified: false
-        };
-      }
+        }
+      });
+    }
+
+    if (!user) {
+      res.status(500).json({ error: 'Failed to initialize user profile' });
+      return;
     }
 
     const token        = createAuthToken({ userId: user.id, phone: user.phone });
@@ -295,24 +288,16 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    let user: any = null;
-    try {
-      user = await Promise.race([
-        prisma.user.findUnique({ where: { phone } }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Prisma timeout')), 1000))
-      ]);
-    } catch {
-      user = null;
-    }
-
+    let user = await prisma.user.findUnique({ where: { phone } });
     const isNewUser = !user;
     if (!user) {
       const customerCode = await generateCustomerId();
-      try {
-        user = await prisma.user.create({ data: { phone, customerCode } });
-      } catch {
-        user = { id: `usr_${phone}`, phone, customerCode, name: null, email: null };
-      }
+      user = await prisma.user.create({ data: { phone, customerCode } });
+    }
+
+    if (!user) {
+      res.status(500).json({ error: 'Failed to initialize user profile' });
+      return;
     }
 
     if (user.id) {
@@ -330,7 +315,7 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
       isNewUser: isNewUser || !Boolean(user.name),
     });
   } catch (error) {
-    console.error('[verify-firebase]', error);
+    console.error('[verify-firebase]', sanitizeLog(error instanceof Error ? error.message : String(error)));
     res.status(401).json({ error: 'Invalid or expired Firebase token' });
   }
 });

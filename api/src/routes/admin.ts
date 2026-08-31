@@ -49,18 +49,24 @@ const adminAuthenticate = async (req: Request, res: Response, next: () => void):
 
 import { generateAgentId } from '../lib/idGenerator';
 
-// ── Auth ───────────────────────────────────────────────────────────────────────
+const adminLoginSchema = z.object({
+  identifier: z.string().min(1, 'Email or POSP ID is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
 router.post('/auth/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    const rawIdentifier = String(req.body.identifier || req.body.email || '').trim();
-    const password = String(req.body.password || '').trim();
+    const rawIdentifier = (req.body.identifier || req.body.email || '').toString().trim();
+    const rawPassword = (req.body.password || '').toString().trim();
 
-    if (!rawIdentifier || !password) {
-      res.status(400).json({ error: 'Email/POSP ID and password are required' });
+    const parsed = adminLoginSchema.safeParse({ identifier: rawIdentifier, password: rawPassword });
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message || 'Email/POSP ID and password are required' });
       return;
     }
+    const { identifier, password } = parsed.data;
 
-    const uppercaseInput = rawIdentifier.toUpperCase();
+    const uppercaseInput = identifier.toUpperCase();
     let admin = await prisma.admin.findFirst({
       where: {
         OR: [
