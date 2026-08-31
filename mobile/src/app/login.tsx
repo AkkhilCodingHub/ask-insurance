@@ -41,6 +41,8 @@ export default function LoginScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const isValidCustomer = phone.length === 10;
+  const cleanPhone = phone.replace(/\D/g, '').slice(0, 10);
+  const isValidCustomer = cleanPhone.length === 10 && /^[6-9]\d{9}$/.test(cleanPhone);
   const isValidAgent    = email.trim().length > 0 && password.trim().length >= 6;
 
   const handleCustomerContinue = async () => {
@@ -50,6 +52,8 @@ export default function LoginScreen() {
     try {
       sendOTP(phone);
       router.push({ pathname: '/otp', params: { phone } } as any);
+      await sendOTP(cleanPhone);
+      router.push({ pathname: '/otp', params: { phone: cleanPhone } } as any);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not send OTP. Please try again.';
       alert({ type: 'error', title: 'Error', message: msg });
@@ -127,6 +131,8 @@ export default function LoginScreen() {
 
 
               <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={[af.inputRow, af.fieldGap]}>
+              <Text style={s.fieldLabel}>MOBILE NUMBER</Text>
+              <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={[af.inputRow, { marginBottom: 8 }]}>
                 <View style={af.prefix}>
                   <Text style={s.flag}>🇮🇳</Text>
                   <Text style={s.prefixText}>+91</Text>
@@ -137,6 +143,7 @@ export default function LoginScreen() {
                   value={phone}
                   onChangeText={t => setPhone(t.replace(/\D/g, '').slice(0, 10))}
                   placeholder="0000 00000 0"
+                  placeholder="98765 43210"
                   placeholderTextColor={Colors.textLight}
                   keyboardType="phone-pad"
                   maxLength={10}
@@ -145,11 +152,16 @@ export default function LoginScreen() {
                   autoFocus
                 />
                 {phone.length === 10 && (
+                {isValidCustomer && (
                   <View style={s.checkCircle}>
                     <Icon name="checkmark" size={14} color={Colors.white} />
                   </View>
                 )}
               </TouchableOpacity>
+
+              <Text style={s.helperText}>
+                Enter your 10-digit Indian mobile number to receive a secure OTP
+              </Text>
 
               <TouchableOpacity
                 style={[s.continueBtn, !isValidCustomer && s.continueBtnDisabled]}
@@ -166,12 +178,23 @@ export default function LoginScreen() {
               <Text style={s.consent}>
                 By continuing you agree to our{' '}
                 <Text style={s.consentLink}>Terms of Service</Text>
+                <Text style={s.consentLink} onPress={() => router.push('/terms' as any)}>Terms of Service</Text>
                 {' '}&{' '}
                 <Text style={s.consentLink}>Privacy Policy</Text>
+                <Text style={s.consentLink} onPress={() => router.push('/privacy' as any)}>Privacy Policy</Text>
               </Text>
+
+              {/* New User Register Link */}
+              <View style={s.registerPromptRow}>
+                <Text style={s.registerPromptText}>New to ASK Insurance? </Text>
+                <TouchableOpacity onPress={() => router.push('/register' as any)}>
+                  <Text style={s.registerPromptLink}>Create Account →</Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8 }}
+                style={{ marginTop: 12, alignItems: 'center', paddingVertical: 6 }}
                 onPress={() => router.push('/agent-login' as any)}
                 activeOpacity={0.8}
               >
@@ -364,6 +387,36 @@ const s = StyleSheet.create({
 
   consent:     { fontSize: 12, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
   consentLink: { color: Colors.primary, fontWeight: '600' },
+
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginBottom: 16,
+    lineHeight: 16,
+  },
+  registerPromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+  },
+  registerPromptText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    fontWeight: '500',
+  },
+  registerPromptLink: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
 
   eyeBtn: { paddingHorizontal: 14, paddingVertical: 16 },
 

@@ -224,6 +224,16 @@ export default function HomeTab() {
               <View style={s.logoMark}>
                 <Text style={s.logoMarkText}>ASK</Text>
               </View>
+              <TouchableOpacity
+                style={s.askLogoBtn}
+                onPress={() => router.push('/(tabs)/chat' as any)}
+                activeOpacity={0.8}
+              >
+                <View style={s.askLogoInner}>
+                  <Icon name="sparkles" size={12} color="#FBBF24" />
+                  <Text style={s.logoMarkText}>ASK AI</Text>
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -232,6 +242,35 @@ export default function HomeTab() {
             <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
               <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                 <Icon name="shield-checkmark-outline" size={14} color={Colors.white} />
+          {/* Conditional Hero: New User / Guest vs Existing Portfolio */}
+          {activePolicies === 0 ? (
+            <View style={s.newUserHeroWrap}>
+              <Text style={s.newUserHeroTitle}>Protect What Matters Most</Text>
+              <Text style={s.newUserHeroSub}>Compare 38+ IRDAI insurers with instant cashless claims</Text>
+
+              {/* Value USPs Chips */}
+              <View style={s.statsRow}>
+                <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                  <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Icon name="business-outline" size={14} color={Colors.white} />
+                  </View>
+                  <Text style={[s.statNum, { color: Colors.white }]}>38+</Text>
+                  <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Partner{'\n'}Insurers</Text>
+                </View>
+                <View style={[s.statChip, s.statChipMid, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                  <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Icon name="medkit-outline" size={14} color="#6EE7B7" />
+                  </View>
+                  <Text style={[s.statNum, { color: '#6EE7B7' }]}>3,800+</Text>
+                  <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Cashless{'\n'}Network</Text>
+                </View>
+                <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                  <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Icon name="flash-outline" size={14} color="#FDE047" />
+                  </View>
+                  <Text style={[s.statNum, { color: '#FDE047' }]}>2 Min</Text>
+                  <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Instant{'\n'}Cover</Text>
+                </View>
               </View>
               <Text style={[s.statNum, { color: Colors.white }]}>{activePolicies}</Text>
               <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Active{'\n'}Policies</Text>
@@ -239,6 +278,15 @@ export default function HomeTab() {
             <View style={[s.statChip, s.statChipMid, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
               <View style={[s.statChipIcon, { backgroundColor: openClaims > 0 ? Colors.warning + '30' : 'rgba(255,255,255,0.2)' }]}>
                 <Icon name="document-text-outline" size={14} color={openClaims > 0 ? '#FBBF24' : Colors.white} />
+          ) : (
+            /* Existing User Portfolio Stat chips */
+            <View style={s.statsRow}>
+              <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Icon name="shield-checkmark-outline" size={14} color={Colors.white} />
+                </View>
+                <Text style={[s.statNum, { color: Colors.white }]}>{activePolicies}</Text>
+                <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Active{'\n'}Policies</Text>
               </View>
               <Text style={[s.statNum, { color: openClaims > 0 ? '#FBBF24' : Colors.white }]}>{openClaims}</Text>
               <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Open{'\n'}Claims</Text>
@@ -246,11 +294,25 @@ export default function HomeTab() {
             <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
               <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                 <Icon name="business-outline" size={14} color={Colors.white} />
+              <View style={[s.statChip, s.statChipMid, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                <View style={[s.statChipIcon, { backgroundColor: openClaims > 0 ? Colors.warning + '30' : 'rgba(255,255,255,0.2)' }]}>
+                  <Icon name="document-text-outline" size={14} color={openClaims > 0 ? '#FBBF24' : Colors.white} />
+                </View>
+                <Text style={[s.statNum, { color: openClaims > 0 ? '#FBBF24' : Colors.white }]}>{openClaims}</Text>
+                <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Open{'\n'}Claims</Text>
               </View>
               <Text style={[s.statNum, { color: Colors.white }]}>38+</Text>
               <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Partner{'\n'}Insurers</Text>
+              <View style={[s.statChip, { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+                <View style={[s.statChipIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Icon name="business-outline" size={14} color={Colors.white} />
+                </View>
+                <Text style={[s.statNum, { color: Colors.white }]}>38+</Text>
+                <Text style={[s.statLbl, { color: 'rgba(255,255,255,0.85)' }]}>Partner{'\n'}Insurers</Text>
+              </View>
             </View>
           </View>
+          )}
         </View>
 
         {/* ── Body ───────────────────────────────────── */}
@@ -753,6 +815,43 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   logoMarkText: { fontSize: 11, fontWeight: '900', color: Colors.primary, letterSpacing: 1.5 },
+  logoMarkText: { fontSize: 11, fontWeight: '900', color: Colors.primary, letterSpacing: 1.2 },
+  askLogoBtn: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  askLogoInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+
+  newUserHeroWrap: {
+    marginBottom: 4,
+  },
+  newUserHeroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.white,
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  newUserHeroSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 16,
+    lineHeight: 16,
+  },
 
   statsRow: { flexDirection: 'row', gap: 10 },
   statChip: {
