@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
@@ -122,7 +121,6 @@ function QuoteContent() {
   const [regNumber, setRegNumber] = useState("");
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [idv, setIdv] = useState(0);
-  const ncb = 0;
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");

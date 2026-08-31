@@ -6,15 +6,11 @@ import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import {
-  Award,
   CheckCircle2,
   XCircle,
   Download,
-  Share2,
   ArrowRight,
   Shield,
-  QrCode,
-  FileCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 

@@ -19,8 +19,6 @@ export default function KycPage() {
   const [dob, setDob] = useState("");
   const [fatherName, setFatherName] = useState("");
   const [kycStatus, setKycStatus] = useState<"pending" | "verifying" | "verified">("pending");
-  const [uploadedPan, setUploadedPan] = useState<string | null>(null);
-  const [uploadedAadhaar, setUploadedAadhaar] = useState<string | null>(null);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -158,12 +158,6 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
       const amountPaise: number | undefined =
         event.payload?.payment?.entity?.amount;
 
-      console.log(`[razorpay webhook] policyId   : ${sanitizeLog(policyId ?? 'NOT FOUND IN NOTES')}`);
-      console.log(`[razorpay webhook] paymentId  : ${sanitizeLog(paymentId ?? 'n/a')}`);
-      console.log(`[razorpay webhook] amountPaise: ${sanitizeLog(amountPaise ?? 'n/a')} (₹${amountPaise ? Number(amountPaise) / 100 : 'n/a'})`);
-      console.log(`[razorpay webhook] notes (payment_link): ${sanitizeLog(JSON.stringify(event.payload?.payment_link?.entity?.notes))}`);
-      console.log(`[razorpay webhook] notes (payment)     : ${sanitizeLog(JSON.stringify(event.payload?.payment?.entity?.notes))}`);
-
       if (!policyId) {
         console.warn('[razorpay webhook] SKIPPED — policyId missing from notes');
         res.json({ ok: true });
@@ -175,31 +169,25 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
         include: { user: { select: { pushToken: true } } }
       });
 
-      console.log(`[razorpay webhook] policy found: ${policy ? `YES (status=${sanitizeLog(policy.status)}, paymentStatus=${sanitizeLog(policy.paymentStatus)})` : 'NO'}`);
-
       if (!policy) {
-        console.warn(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} not found in DB`);
         console.warn('[razorpay webhook] SKIPPED — policy not found in DB');
         res.json({ ok: true });
         return;
       }
 
       if (policy.paymentStatus === 'paid') {
-        console.log(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} already paid (idempotency)`);
         console.log('[razorpay webhook] SKIPPED — policy already paid (idempotency)');
         res.json({ ok: true });
         return;
       }
 
       // ── Transaction ───────────────────────────────────────────────────────
-      console.log(`[razorpay webhook] running activation transaction for policy ${sanitizeLog(policyId)}…`);
       console.log('[razorpay webhook] running activation transaction');
       await prisma.$transaction(async (tx) => {
         await tx.policy.update({
           where: { id: policyId },
           data:  { status: 'active', paymentStatus: 'paid' }
         });
-        console.log(`[razorpay webhook]   ✓ policy activated`);
 
         await tx.payment.create({
           data: {
@@ -212,7 +200,6 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
             userId: policy.userId,
           }
         });
-        console.log(`[razorpay webhook]   ✓ payment record created`);
 
         if (policy.quoteId) {
           await tx.quote.update({

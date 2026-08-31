@@ -267,13 +267,8 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 // Exchanges a Firebase Phone Auth ID token for an ASK JWT.
 // Called by the mobile app after Firebase verifies the user's phone number.
 
-const firebaseAuthSchema = z.object({
-  idToken: z.string().min(10, 'Firebase ID token is required'),
-});
-
 router.post('/verify-firebase', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { idToken } = firebaseAuthSchema.parse(req.body);
 
     const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
     const rawPhone = decoded.phone_number;
