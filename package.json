@@ -49,9 +49,5 @@
     "sharp": "^0.35.0",
     "uuid": "^11.1.1",
     "eslint": "^9.21.0"
-  },
-  "optionalDependencies": {
-    "@tailwindcss/oxide-win32-x64-msvc": "^4.2.2",
-    "lightningcss-win32-x64-msvc": "^1.33.0"
   }
 }
