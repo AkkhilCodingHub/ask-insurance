@@ -246,7 +246,7 @@ export async function fetchFromMParivahanApi(regNumber: string): Promise<MPariva
       }
     }
   } catch (err: any) {
-    console.warn('[mParivahan API Warning] Failed to fetch live RC details for %s: %s', encodeURIComponent(String(regNumber)), encodeURIComponent(err instanceof Error ? err.message : String(err)));
+    console.warn('[mParivahan API Warning] Failed to fetch live RC details from external provider');
   }
 
   return null;

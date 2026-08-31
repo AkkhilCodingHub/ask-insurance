@@ -11,7 +11,6 @@ import { getAuth } from 'firebase-admin/auth';
 const router = Router();
 
 import { generateCustomerId } from '../lib/idGenerator';
-import { sanitizeLog } from '../lib/sanitize';
 
 const cleanPhone = (val: string) => val.replace(/\D/g, '').slice(-10);
 
@@ -55,10 +54,10 @@ export const autoAssignAgentToUser = async (userId: string) => {
         where: { id: userId },
         data: { agentId: agent.id }
       });
-      console.log(`[AutoAssign] Assigned agent ${sanitizeLog(agent.name)} (${sanitizeLog(agent.id)}) to user ${sanitizeLog(userId)}`);
+      console.log('[AutoAssign] Assigned agent to user');
     }
-  } catch (err) {
-    console.error('[AutoAssign] Error:', sanitizeLog(err instanceof Error ? err.message : String(err)));
+  } catch {
+    console.error('[AutoAssign] Failed to auto-assign agent');
   }
 };
 
@@ -92,7 +91,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     }
 
     const otp = await createOtpChallenge(phone, user.id);
-    console.log(`OTP generated for ${sanitizeLog(phone)} (Customer ID: ${sanitizeLog(user.customerCode)})`);
+    console.log('[send-otp] OTP generated successfully');
 
     const responsePayload: Record<string, any> = {
       success: true,
@@ -112,7 +111,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
       return;
     }
-    console.error('[send-otp]', sanitizeLog(error instanceof Error ? error.message : String(error)));
+    console.error('[send-otp] Error sending OTP challenge');
     res.status(500).json({ error: 'Internal server error' });
     return;
   }
@@ -322,8 +321,8 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
       user: { id: user.id, phone: user.phone, name: user.name, email: user.email },
       isNewUser: isNewUser || !Boolean(user.name),
     });
-  } catch (error) {
-    console.error('[verify-firebase]', sanitizeLog(error instanceof Error ? error.message : String(error)));
+  } catch {
+    console.error('[verify-firebase] Verification failed');
     res.status(401).json({ error: 'Invalid or expired Firebase token' });
   }
 });
