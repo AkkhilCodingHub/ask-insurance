@@ -3,6 +3,5 @@
  */
 export function sanitizeLog(val: unknown): string {
   if (val === null || val === undefined) return '';
-  return String(val).replace(/[\r\n\x00-\x1f\x7f-\x9f]/g, ' ').slice(0, 500);
+  return encodeURIComponent(String(val).replace(/[\r\n]/g, ' ').slice(0, 500));
 }
-

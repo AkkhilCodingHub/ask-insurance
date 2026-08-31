@@ -25,7 +25,12 @@ const router = Router();
 
 // ── Admin auth middleware ──────────────────────────────────────────────────────
 const adminAuthenticate = async (req: Request, res: Response, next: () => void): Promise<void> => {
-  const token = req.headers.authorization?.replace('Bearer ', '').trim();
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+  const token = authHeader.slice(7).trim();
   if (!token) {
     res.status(401).json({ error: 'No token provided' });
     return;

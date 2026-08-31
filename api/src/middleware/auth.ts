@@ -3,19 +3,19 @@ import { verifyAuthToken } from '../lib/jwt';
 import { prisma } from '../lib/prisma';
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
-    }
-
-    const token = authHeader.slice(7).trim();
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
-    }
-
     const decoded = verifyAuthToken(token);
     req.userId = decoded.userId;
     return next();
@@ -26,20 +26,31 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
 };
 
-export const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7).trim();
-      if (token) {
-        const decoded = verifyAuthToken(token);
-        req.userId = decoded.userId;
-      }
-    }
-  } catch {
-    // Ignore invalid token for optional auth
+export const optionalAuth = (req: Request, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return next();
   }
-  return next();
+
+  if (!authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Invalid authorization format' });
+    return;
+  }
+
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
+  try {
+    const decoded = verifyAuthToken(token);
+    req.userId = decoded.userId;
+    return next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return;
+  }
 };
 
 // Must be used after authenticate (relies on req.userId being set).
