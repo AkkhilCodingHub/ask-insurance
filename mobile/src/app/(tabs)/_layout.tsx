@@ -47,7 +47,6 @@ export default function TabLayout() {
   const tabBarHeight = 56 + extraBottomPadding;
 
   if (loading) return null;
-  if (!user) return <Redirect href="/login" />;
 
   const TAB_LABELS: Record<string, string> = {
     index:   t('home', 'Home'),

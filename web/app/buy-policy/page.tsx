@@ -435,8 +435,26 @@ function BuyPolicyContent() {
                   </div>
 
                   <div style={{ background: "#F8FAFC", borderRadius: 12, padding: 18, border: "1px solid var(--border)", marginBottom: 20 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>
-                      Proposal Summary
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: "1px solid var(--border)", paddingBottom: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase" }}>
+                        Proposal Summary
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutStep(1)}
+                          style={{ background: "#EFF6FF", color: "var(--primary)", border: "1px solid #BFDBFE", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          ✏️ Edit Proposer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutStep(2)}
+                          style={{ background: "#EFF6FF", color: "var(--primary)", border: "1px solid #BFDBFE", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          ✏️ Edit Nominee
+                        </button>
+                      </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
                       <div><span style={{ color: "var(--text-muted)" }}>Insured Name:</span> <strong>{fullName}</strong></div>

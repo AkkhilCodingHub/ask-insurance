@@ -140,7 +140,6 @@ export interface RequestOptions extends RequestInit {
 
 async function request<T>(
   path: string,
-  options: RequestInit = {},
   options: RequestOptions = {},
   auth = false,
   _skipRefresh = false   // prevents re-entrant refresh loops
@@ -179,8 +178,6 @@ async function request<T>(
 
   let res: Response;
   try {
-    res = await fetch(url, { ...options, headers });
-  } catch (networkErr) {
     res = await fetch(url, { ...options, headers, signal: controller.signal });
   } catch (networkErr: any) {
     if (__DEV__) {
@@ -1245,7 +1242,6 @@ export const systemApi = {
         updatedBy?: string;
       };
       timestamp: string;
-    }>('/api/system/status'),
     }>('/api/system/status', { timeoutMs: 3000 }),
 };
 

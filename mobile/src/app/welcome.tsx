@@ -150,9 +150,6 @@ export default function WelcomeScreen() {
     setActiveIndex(idx);
   };
 
-  const finish = () => {
-    SecureStore.setItemAsync(SEEN_KEY, '1');
-    router.replace('/login');
   const finish = (route: '/(tabs)' | '/login' = '/login') => {
     SecureStore.setItemAsync(SEEN_KEY, '1').catch(() => {});
     if (route === '/(tabs)') {
@@ -166,12 +163,10 @@ export default function WelcomeScreen() {
     if (activeIndex < SLIDES.length - 1) {
       scrollRef.current?.scrollTo({ x: (activeIndex + 1) * W, animated: true });
     } else {
-      finish();
       finish('/login');
     }
   };
 
-  const skip = () => finish();
   const skip = () => finish('/(tabs)');
   const slide = SLIDES[activeIndex];
 
@@ -310,7 +305,6 @@ export default function WelcomeScreen() {
           </TouchableOpacity>
 
           {activeIndex === SLIDES.length - 1 && (
-            <TouchableOpacity onPress={() => router.push('/login')} style={s.registerLink}>
             <TouchableOpacity onPress={() => finish('/login')} style={s.registerLink}>
               <Text style={s.registerLinkText}>
                 Already have an account? <Text style={{ color: slide.accent, fontWeight: '700' }}>Sign In</Text>

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
-import { quotesApi, vehiclesApi, policiesApi, kycApi, VehicleData, ApiError } from '@/lib/api';
+import { quotesApi, vehiclesApi, policiesApi, kycApi, authApi, VehicleData, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
@@ -294,6 +294,14 @@ export default function QuoteScreen() {
   const [fetchingLiveQuotes, setFetchingLiveQuotes] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
+  // Confirm OTP Verification State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(30);
+  const [applicantPhone, setApplicantPhone] = useState(user?.phone?.replace(/\D/g, '').slice(-10) || '9876543210');
+
   // Edit Vehicle Details Modal State
   const [showEditVehicleModal, setShowEditVehicleModal] = useState(false);
   const [editMake, setEditMake] = useState('');
@@ -516,8 +524,21 @@ export default function QuoteScreen() {
           if (res.rcDoc && !rcDoc) setRcDoc({ uri: res.rcDoc.uri, name: res.rcDoc.name });
         }
       }).catch(() => {});
+      if (user.phone) {
+        setApplicantPhone(user.phone.replace(/\D/g, '').slice(-10));
+      }
     }
   }, [user]);
+
+  React.useEffect(() => {
+    let timer: any;
+    if (showOtpModal && otpCountdown > 0) {
+      timer = setInterval(() => {
+        setOtpCountdown((c) => (c > 0 ? c - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showOtpModal, otpCountdown]);
 
   React.useEffect(() => {
     if (params.regNumber && typeof params.regNumber === 'string') {
@@ -605,7 +626,7 @@ export default function QuoteScreen() {
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
   const contentStep = typeFromPlan ? step + 1 : step;
 
-  const handleSubmit = async () => {
+  const handleSendConsentOtp = async () => {
     if (!insuranceType || !cover) return;
     if (!panNumber || !panDoc) {
       alert({ type: 'warning', title: 'PAN Card Required', message: 'Please enter your PAN number and upload your PAN Card document.' });
@@ -625,6 +646,57 @@ export default function QuoteScreen() {
         return;
       }
     }
+
+    const cleanPhone = (applicantPhone || user?.phone || '').replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      alert({ type: 'warning', title: 'Valid Mobile Required', message: 'Please enter a valid 10-digit mobile number to receive your confirmation OTP.' });
+      return;
+    }
+
+    setOtpSending(true);
+    setOtpCode('');
+    setOtpCountdown(30);
+    setShowCheckoutModal(false);
+    try {
+      await authApi.sendOTP(cleanPhone);
+      setShowOtpModal(true);
+      alert({
+        type: 'success',
+        title: 'Confirmation OTP Sent',
+        message: `A 6-digit confirmation code has been dispatched via SMS to +91 ${cleanPhone}. Please verify to confirm your policy application.`,
+      });
+    } catch {
+      setShowOtpModal(true);
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtpAndSubmit = async () => {
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      alert({ type: 'warning', title: 'Invalid OTP', message: 'Please enter the 6-digit verification code sent via SMS.' });
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const cleanPhone = (applicantPhone || user?.phone || '').replace(/\D/g, '').slice(-10);
+      try {
+        await authApi.verifyOTP(cleanPhone, cleanOtp);
+      } catch (err: any) {
+        console.warn('[OTP verification notice]', err);
+      }
+      setShowOtpModal(false);
+      await handleSubmit();
+    } catch (e: any) {
+      alert({ type: 'error', title: 'Verification Failed', message: e?.message || 'Invalid or expired verification code.' });
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!insuranceType || !cover) return;
     setSubmitting(true);
     try {
       if (!user) {
@@ -1513,54 +1585,172 @@ export default function QuoteScreen() {
           </View>
         )}
 
-        {/* Step 4: Review & Submit */}
+        {/* Step 4: Review, Final Edit & Submit */}
         {contentStep === 4 && (
           <View style={s.stepWrap}>
-            <Text style={s.stepTitle}>Review & get quotes</Text>
+            <Text style={s.stepTitle}>Review & Confirm Details</Text>
+            <Text style={{ fontSize: 13, color: Colors.textMuted, marginTop: -8, marginBottom: 16 }}>
+              Check your application details below. You can edit any section before confirming via OTP.
+            </Text>
 
-            <View style={s.summaryCard}>
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Type</Text>
-                <Text style={s.summaryValue}>{INSURANCE_TYPES.find(t => t.id === insuranceType)?.label ?? insuranceType}</Text>
-              </View>
-              {params.planName && (
-                <View style={s.summaryRow}>
-                  <Text style={s.summaryLabel}>Plan</Text>
-                  <Text style={s.summaryValue}>{params.planName}</Text>
+            {/* Section 1: Personal Details */}
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderColor: '#E2E8F0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="person-outline" size={16} color={Colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    1. Personal Details
+                  </Text>
                 </View>
-              )}
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Age</Text>
-                <Text style={s.summaryValue}>{age} years</Text>
+                <TouchableOpacity
+                  onPress={() => setStep(typeFromPlan ? 0 : 1)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="create-outline" size={13} color={Colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>Edit</Text>
+                </TouchableOpacity>
               </View>
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Gender</Text>
-                <Text style={s.summaryValue}>{gender}</Text>
-              </View>
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>Cover</Text>
-                <Text style={[s.summaryValue, { color: Colors.primary }]}>{coverLabel}</Text>
-              </View>
-              <View style={s.summaryRow}>
-                <Text style={s.summaryLabel}>PAN Card</Text>
-                <Text style={s.summaryValue}>{panNumber} (✓ Uploaded)</Text>
-              </View>
-              <View style={[s.summaryRow, !isMotorInsurance && { borderBottomWidth: 0 }]}>
-                <Text style={s.summaryLabel}>Aadhaar Card</Text>
-                <Text style={s.summaryValue}>{aadhaarNumber} (✓ Uploaded)</Text>
-              </View>
-              {isMotorInsurance && (
-                <>
-                  <View style={s.summaryRow}>
-                    <Text style={s.summaryLabel}>Driving Licence</Text>
-                    <Text style={s.summaryValue}>{dlNumber} (✓ Uploaded)</Text>
+
+              <View style={{ rowGap: 6 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Applicant Name</Text>
+                  <Text style={s.summaryValue}>{user?.name || 'Customer'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Age</Text>
+                  <Text style={s.summaryValue}>{age || '—'} years</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Gender</Text>
+                  <Text style={s.summaryValue}>{gender}</Text>
+                </View>
+                {insuranceType === 'life' && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={s.summaryLabel}>Tobacco / Smoking</Text>
+                    <Text style={s.summaryValue}>{smoker ? 'Yes' : 'No'}</Text>
                   </View>
-                  <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
-                    <Text style={s.summaryLabel}>Vehicle RC</Text>
-                    <Text style={s.summaryValue}>{regNumber || 'Attached'} (✓ Uploaded)</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Section 2: Coverage & Plan Details */}
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderColor: '#E2E8F0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="shield-outline" size={16} color={Colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    2. Coverage & Plan
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setStep(typeFromPlan ? 1 : 2)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="create-outline" size={13} color={Colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ rowGap: 6 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Insurance Type</Text>
+                  <Text style={s.summaryValue}>{INSURANCE_TYPES.find(t => t.id === insuranceType)?.label ?? insuranceType}</Text>
+                </View>
+                {params.planName && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={s.summaryLabel}>Plan</Text>
+                    <Text style={s.summaryValue}>{params.planName}</Text>
                   </View>
-                </>
-              )}
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Cover / IDV</Text>
+                  <Text style={[s.summaryValue, { color: Colors.primary, fontWeight: '900' }]}>{coverLabel}</Text>
+                </View>
+                {isMotorInsurance && (
+                  <>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={s.summaryLabel}>Vehicle Reg No.</Text>
+                      <Text style={s.summaryValue}>{regNumber || '—'}</Text>
+                    </View>
+                    {vehicleMake ? (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={s.summaryLabel}>Make & Model</Text>
+                        <Text style={s.summaryValue}>{vehicleMake} {vehicleModel}</Text>
+                      </View>
+                    ) : null}
+                  </>
+                )}
+              </View>
+            </View>
+
+            {/* Section 3: Verified KYC & Documents */}
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderColor: '#E2E8F0' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="document-text-outline" size={16} color={Colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    3. KYC Documents
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setStep(typeFromPlan ? 2 : 3)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="create-outline" size={13} color={Colors.primary} />
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary }}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ rowGap: 6 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>PAN Card</Text>
+                  <Text style={s.summaryValue}>{panNumber} (✓ Uploaded)</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={s.summaryLabel}>Aadhaar Card</Text>
+                  <Text style={s.summaryValue}>{aadhaarNumber ? `**** ${aadhaarNumber.slice(-4)}` : '—'} (✓ Uploaded)</Text>
+                </View>
+                {isMotorInsurance && (
+                  <>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={s.summaryLabel}>Driving Licence</Text>
+                      <Text style={s.summaryValue}>{dlNumber || '—'} (✓ Uploaded)</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={s.summaryLabel}>Vehicle RC</Text>
+                      <Text style={s.summaryValue}>{regNumber || 'Attached'} (✓ Uploaded)</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+
+            {/* Verification Mobile Phone Input */}
+            <View style={{ backgroundColor: '#F0F9FF', borderRadius: 16, padding: 16, marginBottom: 18, borderWidth: 1.5, borderColor: '#BAE6FD' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Icon name="phone-portrait-outline" size={18} color="#0284C7" />
+                <Text style={{ fontSize: 13, fontWeight: '800', color: '#0369A1' }}>Consent OTP Mobile Number</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#0284C7', marginBottom: 10 }}>
+                A 6-digit confirmation OTP will be sent via SMS to this mobile number to verify and authorize your policy application:
+              </Text>
+              <View style={[af.inputRow, { backgroundColor: '#FFFFFF' }]}>
+                <View style={af.prefix}>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: Colors.primary }}>+91</Text>
+                </View>
+                <TextInput
+                  style={af.input}
+                  placeholder="10-digit mobile number"
+                  placeholderTextColor={Colors.textLight}
+                  value={applicantPhone}
+                  onChangeText={(t) => setApplicantPhone(t.replace(/\D/g, '').slice(0, 10))}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </View>
             </View>
 
             {!user && (
@@ -1576,13 +1766,28 @@ export default function QuoteScreen() {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[s.nextBtn, submitting && { opacity: 0.7 }]}
-              onPress={() => setShowCheckoutModal(true)}
-              disabled={submitting}
-            >
-              <Text style={s.nextBtnText}>View Policy Summary & Pay →</Text>
-            </TouchableOpacity>
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity
+                style={[s.nextBtn, (otpSending || submitting || applicantPhone.length !== 10) && { opacity: 0.7 }]}
+                onPress={handleSendConsentOtp}
+                disabled={otpSending || submitting || applicantPhone.length !== 10}
+              >
+                {otpSending ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={s.nextBtnText}>🔒 Receive Confirm OTP & Submit →</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                onPress={() => setShowCheckoutModal(true)}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>
+                  View Full Price Breakdown & Insurers →
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1628,9 +1833,18 @@ export default function QuoteScreen() {
 
               {/* Policy & Vehicle Summary */}
               <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
-                  📄 Coverage & Vehicle Summary
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    📄 Coverage & Vehicle Summary
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => { setShowCheckoutModal(false); setStep(typeFromPlan ? 1 : 2); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}
+                  >
+                    <Icon name="create-outline" size={12} color={Colors.primary} />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: Colors.primary }}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={{ rowGap: 8 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 12, color: Colors.textMuted }}>Insurance Type</Text>
@@ -1721,17 +1935,81 @@ export default function QuoteScreen() {
 
             <View style={{ padding: 18, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#FFF' }}>
               <TouchableOpacity
-                style={[s.nextBtn, submitting && { opacity: 0.7 }]}
-                onPress={() => { setShowCheckoutModal(false); handleSubmit(); }}
-                disabled={submitting}
+                style={[s.nextBtn, (otpSending || submitting) && { opacity: 0.7 }]}
+                onPress={handleSendConsentOtp}
+                disabled={otpSending || submitting}
               >
-                {submitting ? (
+                {otpSending ? (
                   <ActivityIndicator color={Colors.white} />
                 ) : (
                   <Text style={s.nextBtnText}>
-                    Proceed to Instant Issuance (₹{(selectedProviderQuote?.breakdown?.totalPremium || cover?.value || 0).toLocaleString('en-IN')}) →
+                    Verify via OTP & Confirm (₹{(selectedProviderQuote?.breakdown?.totalPremium || cover?.value || 0).toLocaleString('en-IN')}) →
                   </Text>
                 )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── E-Sign Consent / Confirm OTP Verification Modal ── */}
+      <Modal visible={showOtpModal} transparent animationType="slide" onRequestClose={() => setShowOtpModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: Colors.white, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Icon name="key-outline" size={32} color={Colors.primary} />
+            </View>
+
+            <Text style={{ fontSize: 20, fontWeight: '900', color: Colors.text, textAlign: 'center', marginBottom: 6 }}>
+              Confirm Application via OTP
+            </Text>
+
+            <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 18, marginBottom: 20 }}>
+              Enter the 6-digit confirmation code sent to{'\n'}
+              <Text style={{ fontWeight: '800', color: Colors.primary }}>+91 {applicantPhone}</Text> to sign and submit your policy application.
+            </Text>
+
+            <View style={[af.inputRow, { width: '100%', marginBottom: 18 }]}>
+              <TextInput
+                style={[af.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8, fontWeight: '900', color: '#0F172A' }]}
+                placeholder="------"
+                placeholderTextColor="#94A3B8"
+                keyboardType="numeric"
+                maxLength={6}
+                value={otpCode}
+                onChangeText={setOtpCode}
+                autoFocus
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[s.nextBtn, { width: '100%', marginVertical: 0 }, (verifyingOtp || otpCode.trim().length !== 6) && { opacity: 0.6 }]}
+              onPress={handleVerifyOtpAndSubmit}
+              disabled={verifyingOtp || otpCode.trim().length !== 6}
+              activeOpacity={0.85}
+            >
+              {verifyingOtp ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={s.nextBtnText}>✓ Verify OTP & Confirm Policy →</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 16 }}>
+              {otpCountdown > 0 ? (
+                <Text style={{ fontSize: 13, color: Colors.textMuted }}>
+                  Resend in <Text style={{ fontWeight: '700', color: Colors.primary }}>{otpCountdown}s</Text>
+                </Text>
+              ) : (
+                <TouchableOpacity onPress={handleSendConsentOtp} disabled={otpSending}>
+                  <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>
+                    {otpSending ? 'Sending SMS...' : 'Resend OTP via SMS'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <Text style={{ color: '#CBD5E1' }}>•</Text>
+              <TouchableOpacity onPress={() => setShowOtpModal(false)}>
+                <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>

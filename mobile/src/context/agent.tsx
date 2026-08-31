@@ -40,34 +40,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         }
         const token = await getAgentToken();
         if (token) {
-          const admin = await agentApi.getProfile();
-          const SecureStore = await import('expo-secure-store');
-          await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
-          setAgent(admin);
-        } else if (__DEV__) {
           try {
-            const { token: t, admin: a } = await agentApi.login('agent@ask-insurance.in', 'Agent@12345');
-            await setAgentToken(t);
-            const SecureStore = await import('expo-secure-store');
-            await SecureStore.setItemAsync('agent_profile', JSON.stringify(a));
-            setAgent(a);
-          } catch (e) {
-            console.warn('[AgentProvider] dev auto login failed:', e);
-          }
             const admin = await agentApi.getProfile();
             await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
             setAgent(admin);
           } catch {}
         }
       } catch {
-        try {
-          const saved = await import('expo-secure-store').then(m =>
-            m.getItemAsync('agent_profile')
-          );
-          if (saved) setAgent(JSON.parse(saved));
-        } catch {
-          await clearAgentToken();
-        }
         await clearAgentToken();
       } finally {
         setLoading(false);
