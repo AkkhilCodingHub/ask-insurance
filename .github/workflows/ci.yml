@@ -5,16 +5,17 @@ on:
     branches: [ main, develop, "fix/*", "feat/*" ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  typecheck-and-build:
-    name: Typecheck & Build Validation
+  # ── 1. API Backend Validation ──────────────────────────────────────────────
+  verify-api:
+    name: Verify API Backend
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [22.x]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,10 +23,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install root & workspace dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Generate Prisma Client
@@ -34,27 +35,92 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'mysql://root:rootpassword@127.0.0.1:3306/ask_insurance' }}
         run: npx prisma generate
 
-      - name: Typecheck API Backend
-        run: cd api && npx tsc --noEmit
+      - name: Typecheck API
+        working-directory: api
+        run: npx tsc --noEmit
 
-      - name: Typecheck Admin Web Panel
-        run: cd admin && npx tsc --noEmit
+      - name: Build API
+        working-directory: api
+        run: npx tsc
+
+  # ── 2. Admin Portal Validation ─────────────────────────────────────────────
+  verify-admin:
+    name: Verify Admin Portal
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install root & workspace dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Typecheck Admin Portal
+        working-directory: admin
+        run: npx tsc --noEmit
+
+      - name: Build Admin Next.js App
+        working-directory: admin
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://ask-insurance.onrender.com' }}
+        run: npm run build
+
+  # ── 3. Customer Web App Validation ─────────────────────────────────────────
+  verify-web:
+    name: Verify Customer Web App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install root & workspace dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Typecheck Web App
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Build Customer Web Next.js App
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'https://ask-insurance.onrender.com' }}
+        run: npm run build
+
+  # ── 4. Mobile App Validation ───────────────────────────────────────────────
+  verify-mobile:
+    name: Verify Mobile App (React Native / Expo)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install Mobile Dependencies
+        working-directory: mobile
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Typecheck Mobile App
-        run: cd mobile && npm install --legacy-peer-deps && npx tsc --noEmit
+        working-directory: mobile
+        run: npx tsc --noEmit
 
-      - name: Typecheck Customer Web App
-        run: cd web && npx tsc --noEmit
-
-      - name: Build Admin Panel
-        run: cd admin && npm run build
-
-      - name: Build Web App
-        run: cd web && npm run build
-
-      - name: Build API Backend
-        run: cd api && npx tsc
-
+  # ── 5. Security & Dependency Audit ─────────────────────────────────────────
   security-audit:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
@@ -65,8 +131,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: 22
 
-      - name: Run Security Audit Check
+      - name: Audit Monorepo Dependencies
         run: npm audit --audit-level=critical || true
 
+      - name: Audit Mobile Dependencies
+        working-directory: mobile
+        run: npm audit --audit-level=critical || true
