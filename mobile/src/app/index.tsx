@@ -15,13 +15,24 @@ export default function Index() {
       setSeenWelcome(!!v);
       setChecking(false);
     });
+    SecureStore.getItemAsync(SEEN_KEY)
+      .then(v => {
+        setSeenWelcome(!!v);
+        setChecking(false);
+      })
+      .catch(() => {
+        setChecking(false);
+      });
   }, []);
 
   if (loading || checking) return null;
 
   // If logged in, go straight to main tabs
   if (user) return <Redirect href="/(tabs)" />;
+  // If logged in OR previously completed/skipped onboarding, enter app directly
+  if (user || seenWelcome) return <Redirect href="/(tabs)" />;
 
   // Otherwise, show welcome briefing screen (with Next/Skip buttons & app introduction)
+  // First time launch: show welcome briefing screen (with Next/Skip buttons & app introduction)
   return <Redirect href="/welcome" />;
 }

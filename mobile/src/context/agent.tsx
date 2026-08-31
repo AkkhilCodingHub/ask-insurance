@@ -33,6 +33,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
+        const SecureStore = await import('expo-secure-store');
+        const saved = await SecureStore.getItemAsync('agent_profile').catch(() => null);
+        if (saved) {
+          try { setAgent(JSON.parse(saved)); } catch {}
+        }
         const token = await getAgentToken();
         if (token) {
           const admin = await agentApi.getProfile();
@@ -49,6 +54,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           } catch (e) {
             console.warn('[AgentProvider] dev auto login failed:', e);
           }
+            const admin = await agentApi.getProfile();
+            await SecureStore.setItemAsync('agent_profile', JSON.stringify(admin));
+            setAgent(admin);
+          } catch {}
         }
       } catch {
         try {
@@ -59,6 +68,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         } catch {
           await clearAgentToken();
         }
+        await clearAgentToken();
       } finally {
         setLoading(false);
       }

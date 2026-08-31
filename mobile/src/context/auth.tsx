@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import { isDevice } from 'expo-device';
 import {
   getAuth, signInWithPhoneNumber, onAuthStateChanged, signOut as firebaseSignOut,
@@ -42,6 +44,16 @@ export async function requestNotificationPermission(): Promise<boolean> {
     } catch {}
   }
   try {
+    const Notifications = await import('expo-notifications');
+    if (Platform.OS === 'android') {
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+        });
+      } catch {}
+    }
     const existing = readNotificationPermissionStatus(await Notifications.getPermissionsAsync());
     if (existing === 'granted') return true;
     const next = readNotificationPermissionStatus(await Notifications.requestPermissionsAsync());
@@ -154,8 +166,11 @@ function getFirebaseAuth() {
   }
 }
 
+const USER_PROFILE_CACHE_KEY = 'user_profile_cache_v1';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<AuthUser | null>(null);
+  const [user, setUserState]          = useState<AuthUser | null>(null);
   const [loading, setLoading]         = useState(true);
   const [pendingPhone, setPendingPhoneState] = useState<string | null>(null);
   const pendingPhoneRef = useRef<string | null>(null);
@@ -167,6 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const manualVerifyInProgressRef = useRef(false);
   const isLocalOtpRef = useRef(false);
+
+  const setUser = (u: AuthUser | null) => {
+    setUserState(u);
+    if (u) {
+      SecureStore.setItemAsync(USER_PROFILE_CACHE_KEY, JSON.stringify(u)).catch(() => {});
+    } else {
+      SecureStore.deleteItemAsync(USER_PROFILE_CACHE_KEY).catch(() => {});
+    }
+  };
 
   useEffect(() => {
     registerSessionExpiredCallback(() => {
@@ -185,15 +209,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // ── Restore session on app launch ─────────────────────────────────────────
+  // ── Restore session on app launch (Instant Offline Restore + Background Revalidation) ──
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const token = await getToken();
+        const [cachedRaw, token] = await Promise.all([
+          SecureStore.getItemAsync(USER_PROFILE_CACHE_KEY).catch(() => null),
+          getToken().catch(() => null),
+        ]);
+
+        if (cachedRaw) {
+          try {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed && !cancelled) {
+              setUserState(parsed);
+            }
+          } catch {}
+        }
+
+        // Release loading immediately — UI appears instantly
+        if (!cancelled) setLoading(false);
+
+        // If a token exists, revalidate in background without blocking UI
         if (token) {
           // api.ts auto-refreshes if the access token is expired (uses refresh token silently)
           const { user: apiUser } = await authApi.me();
           if (!cancelled) setUser(mapApiUser(apiUser));
+          try {
+            const { user: apiUser } = await authApi.me();
+            if (!cancelled && apiUser) {
+              const mapped = mapApiUser(apiUser);
+              setUser(mapped);
+            }
+          } catch (err: any) {
+            if (err?.status === 401) {
+              await clearAllTokens();
+              if (!cancelled) setUser(null);
+            }
+          }
+        } else if (!cachedRaw) {
+          if (!cancelled) setUser(null);
         }
       } catch {
         // Both tokens expired/invalid — clear everything and show login

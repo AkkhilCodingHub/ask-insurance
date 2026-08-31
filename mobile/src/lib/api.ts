@@ -98,11 +98,15 @@ async function attemptTokenRefresh(): Promise<string | null> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return null;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
   try {
     const res = await fetch(`${getBaseUrl()}/api/auth/refresh`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ refreshToken }),
+      signal:  controller.signal,
     });
     if (!res.ok) {
       await clearAllTokens();
@@ -116,6 +120,8 @@ async function attemptTokenRefresh(): Promise<string | null> {
   } catch {
     await clearAllTokens();
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -128,9 +134,14 @@ export class ApiError extends Error {
   }
 }
 
+export interface RequestOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  options: RequestOptions = {},
   auth = false,
   _skipRefresh = false   // prevents re-entrant refresh loops
 ): Promise<T> {
@@ -147,6 +158,7 @@ async function request<T>(
   const method = options.method ?? 'GET';
   const url    = `${getBaseUrl()}${path}`;
   const t0     = Date.now();
+  const timeoutMs = options.timeoutMs ?? 7000;
 
   if (__DEV__) {
     const logHeaders = { ...headers };
@@ -162,16 +174,26 @@ async function request<T>(
     console.groupEnd();
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   let res: Response;
   try {
     res = await fetch(url, { ...options, headers });
   } catch (networkErr) {
+    res = await fetch(url, { ...options, headers, signal: controller.signal });
+  } catch (networkErr: any) {
     if (__DEV__) {
       console.group(`✖ NETWORK ERROR  ${method} ${url}`);
       console.error('Error   :', networkErr);
       console.groupEnd();
     }
+    if (networkErr?.name === 'AbortError') {
+      throw new ApiError('Request timed out', 408);
+    }
     throw networkErr;
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const elapsed = Date.now() - t0;
@@ -1224,5 +1246,6 @@ export const systemApi = {
       };
       timestamp: string;
     }>('/api/system/status'),
+    }>('/api/system/status', { timeoutMs: 3000 }),
 };
 
