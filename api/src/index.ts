@@ -85,13 +85,12 @@ app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
 // Unified Keep-Alive: pings both the Render container AND the Aiven MySQL database.
 // Point a single cron-job.org job at this endpoint every 5 minutes to keep both alive.
 app.get('/api/cron/keep-alive', async (_req: Request, res: Response) => {
-  let dbStatus = 'unknown';
+  let dbStatus = 'ok';
   let dbLatencyMs: number | null = null;
   try {
     const t0 = Date.now();
     await prisma.$queryRaw`SELECT 1`;
     dbLatencyMs = Date.now() - t0;
-    dbStatus = 'ok';
   } catch (err: any) {
     dbStatus = `error: ${err?.message ?? 'unknown'}`;
     console.warn('[keep-alive] DB ping failed:', err?.message);

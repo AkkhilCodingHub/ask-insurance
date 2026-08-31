@@ -132,7 +132,7 @@ export function mapApiUser(u: ApiUser): AuthUser {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-import firebase, { initializeApp, getApps } from '@react-native-firebase/app';
+import { initializeApp, getApps } from '@react-native-firebase/app';
 
 function getFirebaseAuth() {
   try {

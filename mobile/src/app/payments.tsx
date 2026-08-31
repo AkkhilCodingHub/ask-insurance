@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import type { ComponentProps } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { paymentsApi, ApiPayment } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { Icon } from '@/components/Icon';
@@ -254,7 +253,6 @@ function EmptyState({ filter }: { filter: Filter }) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function PaymentsScreen() {
-  const router = useRouter();
   const { user } = useAuth();
   const [payments,   setPayments]   = useState<ApiPayment[]>([]);
   const [loading,    setLoading]    = useState(true);

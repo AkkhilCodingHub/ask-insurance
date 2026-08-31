@@ -4,7 +4,6 @@ import {
   StyleSheet, Linking, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
@@ -130,7 +129,6 @@ const NETWORK_DATA: NetworkFacility[] = [
 const CITIES = ['All', 'Delhi NCR', 'Gurugram', 'Mumbai', 'Bengaluru', 'Pune'];
 
 export default function NetworkLocatorScreen() {
-  const router = useRouter();
   const colors = useThemeColors();
 
   const [activeType, setActiveType] = useState<FacilityType>('hospital');

@@ -269,7 +269,7 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/verify-firebase', async (req: Request, res: Response): Promise<void> => {
   try {
-
+    const { idToken } = z.object({ idToken: z.string().min(10, 'Firebase ID token is required') }).parse(req.body);
     const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
     const rawPhone = decoded.phone_number;
     if (!rawPhone) {

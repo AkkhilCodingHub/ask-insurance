@@ -76,6 +76,7 @@ function ClaimsContent() {
   const [claimType, setClaimType] = useState("Motor Accidental Repair (Cashless)");
   const [incidentDate, setIncidentDate] = useState("2026-08-25");
   const [estAmount, setEstAmount] = useState("25000");
+  const locationOrGarage = "Authorized Network Garage, Delhi";
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);

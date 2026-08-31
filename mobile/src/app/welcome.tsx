@@ -60,9 +60,6 @@ export default function WelcomeScreen() {
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const contentTranslateY = useRef(new Animated.Value(30)).current;
 
-  // 4. Background glow pulse
-  const glowOpacity = useRef(new Animated.Value(0.3)).current;
-
   useEffect(() => {
     // Initial center offset calculation (center of screen to top header)
     textTranslateY.setValue(H * 0.28);

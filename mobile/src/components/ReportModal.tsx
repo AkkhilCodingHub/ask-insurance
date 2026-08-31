@@ -1,13 +1,11 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal,
-  Dimensions, Share,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 export interface ReportData {
   type: 'acknowledgement' | 'certificate';

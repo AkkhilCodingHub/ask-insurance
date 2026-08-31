@@ -37,7 +37,6 @@ export default function PospResultsScreen() {
   const {
     score, totalQuestions, correctAnswers, wrongAnswers, passed,
     terminatedEarly, terminationReason, candidateName, questionsReview,
-    attemptId,
   } = results;
 
   const handleProceedRegistration = () => {
