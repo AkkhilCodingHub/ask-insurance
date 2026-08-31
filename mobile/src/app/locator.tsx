@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Linking, Dimensions,
+  StyleSheet, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
@@ -9,7 +9,7 @@ import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { useThemeColors } from '@/context/agent';
 
-const { width: W } = Dimensions.get('window');
+
 
 type FacilityType = 'hospital' | 'garage';
 

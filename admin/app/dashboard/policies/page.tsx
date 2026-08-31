@@ -188,7 +188,7 @@ function ConfirmPaymentModal({ policy, onClose, onDone }: {
 function CreatePolicyModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userSearch, setUserSearch] = useState("");
-  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [, setSearchingUsers] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
 
   const [type, setType] = useState("motor");
@@ -487,8 +487,7 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
   if (!policy) return null;
 
   const type   = TYPE_META[policy.type] ?? { color: "#64748B", bg: "#F8FAFC", emoji: "📋", label: policy.type };
-  const status = STATUS_META[policy.status] ?? STATUS_META.cancelled;
-  const days   = daysLeft(policy.endDate);
+    const days   = daysLeft(policy.endDate);
   const expiring = policy.status === "active" && days > 0 && days <= 30;
 
   const inp: React.CSSProperties = {

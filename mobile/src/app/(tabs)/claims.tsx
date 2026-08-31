@@ -159,7 +159,6 @@ function ClaimProgressSheet({ claim, visible, onClose }: {
 }) {
   const accent  = Colors.primary;
   const st      = getClaimStatusChip(claim.status);
-  const typeKey = (claim.type ?? '').toLowerCase();
   const stepIdx = claimTimelineStepIndex(claim.status);
   const rejected = claim.status === 'rejected';
 
@@ -269,40 +268,43 @@ function ClaimCard({ claim }: { claim: ApiClaim }) {
   const iconName = (TYPE_ICONS[typeKey] ?? 'document-text-outline') as ComponentProps<typeof Icon>['name'];
 
   return (
-    <View style={[c.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={c.body}>
-        <View style={c.top}>
-          <View style={[c.iconWrap, { backgroundColor: colors.primaryLight }]}>
-            <Icon name={iconName} size={20} color={Colors.primary} />
+    <>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => setProgressOpen(true)} style={[c.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={c.body}>
+          <View style={c.top}>
+            <View style={[c.iconWrap, { backgroundColor: colors.primaryLight }]}>
+              <Icon name={iconName} size={20} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[c.desc, { color: colors.text }]} numberOfLines={2}>{claim.description}</Text>
+              <Text style={[c.sub, { color: colors.textMuted }]}>{claim.policy?.provider ?? '—'} · {date}</Text>
+            </View>
+            <View style={[c.statusPill, { backgroundColor: color + '12', borderColor: color + '28' }]}>
+              <View style={[c.statusDot, { backgroundColor: color }]} />
+              <Text style={[c.statusText, { color }]}>{label}</Text>
+            </View>
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[c.desc, { color: colors.text }]} numberOfLines={2}>{claim.description}</Text>
-            <Text style={[c.sub, { color: colors.textMuted }]}>{claim.policy?.provider ?? '—'} · {date}</Text>
-          </View>
-          <View style={[c.statusPill, { backgroundColor: color + '12', borderColor: color + '28' }]}>
-            <View style={[c.statusDot, { backgroundColor: color }]} />
-            <Text style={[c.statusText, { color }]}>{label}</Text>
-          </View>
-        </View>
 
-        <View style={[c.meta, { borderTopColor: colors.border }]}>
-          <View style={c.metaCell}>
-            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Amount</Text>
-            <Text style={c.metaValueAccent}>{formatAmount(claim.amount)}</Text>
-          </View>
-          <View style={[c.metaSep, { backgroundColor: colors.border }]} />
-          <View style={[c.metaCell, c.metaCellMid]}>
-            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Claim no.</Text>
-            <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{claim.claimNumber}</Text>
-          </View>
-          <View style={[c.metaSep, { backgroundColor: colors.border }]} />
-          <View style={[c.metaCell, c.metaCellEnd]}>
-            <Text style={[c.metaLabel, { color: colors.textMuted }]}>Type</Text>
-            <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{capitalize(claim.type)}</Text>
+          <View style={[c.meta, { borderTopColor: colors.border }]}>
+            <View style={c.metaCell}>
+              <Text style={[c.metaLabel, { color: colors.textMuted }]}>Amount</Text>
+              <Text style={c.metaValueAccent}>{formatAmount(claim.amount)}</Text>
+            </View>
+            <View style={[c.metaSep, { backgroundColor: colors.border }]} />
+            <View style={[c.metaCell, c.metaCellMid]}>
+              <Text style={[c.metaLabel, { color: colors.textMuted }]}>Claim no.</Text>
+              <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{claim.claimNumber}</Text>
+            </View>
+            <View style={[c.metaSep, { backgroundColor: colors.border }]} />
+            <View style={[c.metaCell, c.metaCellEnd]}>
+              <Text style={[c.metaLabel, { color: colors.textMuted }]}>Type</Text>
+              <Text style={[c.metaValue, { color: colors.text }]} numberOfLines={1}>{capitalize(claim.type)}</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </View>
+      </TouchableOpacity>
+      <ClaimProgressSheet claim={claim} visible={progressOpen} onClose={() => setProgressOpen(false)} />
+    </>
   );
 }
 

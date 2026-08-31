@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch,
 } from 'react-native';
@@ -55,9 +55,9 @@ export default function SettingsScreen() {
   const router             = useRouter();
   const colors             = useThemeColors();
   const { logout, user }   = useAuth();
-  const { alert, confirm } = useDialog();
+  const { confirm }        = useDialog();
   const { t, currentLangMeta, darkMode, setDarkMode } = useLanguage();
-  const [langModalVisible, setLangModalVisible] = React.useState(false);
+  const [langModalVisible, setLangModalVisible] = useState(false);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 

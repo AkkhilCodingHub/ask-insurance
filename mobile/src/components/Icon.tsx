@@ -4,7 +4,6 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import React from 'react';
 
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 

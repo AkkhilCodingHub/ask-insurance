@@ -4,12 +4,12 @@
  * Handles foreground push notifications and renders a beautiful in-app banner.
  * Wrap the app with <NotificationProvider> — it self-manages everything.
  */
-import React, {
+import {
   createContext, useContext, useCallback, useEffect,
   useRef, useState, ReactNode,
 } from 'react';
 import {
-  Animated, Dimensions, PanResponder, Platform,
+  Animated, PanResponder, Platform,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-const { width: W } = Dimensions.get('window');
+
 
 const AUTO_DISMISS_MS = 4500;
 

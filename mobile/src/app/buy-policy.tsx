@@ -246,9 +246,6 @@ export default function BuyPolicyScreen() {
 
   // ── SUCCESS & AUTOMATIC CERTIFICATE SCREEN ─────────────────────────────────
   if (createdPolicy) {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://ask-api.bitopayments.com';
-    const certUrl = `${baseUrl}/api/policies/${createdPolicy.id}/certificate`;
-
     return (
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.successScreen}>

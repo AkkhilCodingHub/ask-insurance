@@ -3,13 +3,13 @@ import axios, { AxiosInstance } from 'axios';
 const rawApiUrl = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 const API_BASE_URL = rawApiUrl ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/$/, '')}/api`) : '/api';
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
 }
 
-interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> {
   data: T[];
   total: number;
   page: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
@@ -123,7 +123,6 @@ function BuyPolicyContent() {
       // 1. Sync instant KYC to backend DB
       const cleanPan = panNumber.trim().toUpperCase() || "ABCDE1234F";
       const cleanAadhaar = aadhaarNumber.replace(/\D/g, "") || "999988887777";
-      const cleanPhone = phone.replace(/[^0-9]/g, "");
 
       await api.kyc.verifyInstant({
         name: fullName.trim() || user?.name || "Valued Customer",

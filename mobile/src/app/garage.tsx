@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Alert, Dimensions,
+  StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -11,7 +11,7 @@ import { Colors } from '@/constants/theme';
 import { useThemeColors } from '@/context/agent';
 import { vehiclesApi, ApiVehicle } from '@/lib/api';
 
-const { width: W } = Dimensions.get('window');
+
 
 interface ChallanItem {
   id: string;

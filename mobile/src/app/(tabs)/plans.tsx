@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FlatList, ScrollView, View, Text, TouchableOpacity,
   TextInput, StyleSheet, ActivityIndicator, RefreshControl,

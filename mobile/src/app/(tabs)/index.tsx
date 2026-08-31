@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, Dimensions, RefreshControl, Animated, Platform,
@@ -10,7 +10,7 @@ import { useAuth } from '@/context/auth';
 import { usersApi, plansApi, ApiPolicy, ApiPlan, DashboardData } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
-import { useLanguage, useThemeColors } from '@/context/agent';
+import { useThemeColors } from '@/context/agent';
 import { dispatchSystemPolicyAlerts } from '@/lib/notifications';
 
 const { width: W } = Dimensions.get('window');
@@ -159,15 +159,15 @@ function getKycHomeBannerVisuals(status: string | undefined): KycHomeBannerVisua
 
 export default function HomeTab() {
   const router   = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const colors = useThemeColors();
-  const { t } = useLanguage();
+  
 
   const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
-  const [searchIntentQuery, setSearchIntentQuery] = useState('');
+  
   const [selectedIntentType, setSelectedIntentType] = useState<'all' | 'motor' | 'health' | 'travel' | 'life'>('all');
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';

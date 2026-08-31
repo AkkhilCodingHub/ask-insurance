@@ -46,20 +46,6 @@ function Banner({ type, msg }: { type: "success" | "error"; msg: string }) {
   );
 }
 
-// ── Role badge ────────────────────────────────────────────────────────────────
-
-function RoleBadge({ role }: { role: string }) {
-  const isSuperadmin = role === "superadmin";
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.05em",
-      background: isSuperadmin ? "#EFF6FF" : "#F0FDF4",
-      color:      isSuperadmin ? "#1D4ED8"  : "#15803D",
-      border:     isSuperadmin ? "1px solid #BFDBFE" : "1px solid #BBF7D0",
-    }}>{isSuperadmin ? "Superadmin" : "Admin"}</span>
-  );
-}
-
 // ── Admin Profile section ─────────────────────────────────────────────────────
 
 function ProfileSection() {
@@ -137,7 +123,7 @@ function ProfileSection() {
 
 // ── Mobile Maintenance Section ──────────────────────────────────────────────────
 
-import { Wrench, AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 
 function MaintenanceSection() {
   const [maintenance, setMaintenance] = useState<{

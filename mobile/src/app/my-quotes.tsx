@@ -62,7 +62,7 @@ const TIMELINE_STEPS = [
   { key: 'converted', label: 'Policy Issued',       sub: 'Your policy is active' },
 ];
 
-const PAYMENT_UPI = 'askinsurance@upi';
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,6 @@ function PaymentSheet({
   const [loading, setLoading] = useState(false);
   const [payUrl,  setPayUrl]  = useState<string | null>(null);
   const [err,     setErr]     = useState<string | null>(null);
-  const { alert } = useDialog();
 
   const color = quote ? (TYPE_COLOR[quote.type] ?? Colors.primary) : Colors.primary;
   const ar    = quote?.adminResponse;
@@ -407,44 +406,6 @@ function PaymentSheet({
         </ScrollView>
       </Animated.View>
     </Modal>
-  );
-}
-
-// ── Status Timeline (shared) ──────────────────────────────────────────────────
-
-function StatusTimeline({ status }: { status: string }) {
-  const step = statusToStep(status);
-  if (status === 'expired') {
-    return (
-      <View style={tl.expiredRow}>
-        <Icon name="close-circle-outline" size={15} color="#9CA3AF" />
-        <Text style={tl.expiredText}>This quote has expired. Please submit a new request.</Text>
-      </View>
-    );
-  }
-  return (
-    <View style={tl.wrap}>
-      {TIMELINE_STEPS.map((s, i) => {
-        const done = i <= step; const cur = i === step;
-        const c = STATUS_CFG[s.key]?.color ?? Colors.primary;
-        return (
-          <View key={s.key} style={tl.row}>
-            <View style={tl.col}>
-              <View style={[tl.dot, { backgroundColor: done ? c : Colors.bg, borderColor: done ? c : Colors.border }]}>
-                {done && <Icon name="checkmark" size={9} color={Colors.white} />}
-              </View>
-              {i < TIMELINE_STEPS.length - 1 && (
-                <View style={[tl.line, { backgroundColor: i < step ? c : Colors.border }]} />
-              )}
-            </View>
-            <View style={tl.info}>
-              <Text style={[tl.label, cur && { color: c, fontWeight: '800' }]}>{s.label}</Text>
-              <Text style={[tl.sub, cur && { color: c }]}>{s.sub}</Text>
-            </View>
-          </View>
-        );
-      })}
-    </View>
   );
 }
 
@@ -1243,18 +1204,6 @@ const qc = StyleSheet.create({
 
 // ── Timeline Styles (used by StatusTimeline inside DetailsSheet) ──────────────
 
-const tl = StyleSheet.create({
-  wrap:        { paddingTop: 12, paddingBottom: 4, gap: 0 },
-  row:         { flexDirection: 'row', gap: 10, minHeight: 42 },
-  col:         { alignItems: 'center', width: 22 },
-  dot:         { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  line:        { width: 2, flex: 1, marginVertical: 2 },
-  info:        { flex: 1, paddingBottom: 6 },
-  label:       { fontSize: 13, color: Colors.textMuted, fontWeight: '500', paddingTop: 1 },
-  sub:         { fontSize: 11, color: Colors.textLight, marginTop: 1, lineHeight: 15 },
-  expiredRow:  { flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 8, padding: 10, marginTop: 8 },
-  expiredText: { flex: 1, fontSize: 12, color: '#6B7280', lineHeight: 17 },
-});
 
 // ── Shared bottom sheet base styles ──────────────────────────────────────────
 

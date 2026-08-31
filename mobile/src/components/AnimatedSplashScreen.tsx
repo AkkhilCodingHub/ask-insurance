@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Image, Dimensions, Easing,
+  View, Text, StyleSheet, Animated, Image, Easing,
 } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 
-const { width: W, height: H } = Dimensions.get('window');
+
 const FULL_TEXT = 'ASK INSURANCE BROKERS';
 
 interface AnimatedSplashScreenProps {

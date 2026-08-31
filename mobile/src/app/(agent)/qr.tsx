@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Share, SafeAreaView } from 'react-native';
 import { useAgent, useThemeColors } from '@/context/agent';
 import { Icon } from '@/components/Icon';

@@ -7,7 +7,7 @@ import {
   PhoneCall, Award, Layers, Zap, ChevronRight,
   Send, AlertTriangle, FileCheck, RefreshCw, BadgeCheck, DollarSign
 } from "lucide-react";
-import { adminApi, DashboardStats, AdminClaim, AdminUser, AnalyticsData } from "@/lib/api";
+import { adminApi, DashboardStats, AdminClaim, AdminUser } from "@/lib/api";
 
 interface BrokerTaskCardProps {
   title: string;
@@ -85,24 +85,20 @@ export default function BrokerAdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [claims, setClaims] = useState<AdminClaim[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<"all" | "urgent" | "leads" | "claims">("all");
-
-  useEffect(() => {
+    useEffect(() => {
     async function loadDashboard() {
       try {
         setLoading(true);
-        const [statsData, claimsData, usersData, analyticsData] = await Promise.all([
+        const [statsData, claimsData, usersData] = await Promise.all([
           adminApi.getStats(),
           adminApi.getClaims(1, 6),
-          adminApi.getUsers(1, 6),
-          adminApi.getAnalytics()
+          adminApi.getUsers(1, 6)
         ]);
         setStats(statsData);
         setClaims(claimsData.claims);
         setUsers(usersData.users);
-        setAnalytics(analyticsData);
       } catch (e) {
         console.error("Broker Dashboard load error:", e);
       } finally {

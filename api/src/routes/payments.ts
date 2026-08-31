@@ -6,7 +6,6 @@ import { authenticate, requireKyc } from '../middleware/auth';
 import { createPaymentLink } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
-import { sanitizeLog } from '../lib/sanitize';
 
 const router = Router();
 

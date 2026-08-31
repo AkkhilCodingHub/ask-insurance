@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, CheckCircle, XCircle, Clock, Eye, X, FileText, User } from "lucide-react";
+import { Shield, CheckCircle, XCircle, Clock, Eye, X, FileText } from "lucide-react";
 import { adminApi, KycSubmission } from "@/lib/api";
 
 const DOC_LABELS: Record<string, string> = {
@@ -278,9 +278,7 @@ export default function KycPage() {
     }
   };
 
-  const pendingCount = activeTab === "submitted" ? submissions.length : 0;
-
-  return (
+    return (
     <div style={{ width: "100%" }}>
       {/* Page header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>

@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Modal, TextInput, ActivityIndicator, Alert, Pressable, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
 import { agentApi } from '@/lib/api';
-import { useAgent } from '@/context/agent';
-
 interface Customer {
   id: string;
   name: string;
@@ -20,8 +17,6 @@ interface Customer {
 }
 
 export default function AgentCustomersScreen() {
-  const router = useRouter();
-  const { agent } = useAgent();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);

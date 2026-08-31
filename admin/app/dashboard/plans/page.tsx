@@ -219,7 +219,7 @@ function PlanModal({ plan, insurers, onClose, onSave }: {
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [insurers, setInsurers] = useState<Insurer[]>([]);
-  const [total, setTotal] = useState(0);
+  const [, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("All");

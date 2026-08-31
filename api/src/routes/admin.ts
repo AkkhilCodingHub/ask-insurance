@@ -436,7 +436,6 @@ router.get('/stats', adminAuthenticate, async (_req: Request, res: Response): Pr
   try {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
     const [
       totalUsers,
@@ -2544,7 +2543,7 @@ router.post('/agents/kyc/upload', adminAuthenticate, upload.single('document'), 
     const key = `agent-kyc/${adminId}/${Date.now()}.${ext}`;
     const url = await uploadToR2(key, file.buffer, file.mimetype);
 
-    const agent = await prisma.admin.update({
+    await prisma.admin.update({
       where: { id: adminId },
       data: {
         kycStatus: 'submitted',
@@ -3114,7 +3113,6 @@ router.post('/agents/bulk-import', adminAuthenticate, upload.single('file'), asy
     const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
     const nameIdx     = headers.findIndex(h => h.includes('name'));
     const emailIdx    = headers.findIndex(h => h.includes('email'));
-    const phoneIdx    = headers.findIndex(h => h.includes('phone'));
     const passIdx     = headers.findIndex(h => h.includes('password') || h.includes('pass'));
     const insurersIdx = headers.findIndex(h => h.includes('insurer'));
     const typesIdx    = headers.findIndex(h => h.includes('type'));
@@ -3135,7 +3133,6 @@ router.post('/agents/bulk-import', adminAuthenticate, upload.single('file'), asy
 
       const name = row[nameIdx] || 'Agent';
       const email = row[emailIdx].toLowerCase();
-      const phone = phoneIdx !== -1 && row[phoneIdx] ? row[phoneIdx] : '';
       const rawPassword = passIdx !== -1 && row[passIdx] ? row[passIdx] : 'Agent@12345';
       const rawInsurers = insurersIdx !== -1 && row[insurersIdx] ? row[insurersIdx].split(';').map(s => s.trim()) : [];
       const rawTypes = typesIdx !== -1 && row[typesIdx] ? row[typesIdx].split(';').map(s => s.trim()) : [];

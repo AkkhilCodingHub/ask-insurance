@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, StyleSheet, BackHandler } from 'react-native';
 import { FloatingSupportChat } from '@/components/FloatingSupportChat';
 import { AuthProvider } from '@/context/auth';

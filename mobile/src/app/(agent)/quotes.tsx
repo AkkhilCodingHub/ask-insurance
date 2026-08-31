@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, TextInput, ActivityIndicator,
@@ -42,7 +42,7 @@ function fmtTime(s: string) {
 function fmtMoney(n: number) {
   return '₹' + Number(n).toLocaleString('en-IN');
 }
-function cap(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
 
 // Human-readable key names for customer details
 const DETAIL_LABELS: Record<string, string> = {

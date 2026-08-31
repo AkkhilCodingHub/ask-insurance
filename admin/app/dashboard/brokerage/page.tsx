@@ -36,7 +36,7 @@ export default function BrokeragePage() {
   const [policies, setPolicies] = useState<PolicyBrokerage[]>([]);
   const [stats, setStats] = useState<Stats>({ totalEarned: 0, totalPending: 0, totalReleased: 0 });
   const [insurers, setInsurers] = useState<Insurer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

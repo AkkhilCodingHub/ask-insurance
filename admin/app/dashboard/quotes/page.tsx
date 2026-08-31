@@ -250,9 +250,7 @@ function Drawer({ quote, agents, onClose, onRefresh }: { quote: AdminQuote; agen
 
   let details: Record<string, unknown> = {};
   try { details = JSON.parse(quote.details); } catch {}
-  const coverVal = details.sumInsured ?? details.idv ?? details.assetValue;
-
-  // Close on Escape
+    // Close on Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);

@@ -44,8 +44,9 @@ app.use(helmet({
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) {
-        // Non-browser or same-origin clients (mobile app, server-to-server)
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
         callback(null, true);
       }
     },

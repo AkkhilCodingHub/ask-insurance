@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, Animated, Platform, Modal,
@@ -13,12 +13,7 @@ import { Colors } from '@/constants/theme';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatAmount(v?: number | null): string {
-  const n = Number(v) || 0;
-  if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
-  if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
-  return `₹${n.toLocaleString('en-IN')}`;
-}
+
 
 function formatAmountFull(v?: number | null): string {
   const n = Number(v) || 0;

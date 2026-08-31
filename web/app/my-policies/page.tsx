@@ -58,7 +58,7 @@ const FALLBACK_POLICIES: Policy[] = [
 export default function MyPoliciesPage() {
   const [policies, setPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
   const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Endorsement Modal
   const [endorsePolicy, setEndorsePolicy] = useState<Policy | null>(null);

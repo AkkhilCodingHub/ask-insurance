@@ -1,5 +1,4 @@
-import React from 'react';
-import { Tabs, Redirect, useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
@@ -10,7 +9,7 @@ import { Colors } from '@/constants/theme';
 type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 export default function AgentLayout() {
-  const { agent, loading, logout } = useAgent();
+  const { logout } = useAgent();
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const tabH    = 52 + insets.bottom;

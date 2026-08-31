@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, TextInput, Alert,
@@ -19,18 +19,9 @@ type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function policyColor(type: string): string {
-  const map: Record<string, string> = {
-    life: '#1580FF', health: '#059669', motor: '#0891B2',
-    travel: '#D97706', home: '#7C3AED', business: '#E11D48',
-  };
-  return map[type] ?? '#1580FF';
-}
 
-function formatPremium(v: number): string {
-  if (v >= 1000) return `₹${(v / 1000).toFixed(1)}K/yr`;
-  return `₹${v}/yr`;
-}
+
+
 
 function formatAmount(v: number): string {
   if (v >= 100000) return `₹${(v / 100000).toFixed(2)}L`;
@@ -154,8 +145,6 @@ export default function ProfileTab() {
     .slice(0, 2);
 
   const activePolicies  = policies.filter(p => p.status === 'active').length;
-  const pendingClaims   = claims.filter(c => c.status === 'pending' || c.status === 'submitted').length;
-  const approvedClaims  = claims.filter(c => c.status === 'approved' || c.status === 'settled').length;
   const totalPaid       = totalPremiumPaid(payments);
 
   // ── Guest view ─────────────────────────────────────────────────────────────

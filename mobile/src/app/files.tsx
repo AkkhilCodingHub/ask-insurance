@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, RefreshControl, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
 import * as SecureStore from 'expo-secure-store';
@@ -37,9 +36,8 @@ interface UploadedDoc {
 }
 
 export default function StorageFilesScreen() {
-  const router = useRouter();
   const colors = useThemeColors();
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const { agent } = useAgent();
   const { alert, confirm } = useDialog();
   const isAgent = Boolean(agent);

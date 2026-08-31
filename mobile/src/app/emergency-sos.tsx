@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Linking, Alert,
@@ -157,9 +157,7 @@ export default function EmergencySosScreen() {
         <Text style={[s.sectionHeader, { color: colors.text }]}>1-Tap Roadside Assistance (RSA)</Text>
         <View style={s.rsaGrid}>
           {RSA_SERVICES.map((serv) => (
-            <TouchableOpacity
-              key={serv.id}
-              style={[s.rsaCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            <TouchableOpacity key={serv.id} disabled={dispatching} style={[s.rsaCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: dispatching ? 0.6 : 1 }]}
               onPress={() => handleTriggerRsa(serv)}
               activeOpacity={0.7}
             >

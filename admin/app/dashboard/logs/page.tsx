@@ -19,7 +19,7 @@ interface ActivityLog {
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function loadLogs() {

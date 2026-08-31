@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
+
 
 // ── Config ────────────────────────────────────────────────────────────────────
 function resolveBaseUrl(): string {
@@ -397,10 +397,10 @@ const post = <T>(path: string, body?: unknown, auth = false) =>
 const put = <T>(path: string, body?: unknown, auth = false) =>
   request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
 
-const patch = <T>(path: string, body?: unknown, auth = false) =>
+export const patch = <T>(path: string, body?: unknown, auth = false) =>
   request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
 
-const del = <T>(path: string, auth = false) =>
+export const del = <T>(path: string, auth = false) =>
   request<T>(path, { method: 'DELETE' }, auth);
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

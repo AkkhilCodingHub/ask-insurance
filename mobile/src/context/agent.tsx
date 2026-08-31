@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { agentApi, AgentAdmin, getAgentToken, setAgentToken, clearAgentToken, getPrefs, setPrefs } from '@/lib/api';
@@ -17,15 +17,6 @@ interface AgentContextValue {
 const AgentContext = createContext<AgentContextValue | null>(null);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const DEV_AGENT: AgentAdmin = {
-    id: 'cmsj5bfz30000eqyg2e1xjgck',
-    name: 'Rahul POSP Advisor',
-    email: 'agent@ask-insurance.in',
-    role: 'agent',
-    pospCode: 'AGT-1082',
-    phone: '9876543210',
-    isVerified: true
-  };
   const [agent,   setAgent]   = useState<AgentAdmin | null>(null);
   const [loading, setLoading] = useState(false);
 
