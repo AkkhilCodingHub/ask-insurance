@@ -245,13 +245,20 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
     const quote = await prisma.quote.findFirst({ where: { id, userId } });
     if (!quote) { res.status(404).json({ error: 'Quote not found' }); return; }
 
+    const parsedDetails = typeof quote.details === 'string'
+      ? (() => { try { return JSON.parse(quote.details); } catch { return quote.details; } })()
+      : quote.details;
+    const parsedAdminResp = quote.adminResponse
+      ? (typeof quote.adminResponse === 'string' ? (() => { try { return JSON.parse(quote.adminResponse as string); } catch { return null; } })() : quote.adminResponse)
+      : null;
+
     res.json({
       quote: {
         id:             quote.id,
         type:           quote.type,
-        details:        JSON.parse(quote.details),
+        details:        parsedDetails,
         status:         quote.status,
-        adminResponse:  quote.adminResponse ? JSON.parse(quote.adminResponse) as AdminQuoteResponse : null,
+        adminResponse:  parsedAdminResp,
         adminResponseAt:quote.adminResponseAt,
         approvedAt:     quote.approvedAt,
         expiresAt:      quote.expiresAt,
@@ -326,17 +333,31 @@ router.post('/:id/approve', authenticate, async (req: Request, res: Response): P
     if (quote.status !== 'responded')   { res.status(400).json({ error: 'No advisor quote to approve yet' }); return; }
     if (!quote.adminResponse)           { res.status(400).json({ error: 'No advisor quote to approve yet' }); return; }
 
-    const adminResp = JSON.parse(quote.adminResponse) as AdminQuoteResponse;
+    let adminResp: AdminQuoteResponse;
+    try {
+      adminResp = typeof quote.adminResponse === 'string' ? JSON.parse(quote.adminResponse) : quote.adminResponse;
+    } catch {
+      res.status(400).json({ error: 'Corrupt advisor response format' });
+      return;
+    }
+
+    let parsedDetails: Record<string, any> = {};
+    try {
+      parsedDetails = typeof quote.details === 'string' ? JSON.parse(quote.details) : quote.details;
+    } catch {}
+
     const now = new Date();
+    const sumIns = Number(parsedDetails?.sumInsured) || 0;
+    const prem = Number(adminResp?.totalPremium) || 0;
 
     const [policy] = await prisma.$transaction([
       prisma.policy.create({
         data: {
           policyNumber:  `APP${Date.now()}`,
           type:          quote.type,
-          provider:      adminResp.insurer,
-          sumInsured:    (JSON.parse(quote.details) as Record<string, unknown>).sumInsured as number ?? 0,
-          premium:       adminResp.totalPremium,
+          provider:      adminResp.insurer || 'ASK Insurance',
+          sumInsured:    sumIns,
+          premium:       prem,
           startDate:     now,
           endDate:       new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
           status:        'pending',

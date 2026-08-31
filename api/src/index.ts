@@ -11,7 +11,6 @@ import { policiesRouter } from './routes/policies';
 import { claimsRouter } from './routes/claims';
 import { quotesRouter } from './routes/quotes';
 import { notificationsRouter } from './routes/notifications';
-import { adminRouter } from './routes/admin';
 import { adminRouter, getSystemMaintenanceConfig } from './routes/admin';
 import { chatRouter } from './routes/chat';
 import { plansRouter } from './routes/plans';

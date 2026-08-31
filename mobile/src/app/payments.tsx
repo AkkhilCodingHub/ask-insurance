@@ -13,24 +13,32 @@ import { Colors } from '@/constants/theme';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatAmount(n: number): string {
+function formatAmount(v?: number | null): string {
+  const n = Number(v) || 0;
   if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
   if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
-  return `₹${n}`;
-}
-
-function formatAmountFull(n: number): string {
   return `₹${n.toLocaleString('en-IN')}`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-IN', {
+function formatAmountFull(v?: number | null): string {
+  const n = Number(v) || 0;
+  return `₹${n.toLocaleString('en-IN')}`;
+}
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-IN', {
+function formatTime(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('en-IN', {
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 }

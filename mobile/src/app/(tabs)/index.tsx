@@ -98,16 +98,18 @@ function getGreeting() {
   return 'Good evening';
 }
 
-function formatPremium(v: number): string {
-  if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L/yr`;
-  if (v >= 1000)   return `₹${(v / 1000).toFixed(1)}K/yr`;
-  return `₹${v}/yr`;
+function formatPremium(v?: number | null): string {
+  const n = Number(v) || 0;
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L/yr`;
+  if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K/yr`;
+  return `₹${n.toLocaleString('en-IN')}/yr`;
 }
 
-function formatCover(v: number): string {
-  if (v >= 10000000) return `₹${(v / 10000000).toFixed(0)} Cr`;
-  if (v >= 100000)   return `₹${(v / 100000).toFixed(0)} L`;
-  return `₹${v}`;
+function formatCover(v?: number | null): string {
+  const n = Number(v) || 0;
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(0)} Cr`;
+  if (n >= 100000)   return `₹${(n / 100000).toFixed(0)} L`;
+  return `₹${n.toLocaleString('en-IN')}`;
 }
 
 function policyColor(type: string): string {

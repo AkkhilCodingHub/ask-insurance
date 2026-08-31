@@ -1050,12 +1050,10 @@ router.put('/policies/:id', adminAuthenticate, async (req: Request, res: Respons
   try {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const schema = z.object({
-      status: z.enum(['active', 'expired', 'cancelled']).optional(),
       status: z.enum(['active', 'pending', 'expired', 'cancelled']).optional(),
       paymentStatus: z.enum(['pending', 'paid', 'failed']).optional(),
       provider: z.string().optional(),
       sumInsured: z.number().positive().optional(),
-      premium: z.number().nonnegative().optional()
       premium: z.number().nonnegative().optional(),
       startDate: z.string().or(z.date()).optional(),
       endDate: z.string().or(z.date()).optional(),
@@ -1078,7 +1076,6 @@ router.put('/policies/:id', adminAuthenticate, async (req: Request, res: Respons
 
     const policy = await prisma.policy.update({
       where: { id },
-      data: data as any
       data: data as any,
       include: {
         user: { select: { id: true, name: true, phone: true, email: true } },

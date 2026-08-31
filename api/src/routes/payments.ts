@@ -125,6 +125,12 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET ?? '';
 
+    const rawStr = Buffer.isBuffer(req.body)
+      ? req.body.toString('utf8')
+      : typeof req.body === 'string'
+        ? req.body
+        : JSON.stringify(req.body);
+
     // Verify webhook signature if secret configured
     if (secret) {
       const sig = req.headers['x-razorpay-signature'] as string;
@@ -132,15 +138,20 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
         res.status(400).json({ error: 'Missing signature' });
         return;
       }
-      const expected = crypto.createHmac('sha256', secret).update(req.body).digest('hex');
+      const expected = crypto.createHmac('sha256', secret).update(rawStr).digest('hex');
       if (sig !== expected) {
         res.status(400).json({ error: 'Invalid signature' });
         return;
       }
     }
 
-    const rawStr = req.body.toString();
-    const event = JSON.parse(rawStr);
+    let event: any;
+    try {
+      event = typeof req.body === 'object' && !Buffer.isBuffer(req.body) ? req.body : JSON.parse(rawStr);
+    } catch {
+      res.status(400).json({ error: 'Invalid webhook payload JSON' });
+      return;
+    }
 
     const isPaid =
       event.event === 'payment_link.paid' ||

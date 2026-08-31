@@ -59,17 +59,20 @@ function roundToNice(val: number): number {
   return           Math.round(val / 1e4)  * 1e4;           // nearest 10 K
 }
 
-function fmtCover(val: number): string {
-  if (val >= 1e7)  return `₹${+(val / 1e7).toFixed(2)} Cr`;
-  if (val >= 1e5)  return `₹${+(val / 1e5).toFixed(1)} L`;
-  if (val >= 1000) return `₹${+(val / 1000).toFixed(0)}K`;
-  return `₹${val}`;
+function fmtCover(val?: number | null): string {
+  const n = Number(val) || 0;
+  if (n >= 1e7)  return `₹${+(n / 1e7).toFixed(2)} Cr`;
+  if (n >= 1e5)  return `₹${+(n / 1e5).toFixed(1)} L`;
+  if (n >= 1000) return `₹${+(n / 1000).toFixed(0)}K`;
+  return `₹${n.toLocaleString('en-IN')}`;
 }
 
-function buildPresets(min: number, max: number): Array<{ label: string; value: number }> {
-  if (!min || !max || min >= max) return DEFAULT_COVER_OPTIONS;
-  const logMin = Math.log10(min);
-  const logMax = Math.log10(max);
+function buildPresets(min?: number | null, max?: number | null): Array<{ label: string; value: number }> {
+  const minVal = Number(min) || 0;
+  const maxVal = Number(max) || 0;
+  if (minVal <= 0 || maxVal <= 0 || minVal >= maxVal) return DEFAULT_COVER_OPTIONS;
+  const logMin = Math.log10(minVal);
+  const logMax = Math.log10(maxVal);
   const COUNT  = 4;
   const seen   = new Set<number>();
   const result: Array<{ label: string; value: number }> = [];

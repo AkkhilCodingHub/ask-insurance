@@ -475,7 +475,7 @@ class AdminApiClient {
     return data.policy;
   }
 
-  async createPolicy(policy: {
+  async createPolicy(policyData: {
     userId: string;
     type: string;
     provider: string;
@@ -483,15 +483,12 @@ class AdminApiClient {
     premium: number;
     startDate: string;
     endDate: string;
+    registrationNumber?: string;
     status?: 'active' | 'pending' | 'expired' | 'cancelled';
     paymentStatus?: 'pending' | 'paid' | 'failed';
-    registrationNumber?: string;
     notes?: string;
-    insurerId?: string;
-    planId?: string;
-    policyNumber?: string;
   }): Promise<AdminPolicy> {
-    const { data } = await this.instance.post('/policies', policy);
+    const { data } = await this.instance.post('/policies', policyData);
     if (data.error) throw new Error(data.error);
     return data.policy;
   }
@@ -506,19 +503,6 @@ class AdminApiClient {
     const { data } = await this.instance.delete(`/policies/${id}`);
     if (data.error) throw new Error(data.error);
     return data;
-  }
-
-  // ── System Maintenance ──────────────────────────────────────────────────
-  async getMaintenance(): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt: string; updatedBy?: string }> {
-    const { data } = await this.instance.get('/system/maintenance');
-    if (data.error) throw new Error(data.error);
-    return data.maintenance;
-  }
-
-  async setMaintenance(payload: { maintenanceMode: boolean; maintenanceMessage?: string }): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt: string }> {
-    const { data } = await this.instance.post('/system/maintenance', payload);
-    if (data.error) throw new Error(data.error);
-    return data.maintenance;
   }
 
   // ── Claims ─────────────────────────────────────────────────────────────
@@ -879,6 +863,18 @@ class AdminApiClient {
     const { data } = await this.instance.post(`/posp-applications/${id}/reject`, { reason });
     if (data.error) throw new Error(data.error);
     return data;
+  }
+
+  async getMaintenance(): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt?: string }> {
+    const { data } = await this.instance.get('/system/maintenance');
+    if (data.error) throw new Error(data.error);
+    return data?.maintenance || data;
+  }
+
+  async setMaintenance(body: { maintenanceMode: boolean; maintenanceMessage: string }): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt?: string }> {
+    const { data } = await this.instance.post('/system/maintenance', body);
+    if (data.error) throw new Error(data.error);
+    return data?.maintenance || data;
   }
 }
 

@@ -92,28 +92,37 @@ function StatusTag({ statusKey, compact }: { statusKey: string; compact?: boolea
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtAmount(v: number): string {
-  if (v >= 10_000_000) return `₹${(v / 10_000_000).toFixed(2)}Cr`;
-  if (v >= 100_000)    return `₹${(v / 100_000).toFixed(1)}L`;
-  if (v >= 1_000)      return `₹${(v / 1_000).toFixed(0)}K`;
-  return `₹${v}`;
+function fmtAmount(v?: number | null): string {
+  const n = Number(v) || 0;
+  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(2)}Cr`;
+  if (n >= 100_000)    return `₹${(n / 100_000).toFixed(1)}L`;
+  if (n >= 1_000)      return `₹${(n / 1_000).toFixed(0)}K`;
+  return `₹${n.toLocaleString('en-IN')}`;
 }
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+function fmtDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function daysLeft(endDate: string): number {
-  return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000);
+function daysLeft(endDate?: string | null): number {
+  if (!endDate) return 0;
+  const time = new Date(endDate).getTime();
+  if (isNaN(time)) return 0;
+  return Math.ceil((time - Date.now()) / 86_400_000);
 }
 
-function coveragePct(startDate: string, endDate: string): number {
+function coveragePct(startDate?: string | null, endDate?: string | null): number {
+  if (!startDate || !endDate) return 0;
   const start = new Date(startDate).getTime();
   const end   = new Date(endDate).getTime();
+  if (isNaN(start) || isNaN(end) || end <= start) return 0;
   const now   = Date.now();
   if (now >= end)   return 100;
   if (now <= start) return 0;
-  return Math.round(((now - start) / (end - start)) * 100);
+  return Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
 }
 
 // ── Skeleton card ─────────────────────────────────────────────────────────────

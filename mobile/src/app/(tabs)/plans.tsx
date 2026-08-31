@@ -33,22 +33,28 @@ function planShort(plan: ApiPlan): string {
   return (plan.insurer?.shortName ?? plan.insurer?.name ?? plan.name).slice(0, 2).toUpperCase();
 }
 
-function formatPremium(v: number): string {
-  if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L/yr`;
-  if (v >= 1000)   return `₹${(v / 1000).toFixed(1)}K/yr`;
-  return `₹${v}/yr`;
+function formatPremium(v?: number | null): string {
+  const n = Number(v) || 0;
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)} L/yr`;
+  if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K/yr`;
+  return `₹${n.toLocaleString('en-IN')}/yr`;
 }
 
-function formatCover(v: number): string {
-  if (v >= 10000000) return `₹${(v / 10000000).toFixed(0)} Cr`;
-  if (v >= 100000)   return `₹${(v / 100000).toFixed(0)} L`;
-  if (v >= 1000)     return `₹${(v / 1000).toFixed(0)}K`;
-  return `₹${v}`;
+function formatCover(v?: number | null): string {
+  const n = Number(v) || 0;
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(0)} Cr`;
+  if (n >= 100000)   return `₹${(n / 100000).toFixed(0)} L`;
+  if (n >= 1000)     return `₹${(n / 1000).toFixed(0)}K`;
+  return `₹${n.toLocaleString('en-IN')}`;
 }
 
 function parsedFeatures(plan: ApiPlan): string[] {
-  try { return JSON.parse(plan.features) as string[]; }
-  catch { return []; }
+  if (!plan?.features) return [];
+  try {
+    return typeof plan.features === 'string' ? JSON.parse(plan.features) as string[] : plan.features;
+  } catch {
+    return [];
+  }
 }
 
 // ── Plan Card ─────────────────────────────────────────────────────────────────

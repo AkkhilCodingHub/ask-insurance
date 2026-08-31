@@ -39,23 +39,33 @@ const TYPE_FILTERS = ["All", "life", "health", "motor", "travel", "home", "busin
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(2)}Cr`;
-  if (n >= 100_000)    return `₹${(n / 100_000).toFixed(1)}L`;
-  if (n >= 1_000)      return `₹${(n / 1_000).toFixed(0)}K`;
-  return `₹${n.toLocaleString("en-IN")}`;
+function fmt(n?: number | null) {
+  const num = Number(n) || 0;
+  if (num >= 10_000_000) return `₹${(num / 10_000_000).toFixed(2)}Cr`;
+  if (num >= 100_000)    return `₹${(num / 100_000).toFixed(1)}L`;
+  if (num >= 1_000)      return `₹${(num / 1_000).toFixed(0)}K`;
+  return `₹${num.toLocaleString("en-IN")}`;
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+function fmtDate(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function toInput(iso: string) {
-  return new Date(iso).toISOString().split("T")[0];
+function toInput(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().split("T")[0];
 }
 
-function daysLeft(iso: string): number {
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+function daysLeft(iso?: string | null): number {
+  if (!iso) return 0;
+  const time = new Date(iso).getTime();
+  if (isNaN(time)) return 0;
+  return Math.ceil((time - Date.now()) / 86_400_000);
 }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
@@ -638,7 +648,6 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
               {/* Provider */}
               <section>
                 <p style={label}>Insurance Provider</p>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{policy.provider}</p>
                 {editing ? (
                   <input value={form.provider ?? policy.provider} onChange={e => setForm({ ...form, provider: e.target.value })} style={inp} />
                 ) : (
@@ -704,21 +713,6 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
                       <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{fmtDate(policy.endDate)}</p>
                     )}
                   </div>
-                </div>
-              </section>
-
-              {/* Payment status */}
-              <section>
-                <p style={label}>Payment</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{
-                    fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 100,
-                    background: policy.paymentStatus === "paid" ? "#ECFDF5" : "#FFFBEB",
-                    color:      policy.paymentStatus === "paid" ? "#059669" : "#D97706",
-                    border: `1px solid ${policy.paymentStatus === "paid" ? "#A7F3D0" : "#FDE68A"}`,
-                  }}>
-                    {policy.paymentStatus.charAt(0).toUpperCase() + policy.paymentStatus.slice(1)}
-                  </span>
                 </div>
               </section>
 
@@ -799,13 +793,13 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
                     <div>
                       <Upload size={24} color="#94A3B8" style={{ marginBottom: 8 }} />
                       <p style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Click to upload PDF or document</p>
-                      <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>PDF, JPG, PNG, DOC — max 50 MB</p>
                       <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>Max 20 MB · PDF, PNG, JPG</p>
                     </div>
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" style={{ display: "none" }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
 
+                {/* Metadata */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                   <div>
                     <label style={label}>Issue Date</label>
@@ -959,11 +953,6 @@ export default function PoliciesPage() {
             {loading ? "Loading…" : `${total.toLocaleString()} total policies · ${fmt(stats.premium)} annual premium`}
           </p>
         </div>
-        <button onClick={() => load(page)} disabled={loading}
-          style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, color: "#0F172A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <RefreshCw size={14} style={{ animation: loading ? "spin 0.7s linear infinite" : "none", color: "#1580FF" }} />
-          Refresh
-        </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={() => setCreating(true)}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "#1580FF", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 8px rgba(21,128,255,0.25)" }}>

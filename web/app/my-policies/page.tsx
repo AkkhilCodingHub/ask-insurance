@@ -193,8 +193,14 @@ export default function MyPoliciesPage() {
               const IconComponent = isMotor ? Car : isHealth ? HeartPulse : Shield;
               const isActive = pol.status === "active";
 
-              const formattedStart = pol.startDate ? new Date(pol.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
-              const formattedEnd = pol.endDate ? new Date(pol.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+              const formattedStart = pol.startDate && !isNaN(new Date(pol.startDate).getTime())
+                ? new Date(pol.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                : "—";
+              const formattedEnd = pol.endDate && !isNaN(new Date(pol.endDate).getTime())
+                ? new Date(pol.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                : "—";
+              const sumInsuredVal = Number(pol.sumInsured) || 0;
+              const premiumVal = Number(pol.premium) || 0;
 
               return (
                 <div
@@ -259,7 +265,7 @@ export default function MyPoliciesPage() {
                       </div>
                       <div>
                         <div style={{ color: "var(--text-muted)", fontSize: 11, textTransform: "uppercase" }}>Sum Insured</div>
-                        <div style={{ fontWeight: 700, color: "var(--text)" }}>₹{(pol.sumInsured / 100000).toFixed(0)} Lakh</div>
+                        <div style={{ fontWeight: 700, color: "var(--text)" }}>₹{(sumInsuredVal / 100000).toFixed(0)} Lakh</div>
                       </div>
                       <div>
                         <div style={{ color: "var(--text-muted)", fontSize: 11, textTransform: "uppercase" }}>Validity Period</div>
@@ -272,7 +278,7 @@ export default function MyPoliciesPage() {
                   <div style={{ borderLeft: "1px solid var(--border)", paddingLeft: 20, textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase" }}>Annual Premium</div>
                     <div style={{ fontSize: 22, fontWeight: 900, color: "var(--text)", marginBottom: 12 }}>
-                      ₹{pol.premium.toLocaleString("en-IN")}
+                      ₹{premiumVal.toLocaleString("en-IN")}
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
