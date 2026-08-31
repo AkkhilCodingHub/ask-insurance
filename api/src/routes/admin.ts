@@ -2390,7 +2390,7 @@ router.post('/kyc/:userId/reject', adminAuthenticate, async (req: Request, res: 
 });
 
 // ── Activity Logs ────────────────────────────────────────────────────────────
-router.get('/logs', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/logs', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const logs = await prisma.activityLog.findMany({
       orderBy: { createdAt: 'desc' },
@@ -2409,7 +2409,7 @@ router.get('/logs', adminAuthenticate, async (req: Request, res: Response): Prom
 });
 
 // ── Brokerage configuration and tracking ──────────────────────────────────────
-router.get('/brokerage/slabs', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/brokerage/slabs', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const slabs = await prisma.brokerageSlab.findMany({
       include: { insurer: { select: { name: true } } }
@@ -2448,7 +2448,7 @@ router.post('/brokerage/slabs', adminAuthenticate, async (req: Request, res: Res
   }
 });
 
-router.get('/brokerage/stats', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/brokerage/stats', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const policies = await prisma.policy.findMany({
       where: {
@@ -2688,7 +2688,7 @@ router.post('/backup', adminAuthenticate, async (req: Request, res: Response): P
 });
 
 // ── Quotation Templates ──────────────────────────────────────────────────────
-router.get('/templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/templates', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const templates = await prisma.quotationTemplate.findMany({
       orderBy: { createdAt: 'desc' }
@@ -2768,7 +2768,7 @@ router.delete('/templates/:id', adminAuthenticate, async (req: Request, res: Res
 });
 
 // ── Premium Rate Charts ──────────────────────────────────────────────────────
-router.get('/rate-charts', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/rate-charts', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const charts = await prisma.premiumRateChart.findMany({
       include: { insurer: { select: { id: true, name: true } } },
@@ -2842,7 +2842,7 @@ router.delete('/rate-charts/:id', adminAuthenticate, async (req: Request, res: R
 });
 
 // ── Brokerage CSV Export ─────────────────────────────────────────────────────
-router.get('/brokerage/export', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/brokerage/export', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const policies = await prisma.policy.findMany({
       where: {
@@ -2873,7 +2873,7 @@ router.get('/brokerage/export', adminAuthenticate, async (req: Request, res: Res
 });
 
 // ── Renewals Pipeline ────────────────────────────────────────────────────────
-router.get('/renewals', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/renewals', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const renewals = await prisma.renewal.findMany({
       include: {
@@ -3037,7 +3037,7 @@ router.patch('/claims/:id', adminAuthenticate, async (req: Request, res: Respons
   }
 });
 // ── Communication Templates ──────────────────────────────────────────────────
-router.get('/communication-templates', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+router.get('/communication-templates', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
   try {
     const templates = await prisma.communicationTemplate.findMany({
       orderBy: { createdAt: 'desc' }

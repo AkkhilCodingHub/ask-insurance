@@ -542,7 +542,7 @@ export default function UsersPage() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--bg)" }}>
-              {["User", "Phone", "Assigned POSP", "Policies", "Claims", "Joined", "Actions"].map((h, i) => (
+              {["User", "Phone", "Assigned POSP", "Policies", "Claims", "Joined", "Actions"].map((h) => (
                 <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>

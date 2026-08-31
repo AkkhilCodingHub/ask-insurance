@@ -144,7 +144,7 @@ export function classifyQueryIntent(query: string): QueryIntent {
  */
 export function formatAIResponse(
   intent: QueryIntent,
-  query: string,
+  _query: string,
   rawText: string,
   context?: UserContext
 ): string {
@@ -176,7 +176,7 @@ export function formatAIResponse(
  */
 export function generateFallbackResponse(
   intent: QueryIntent,
-  query: string,
+  _query: string,
   context?: UserContext
 ): string {
   const userName = context?.name ?? 'Valued Customer';
@@ -189,6 +189,7 @@ export function generateFallbackResponse(
         `- **Transferring NCB**: NCB belongs to the owner, not the vehicle. You can transfer your accumulated NCB when selling your old car to a new one.\n\n` +
         `To fetch accurate quotes, simply enter your vehicle registration number in the app!`;
       return formatAIResponse(intent, query, msg, context);
+      return formatAIResponse(intent, _query, msg, context);
     }
     case 'CLAIMS_HELP': {
       let msg = `### 🛡️ Insurance Claim Assistance\n\nHi **${userName}**, here is a step-by-step guide to filing a claim with **ASK Insurance**:\n\n` +
@@ -197,6 +198,7 @@ export function generateFallbackResponse(
         `3. **Cashless / Reimbursement**: For health claims, present your e-card at network hospitals for instant cashless approval.\n` +
         `4. **Real-time Tracking**: Monitor claim status updates live from your dashboard.`;
       return formatAIResponse(intent, query, msg, context);
+      return formatAIResponse(intent, _query, msg, context);
     }
     case 'POLICY_ENDORSEMENT': {
       let msg = `### 📝 Policy Endorsement & Revisions\n\nNeed to update your policy details, **${userName}**?\n\n` +
@@ -204,6 +206,7 @@ export function generateFallbackResponse(
         `- **Financial Endorsements**: Change in Sum Insured, Add-on covers (Zero Dep, RSA, Engine Protect), or CNG kit addition.\n` +
         `- **Revised Policy Download**: Once approved by your POSP/Admin, your updated policy PDF will be available instantly in **My Policies**.`;
       return formatAIResponse(intent, query, msg, context);
+      return formatAIResponse(intent, _query, msg, context);
     }
     case 'HEALTH_LIFE_COVERAGE': {
       let msg = `### 🏥 Health & Life Insurance Planning\n\nHello **${userName}**, choosing the right coverage is vital:\n\n` +
@@ -211,6 +214,7 @@ export function generateFallbackResponse(
         `- **Term Life Insurance**: Secure your family with coverage up to 10x - 15x your annual income at affordable premiums.\n` +
         `- **PBP Nivesh Mitra**: Use our AI-guided investment advisor to select top performing ULIP and savings plans.`;
       return formatAIResponse(intent, query, msg, context);
+      return formatAIResponse(intent, _query, msg, context);
     }
     default: {
       let msg = `### 🤖 ASK Insurance AI Assistance\n\nHello **${userName}**! Thank you for reaching out.\n\n` +
@@ -221,6 +225,7 @@ export function generateFallbackResponse(
         `- **Claims Guidance** & status updates\n\n` +
         `Feel free to ask any question or request help regarding your policies!`;
       return formatAIResponse(intent, query, msg, context);
+      return formatAIResponse(intent, _query, msg, context);
     }
   }
 }

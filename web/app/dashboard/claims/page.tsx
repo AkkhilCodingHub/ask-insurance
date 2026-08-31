@@ -715,7 +715,7 @@ export default function ClaimsPage() {
             color: "#D97706",
             bg: "#FFFBEB",
           },
-        ].map(({ label, value, color, bg }) => (
+        ].map(({ label, value, color }) => (
           <div
             key={label}
             style={{
