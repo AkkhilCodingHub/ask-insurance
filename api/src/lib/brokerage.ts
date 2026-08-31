@@ -1,3 +1,4 @@
+import { sanitizeLog } from './sanitize';
 export async function calculateAndApplyBrokerage(
   tx: any,
   policyId: string
@@ -8,7 +9,7 @@ export async function calculateAndApplyBrokerage(
     });
 
     if (!policy || !policy.insurerId || !policy.type) {
-      console.log(`[brokerage] Skip calculation for policy ${policyId}: missing insurer or type`);
+      console.log(`[brokerage] Skip calculation for policy ${sanitizeLog(policyId)}: missing insurer or type`);
       return;
     }
 
@@ -34,8 +35,8 @@ export async function calculateAndApplyBrokerage(
       }
     });
 
-    console.log(`[brokerage] Calculated: ${rate}% / ₹${amount} on policy ${policyId}`);
+    console.log(`[brokerage] Calculated: ${rate}% / ₹${amount} on policy ${sanitizeLog(policyId)}`);
   } catch (err) {
-    console.error('[brokerage] Failed calculation:', err);
+    console.error('[brokerage] Failed calculation:', sanitizeLog(err instanceof Error ? err.message : String(err)));
   }
 }

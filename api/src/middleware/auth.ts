@@ -4,7 +4,13 @@ import { prisma } from '../lib/prisma';
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')?.trim();
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'No token provided' });
+      return;
+    }
+
+    const token = authHeader.slice(7).trim();
     if (!token) {
       res.status(401).json({ error: 'No token provided' });
       return;
@@ -22,10 +28,13 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
 export const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '')?.trim();
-    if (token) {
-      const decoded = verifyAuthToken(token);
-      req.userId = decoded.userId;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7).trim();
+      if (token) {
+        const decoded = verifyAuthToken(token);
+        req.userId = decoded.userId;
+      }
     }
   } catch {
     // Ignore invalid token for optional auth
@@ -54,23 +63,6 @@ export const requireKyc = async (req: Request, res: Response, next: NextFunction
           data: { kycStatus: 'verified', kycVerifiedAt: new Date() }
         }).catch(() => {});
       }
-      return next();
-    }
-
-    // Check if PAN and Aadhaar are provided in request body (e.g. during instant proposal/checkout)
-    const bodyPan = typeof req.body?.panNumber === 'string' ? req.body.panNumber.trim().toUpperCase() : null;
-    const bodyAadhaar = typeof req.body?.aadhaarNumber === 'string' ? req.body.aadhaarNumber.replace(/\D/g, '') : null;
-    if (bodyPan && bodyPan.length === 10 && bodyAadhaar && bodyAadhaar.length >= 12) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          panNumber: bodyPan,
-          aadhaarVerified: true,
-          kycStatus: 'verified',
-          kycVerifiedAt: new Date(),
-          kycSubmittedAt: new Date(),
-        }
-      }).catch(() => {});
       return next();
     }
 

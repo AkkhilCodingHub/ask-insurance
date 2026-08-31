@@ -11,6 +11,8 @@ node_modules/
 dist/
 api/dist/
 api/src/generated/
+api/generated/
+generated/
 *.tsbuildinfo
 
 # Native Build Caches
