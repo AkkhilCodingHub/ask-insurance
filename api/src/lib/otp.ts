@@ -120,8 +120,7 @@ export const verifyOtpChallenge = async (phone: string, otp: string): Promise<{ 
     return { success: false, error: 'Too many invalid OTP retries. Please request a new OTP later.' };
   }
 
-  const isFixedMatch = process.env.OTP_FIXED && otp === process.env.OTP_FIXED;
-  const isValid = isFixedMatch || (await compareOtp(otp, challenge.otpHash));
+  const isValid = await compareOtp(otp, challenge.otpHash);
   if (!isValid) {
     await prisma.otpChallenge.update({
       where: { id: challenge.id },

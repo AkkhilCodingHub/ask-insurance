@@ -1,3 +1,4 @@
+import { sanitizeLog } from './sanitize';
 import axios from 'axios';
 
 export interface MParivahanVehicleDetails {
@@ -246,7 +247,7 @@ export async function fetchFromMParivahanApi(regNumber: string): Promise<MPariva
       }
     }
   } catch (err: any) {
-    console.warn(`[mParivahan API Warning] Failed to fetch live RC details for ${regNumber}: ${err.message}`);
+    console.warn(`[mParivahan API Warning] Failed to fetch live RC details for ${sanitizeLog(regNumber)}: ${sanitizeLog(err.message)}`);
   }
 
   return null;

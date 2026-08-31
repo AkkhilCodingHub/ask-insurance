@@ -120,11 +120,24 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
 
 router.post('/verify-otp', async (req: Request, res: Response): Promise<void> => {
   try {
-    const rawInput = String(req.body.phone || req.body.identifier || req.body.customerCode || '').trim();
-    const otp = String(req.body.otp || '').trim();
+    const verifySchema = z.object({
+      phone: z.string().optional(),
+      identifier: z.string().optional(),
+      customerCode: z.string().optional(),
+      otp: z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit code'),
+    });
 
-    if (!rawInput || !otp || otp.length !== 6) {
-      res.status(400).json({ error: 'Phone number/Customer ID and 6-digit OTP are required' });
+    const parsed = verifySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: (parsed.error.issues || (parsed.error as any).errors)?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+
+    const rawInput = String(parsed.data.phone || parsed.data.identifier || parsed.data.customerCode || '').trim();
+    const otp = parsed.data.otp;
+
+    if (!rawInput) {
+      res.status(400).json({ error: 'Phone number or Customer ID is required' });
       return;
     }
 

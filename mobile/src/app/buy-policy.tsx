@@ -189,7 +189,7 @@ export default function BuyPolicyScreen() {
       });
 
       const rawType = (plan?.type || params.type || 'health').toLowerCase();
-      let normalizedType: 'life' | 'health' | 'motor' | 'travel' | 'home' | 'business' = 'health';
+      let normalizedType: 'life' | 'health' | 'motor' | 'travel' | 'home' | 'business';
       if (['health', 'mediclaim', 'critical_illness'].includes(rawType)) normalizedType = 'health';
       else if (['motor', 'car', 'bike', 'two_wheeler', 'commercial_vehicle'].includes(rawType)) normalizedType = 'motor';
       else if (['life', 'term', 'investment'].includes(rawType)) normalizedType = 'life';

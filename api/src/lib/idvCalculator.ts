@@ -75,9 +75,9 @@ export function calculateIDV(input: IDVCalculationInput): IDVCalculationResult {
 
   const { ageYears, ageMonths } = calculateVehicleAge(registrationYear, registrationDate);
 
-  let depreciationPercent = 0;
+  let depreciationPercent: number;
   let isMutualAgreementRequired = false;
-  let ageBracketLabel = 'New Vehicle (0% Dep)';
+  let ageBracketLabel: string;
 
   if (ageMonths <= 6) {
     depreciationPercent = 5;
