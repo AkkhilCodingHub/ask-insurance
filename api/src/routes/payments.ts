@@ -179,18 +179,21 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
 
       if (!policy) {
         console.warn(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} not found in DB`);
+        console.warn('[razorpay webhook] SKIPPED — policy not found in DB');
         res.json({ ok: true });
         return;
       }
 
       if (policy.paymentStatus === 'paid') {
         console.log(`[razorpay webhook] SKIPPED — policy ${sanitizeLog(policyId)} already paid (idempotency)`);
+        console.log('[razorpay webhook] SKIPPED — policy already paid (idempotency)');
         res.json({ ok: true });
         return;
       }
 
       // ── Transaction ───────────────────────────────────────────────────────
       console.log(`[razorpay webhook] running activation transaction for policy ${sanitizeLog(policyId)}…`);
+      console.log('[razorpay webhook] running activation transaction');
       await prisma.$transaction(async (tx) => {
         await tx.policy.update({
           where: { id: policyId },
@@ -215,8 +218,7 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
           await tx.quote.update({
             where: { id: policy.quoteId },
             data:  { status: 'converted' }
-          }).catch((e) => console.warn(`[razorpay webhook]   ⚠ quote update failed (non-fatal):`, sanitizeLog(e?.message || e)));
-          console.log(`[razorpay webhook]   ✓ quote marked converted`);
+          }).catch(() => {});
         }
 
         await tx.notification.create({
@@ -227,26 +229,22 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
             body:   `Your ${policy.type} insurance premium has been received. Your policy is now active.`,
           }
         });
-        console.log(`[razorpay webhook]   ✓ in-app notification created`);
 
         // Calculate and record brokerage for the policy
         await calculateAndApplyBrokerage(tx, policyId);
       });
 
-
       // ── Push notification ─────────────────────────────────────────────────
       const pushToken = policy.user?.pushToken;
-      console.log(`[razorpay webhook] push token: ${pushToken ? '***present***' : 'NOT SET — skipping push'}`);
       await sendPush(
         pushToken,
         'Payment Successful! 🎉',
         `Your ${policy.type} insurance policy is now active. Check My Policies.`,
         { screen: 'my-policies' }
       );
-      console.log(`[razorpay webhook] push notification sent`);
     }
 
-    console.log(`[razorpay webhook] done — responding 200`);
+    console.log('[razorpay webhook] done — responding 200');
     console.log(`${'─'.repeat(60)}\n`);
     res.json({ ok: true });
   } catch (e) {
