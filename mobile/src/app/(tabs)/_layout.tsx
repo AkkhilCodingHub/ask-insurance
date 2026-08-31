@@ -52,7 +52,6 @@ export default function TabLayout() {
   const TAB_LABELS: Record<string, string> = {
     index:   t('home', 'Home'),
     plans:   t('plans', 'Plans'),
-    plans:   t('plans', 'Compare'),
     claims:  t('claims', 'Claims'),
     chat:    t('chat', 'Support'),
     profile: t('profile', 'Profile'),

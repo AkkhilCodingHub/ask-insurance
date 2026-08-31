@@ -20,29 +20,16 @@ export default function OTPScreen() {
   const router              = useRouter();
   const params              = useLocalSearchParams<{ phone?: string; policyId?: string; policyType?: string }>();
   const { pendingPhone, verifyOTP, sendOTP, autoVerified } = useAuth();
-  const params              = useLocalSearchParams<{ phone?: string; policyId?: string; policyType?: string; newUserName?: string; mode?: string }>();
-  const { pendingPhone, verifyOTP, sendOTP, autoVerified, completeProfile, user } = useAuth();
   const { alert }           = useDialog();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
   const [loading, setLoading]     = useState(false);
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(30);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Show "Checking SIM…" spinner on Android for up to 6s while Firebase tries auto-verify
   const [autoChecking, setAutoChecking] = useState(Platform.OS === 'android');
   const [clipboardCode, setClipboardCode] = useState<string | null>(null);
   const refs = useRef<Array<TextInput | null>>(Array(OTP_LEN).fill(null));
   const autoVerifiedRef = useRef(false);
   const processedCodeRef = useRef<string | null>(null);
-
-  // 30-second resend countdown timer
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown(c => c - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
 
   // Native Android SMS Receiver Listener (Zero user tap required!)
   useEffect(() => {
@@ -167,18 +154,9 @@ export default function OTPScreen() {
     if (verifyingRef.current) return;
     verifyingRef.current = true;
     setLoading(true);
-    setErrorMessage(null);
     try {
       const { isNewUser } = await verifyOTP(otp);
       if (isNewUser) {
-      if (params.newUserName && isNewUser) {
-        try {
-          await completeProfile(params.newUserName, '2000-01-01');
-        } catch {}
-        router.replace('/(tabs)');
-        return;
-      }
-      if (isNewUser && (!user || !user.name)) {
         router.replace('/onboarding');
       } else if (params.policyType) {
         router.replace({ pathname: '/quote', params: { type: params.policyType } });
@@ -188,8 +166,6 @@ export default function OTPScreen() {
     } catch (err: any) {
       if (autoVerifiedRef.current) return;
       alert({ type: 'error', title: 'Verification Failed', message: err?.message || 'Invalid OTP. Please try again.' });
-      const errorText = err?.message || 'Invalid OTP. Please check the code and try again.';
-      setErrorMessage(errorText);
       setDigits(Array(OTP_LEN).fill(''));
       refs.current[0]?.focus();
     } finally {
@@ -200,35 +176,15 @@ export default function OTPScreen() {
 
   const handleResend = async () => {
     if (!phone) return;
-    if (!phone || resending || countdown > 0) return;
     setResending(true);
-    setErrorMessage(null);
     try {
       await sendOTP(phone);
       setDigits(Array(OTP_LEN).fill(''));
       setAutoChecking(Platform.OS === 'android');
-      setCountdown(30);
       refs.current[0]?.focus();
-    } catch (e: any) {
-      setErrorMessage(e?.message || 'Could not resend OTP. Please wait and try again.');
     } finally {
       setResending(false);
     }
-  };
-
-  const handleManualPaste = async () => {
-    try {
-      const text = await Clipboard.getStringAsync();
-      const cleaned = text.replace(/\D/g, '').slice(0, OTP_LEN);
-      if (cleaned.length === OTP_LEN) {
-        const arr = cleaned.split('');
-        setDigits(arr);
-        setErrorMessage(null);
-        handleVerify(cleaned);
-      } else {
-        alert({ type: 'info', title: 'Clipboard Empty', message: 'No 6-digit OTP found in clipboard.' });
-      }
-    } catch {}
   };
 
   const filled = digits.filter(Boolean).length;
@@ -287,18 +243,9 @@ export default function OTPScreen() {
             ))}
           </View>
 
-          {/* Error Banner */}
-          {errorMessage && (
-            <View style={s.errorBanner}>
-              <Icon name="alert-circle" size={16} color="#DC2626" />
-              <Text style={s.errorBannerText}>{errorMessage}</Text>
-            </View>
-          )}
-
           {/* Auto-checking indicator */}
           {autoChecking && (
             <View style={[s.hintRow, { marginBottom: 28 }]}>
-            <View style={[s.hintRow, { marginBottom: 16 }]}>
               <ActivityIndicator size="small" color={Colors.primary} />
               <Text style={[s.hintText, { color: Colors.primary }]}>Checking SIM automatically…</Text>
             </View>
@@ -311,21 +258,12 @@ export default function OTPScreen() {
               onPress={() => {
                 const arr = clipboardCode.split('');
                 setDigits(arr);
-                setErrorMessage(null);
                 handleVerify(clipboardCode);
               }}
               activeOpacity={0.8}
             >
               <Icon name="clipboard-outline" size={16} color={Colors.primary} />
               <Text style={s.pastePillText}>Paste detected code ({clipboardCode})</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Manual Paste button */}
-          {!clipboardCode && (
-            <TouchableOpacity style={s.manualPasteBtn} onPress={handleManualPaste} activeOpacity={0.75}>
-              <Icon name="clipboard-outline" size={14} color={Colors.primary} />
-              <Text style={s.manualPasteBtnText}>Paste OTP from Clipboard</Text>
             </TouchableOpacity>
           )}
 
@@ -348,7 +286,6 @@ export default function OTPScreen() {
           </TouchableOpacity>
 
           {/* Resend */}
-          {/* Resend with Countdown */}
           <View style={s.resendRow}>
             <Text style={s.resendLabel}>Didn't receive the code? </Text>
             <TouchableOpacity onPress={handleResend} disabled={resending}>
@@ -357,16 +294,6 @@ export default function OTPScreen() {
                 : <Text style={s.resendBtn}>Resend OTP</Text>
               }
             </TouchableOpacity>
-            {countdown > 0 ? (
-              <Text style={s.countdownText}>Resend in {countdown}s</Text>
-            ) : (
-              <TouchableOpacity onPress={handleResend} disabled={resending}>
-                {resending
-                  ? <ActivityIndicator size="small" color={Colors.primary} />
-                  : <Text style={s.resendBtn}>Resend OTP</Text>
-                }
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -451,42 +378,7 @@ const s = StyleSheet.create({
   verifyBtnDisabled: { backgroundColor: Colors.textLight },
   verifyBtnText: { fontSize: 16, fontWeight: '800', color: Colors.white },
 
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  errorBannerText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#B91C1C',
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-
-  manualPasteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-  manualPasteBtnText: {
-    fontSize: 13,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-
   resendRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   resendLabel:{ fontSize: 13, color: Colors.textMuted },
   resendBtn:  { fontSize: 13, color: Colors.primary, fontWeight: '700' },
-  countdownText: { fontSize: 13, color: Colors.textMuted, fontWeight: '700' },
 });

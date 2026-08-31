@@ -6,6 +6,7 @@ import { AuthProvider } from '@/context/auth';
 import { AgentProvider, LanguageProvider, useThemeColors } from '@/context/agent';
 import { DialogProvider } from '@/components/Dialog';
 import { NotificationProvider } from '@/components/NotificationToast';
+import { MaintenanceProvider } from '@/components/MaintenanceGuard';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
@@ -36,6 +37,7 @@ function RootContent() {
   }, [router]);
 
   return (
+    <MaintenanceProvider>
     <NotificationProvider>
     <DialogProvider>
     <AgentProvider>
@@ -83,6 +85,7 @@ function RootContent() {
     </AgentProvider>
     </DialogProvider>
     </NotificationProvider>
+    </MaintenanceProvider>
   );
 }
 

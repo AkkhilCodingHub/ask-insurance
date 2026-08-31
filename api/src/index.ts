@@ -12,6 +12,7 @@ import { claimsRouter } from './routes/claims';
 import { quotesRouter } from './routes/quotes';
 import { notificationsRouter } from './routes/notifications';
 import { adminRouter } from './routes/admin';
+import { adminRouter, getSystemMaintenanceConfig } from './routes/admin';
 import { chatRouter } from './routes/chat';
 import { plansRouter } from './routes/plans';
 import { paymentsRouter } from './routes/payments';
@@ -79,6 +80,17 @@ app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     keepAlive: true
+  });
+});
+
+// Public System & Maintenance Status
+app.get(['/api/system/status', '/api/system/config'], (_req: Request, res: Response) => {
+  const maintenance = getSystemMaintenanceConfig();
+  res.status(200).json({
+    service: 'ASK Insurance System',
+    status: maintenance.maintenanceMode ? 'maintenance' : 'operational',
+    maintenance,
+    timestamp: new Date().toISOString(),
   });
 });
 

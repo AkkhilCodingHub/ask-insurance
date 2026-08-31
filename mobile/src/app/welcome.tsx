@@ -151,20 +151,8 @@ export default function WelcomeScreen() {
   };
 
   const finish = () => {
-  const handleSkip = () => {
     SecureStore.setItemAsync(SEEN_KEY, '1');
     router.replace('/login');
-    router.replace('/(tabs)' as any);
-  };
-
-  const handleGetStarted = () => {
-    SecureStore.setItemAsync(SEEN_KEY, '1');
-    router.push('/register' as any);
-  };
-
-  const handleSignIn = () => {
-    SecureStore.setItemAsync(SEEN_KEY, '1');
-    router.push('/login' as any);
   };
 
   const goNext = () => {
@@ -172,7 +160,6 @@ export default function WelcomeScreen() {
       scrollRef.current?.scrollTo({ x: (activeIndex + 1) * W, animated: true });
     } else {
       finish();
-      handleGetStarted();
     }
   };
 
@@ -191,7 +178,6 @@ export default function WelcomeScreen() {
         {/* Skip button appears top right */}
         <Animated.View style={[s.skipContainer, { opacity: contentOpacity }]}>
           <TouchableOpacity onPress={skip} style={s.skipBtn} activeOpacity={0.7}>
-          <TouchableOpacity onPress={handleSkip} style={s.skipBtn} activeOpacity={0.7}>
             <Text style={s.skipText}>Skip</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -316,7 +302,6 @@ export default function WelcomeScreen() {
 
           {activeIndex === SLIDES.length - 1 && (
             <TouchableOpacity onPress={() => router.push('/login')} style={s.registerLink}>
-            <TouchableOpacity onPress={handleSignIn} style={s.registerLink}>
               <Text style={s.registerLinkText}>
                 Already have an account? <Text style={{ color: slide.accent, fontWeight: '700' }}>Sign In</Text>
               </Text>

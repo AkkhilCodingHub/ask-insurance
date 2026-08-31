@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
@@ -22,20 +21,11 @@ export default function OnboardingScreen() {
   const router                  = useRouter();
   const { completeProfile }     = useAuth();
   const [name, setName]         = useState('');
-  const { completeProfile, user } = useAuth();
-  const [name, setName]         = useState(user?.name || '');
   const [dob, setDob]           = useState('');
   const [loading, setLoading]   = useState(false);
 
-  useEffect(() => {
-    if (user?.name && user.name.trim().length > 1) {
-      router.replace('/(tabs)' as any);
-    }
-  }, [user, router]);
-
   const dobDigits = dob.replace(/\D/g, '');
   const isValid   = name.trim().length >= 2 && dobDigits.length === 8;
-  const isValid   = name.trim().length >= 2 && (dobDigits.length === 0 || dobDigits.length === 8);
 
   const handleDone = async () => {
     if (!isValid) return;
@@ -43,8 +33,6 @@ export default function OnboardingScreen() {
     try {
       await completeProfile(name.trim(), dob);
       router.replace('/(tabs)');
-      await completeProfile(name.trim(), dobDigits.length === 8 ? dob : '01/01/2000');
-      router.replace('/(tabs)' as any);
     } finally {
       setLoading(false);
     }

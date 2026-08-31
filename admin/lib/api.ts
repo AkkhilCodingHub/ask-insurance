@@ -475,6 +475,27 @@ class AdminApiClient {
     return data.policy;
   }
 
+  async createPolicy(policy: {
+    userId: string;
+    type: string;
+    provider: string;
+    sumInsured: number;
+    premium: number;
+    startDate: string;
+    endDate: string;
+    status?: 'active' | 'pending' | 'expired' | 'cancelled';
+    paymentStatus?: 'pending' | 'paid' | 'failed';
+    registrationNumber?: string;
+    notes?: string;
+    insurerId?: string;
+    planId?: string;
+    policyNumber?: string;
+  }): Promise<AdminPolicy> {
+    const { data } = await this.instance.post('/policies', policy);
+    if (data.error) throw new Error(data.error);
+    return data.policy;
+  }
+
   async updatePolicy(id: string, updates: Partial<Omit<AdminPolicy, 'id' | 'policyNumber' | 'userId' | 'createdAt' | 'updatedAt' | 'user' | 'insurer' | 'plan'>>): Promise<AdminPolicy> {
     const { data } = await this.instance.put(`/policies/${id}`, updates);
     if (data.error) throw new Error(data.error);
@@ -485,6 +506,19 @@ class AdminApiClient {
     const { data } = await this.instance.delete(`/policies/${id}`);
     if (data.error) throw new Error(data.error);
     return data;
+  }
+
+  // ── System Maintenance ──────────────────────────────────────────────────
+  async getMaintenance(): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt: string; updatedBy?: string }> {
+    const { data } = await this.instance.get('/system/maintenance');
+    if (data.error) throw new Error(data.error);
+    return data.maintenance;
+  }
+
+  async setMaintenance(payload: { maintenanceMode: boolean; maintenanceMessage?: string }): Promise<{ maintenanceMode: boolean; maintenanceMessage: string; updatedAt: string }> {
+    const { data } = await this.instance.post('/system/maintenance', payload);
+    if (data.error) throw new Error(data.error);
+    return data.maintenance;
   }
 
   // ── Claims ─────────────────────────────────────────────────────────────

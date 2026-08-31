@@ -5,9 +5,9 @@ import {
   Search, RefreshCw, X, Save, Upload, FileText,
   ExternalLink, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Clock, XCircle, Shield, Activity,
-  TrendingUp, Banknote, Filter,
+  TrendingUp, Banknote, Filter, Plus, Trash2,
 } from "lucide-react";
-import { adminApi, type AdminPolicy } from "@/lib/api";
+import { adminApi, type AdminPolicy, type AdminUser } from "@/lib/api";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -173,6 +173,271 @@ function ConfirmPaymentModal({ policy, onClose, onDone }: {
   );
 }
 
+// ── Create Policy Modal ────────────────────────────────────────────────────────
+
+function CreatePolicyModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+
+  const [type, setType] = useState("motor");
+  const [provider, setProvider] = useState("HDFC ERGO General Insurance");
+  const [sumInsured, setSumInsured] = useState("500000");
+  const [premium, setPremium] = useState("8500");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(
+    new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0]
+  );
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [status, setStatus] = useState<"active" | "pending">("active");
+  const [notes, setNotes] = useState("");
+
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminApi.getUsers(1, 20).then(res => setUsers(res.users)).catch(() => {});
+  }, []);
+
+  async function handleSearchUser(q: string) {
+    setUserSearch(q);
+    if (!q.trim()) {
+      adminApi.getUsers(1, 20).then(res => setUsers(res.users)).catch(() => {});
+      return;
+    }
+    setSearchingUsers(true);
+    try {
+      const results = await adminApi.searchUsers(q.trim());
+      setUsers(results);
+    } catch {
+      // ignore
+    } finally {
+      setSearchingUsers(false);
+    }
+  }
+
+  async function submit() {
+    if (!selectedUserId) {
+      setErr("Please select a policyholder user.");
+      return;
+    }
+    if (!provider.trim()) {
+      setErr("Provider name is required.");
+      return;
+    }
+    const sIns = Number(sumInsured);
+    const prem = Number(premium);
+    if (isNaN(sIns) || sIns <= 0) {
+      setErr("Valid positive sum insured is required.");
+      return;
+    }
+    if (isNaN(prem) || prem < 0) {
+      setErr("Valid premium amount is required.");
+      return;
+    }
+
+    setSaving(true);
+    setErr(null);
+    try {
+      await adminApi.createPolicy({
+        userId: selectedUserId,
+        type,
+        provider: provider.trim(),
+        sumInsured: sIns,
+        premium: prem,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        status,
+        paymentStatus: status === "active" ? "paid" : "pending",
+        registrationNumber: registrationNumber.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      onDone();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to create policy");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inpStyle: React.CSSProperties = {
+    width: "100%", padding: "10px 12px", border: "1.5px solid #E2E8F0",
+    borderRadius: 10, fontSize: 13, outline: "none", boxSizing: "border-box",
+    color: "#0F172A", background: "#fff",
+  };
+  const lblStyle: React.CSSProperties = {
+    display: "block", fontSize: 11, fontWeight: 700, color: "#64748B",
+    textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.5)", backdropFilter: "blur(4px)" }} onClick={onClose} />
+      <div style={{ position: "relative", zIndex: 301, background: "#fff", borderRadius: 20, padding: "24px 28px", width: 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Plus size={20} color="#1580FF" />
+            </div>
+            <div>
+              <p style={{ fontSize: 17, fontWeight: 800, color: "#0F172A" }}>Create New Policy</p>
+              <p style={{ fontSize: 12, color: "#64748B" }}>Issue or record a policy directly for a user</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", padding: 4 }}><X size={18} /></button>
+        </div>
+
+        {/* User Selection */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={lblStyle}>1. Select Policyholder (User)</label>
+          <div style={{ position: "relative", marginBottom: 8 }}>
+            <Search size={14} color="#94A3B8" style={{ position: "absolute", left: 10, top: 12 }} />
+            <input
+              value={userSearch}
+              onChange={e => handleSearchUser(e.target.value)}
+              placeholder="Search user by name, phone or email..."
+              style={{ ...inpStyle, paddingLeft: 32 }}
+            />
+          </div>
+          <select
+            value={selectedUserId}
+            onChange={e => setSelectedUserId(e.target.value)}
+            style={{ ...inpStyle, fontWeight: selectedUserId ? 700 : 400 }}
+          >
+            <option value="">-- Choose User ({users.length} found) --</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name || "Unnamed"} ({u.phone || u.email || u.id})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Type & Provider */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={lblStyle}>Policy Type</label>
+            <select value={type} onChange={e => setType(e.target.value)} style={inpStyle}>
+              <option value="motor">🚗 Motor Insurance</option>
+              <option value="health">🏥 Health Insurance</option>
+              <option value="life">❤️ Life Insurance</option>
+              <option value="travel">✈️ Travel Insurance</option>
+              <option value="home">🏠 Home Insurance</option>
+              <option value="business">💼 Business Insurance</option>
+            </select>
+          </div>
+          <div>
+            <label style={lblStyle}>Provider / Insurer</label>
+            <input
+              value={provider}
+              onChange={e => setProvider(e.target.value)}
+              placeholder="e.g. HDFC ERGO, Tata AIG"
+              style={inpStyle}
+            />
+          </div>
+        </div>
+
+        {/* Financials */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={lblStyle}>Sum Insured (₹)</label>
+            <input
+              type="number"
+              value={sumInsured}
+              onChange={e => setSumInsured(e.target.value)}
+              placeholder="500000"
+              style={inpStyle}
+            />
+          </div>
+          <div>
+            <label style={lblStyle}>Annual Premium (₹)</label>
+            <input
+              type="number"
+              value={premium}
+              onChange={e => setPremium(e.target.value)}
+              placeholder="8500"
+              style={inpStyle}
+            />
+          </div>
+        </div>
+
+        {/* Dates */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={lblStyle}>Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              style={inpStyle}
+            />
+          </div>
+          <div>
+            <label style={lblStyle}>End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              style={inpStyle}
+            />
+          </div>
+        </div>
+
+        {/* Motor Specific or optional fields */}
+        {type === "motor" && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={lblStyle}>Vehicle Registration Number (Optional)</label>
+            <input
+              value={registrationNumber}
+              onChange={e => setRegistrationNumber(e.target.value.toUpperCase())}
+              placeholder="e.g. MH-02-CB-1234"
+              style={inpStyle}
+            />
+          </div>
+        )}
+
+        {/* Status & Notes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={lblStyle}>Initial Status</label>
+            <select value={status} onChange={e => setStatus(e.target.value as any)} style={inpStyle}>
+              <option value="active">Active (Paid)</option>
+              <option value="pending">Pending Verification</option>
+            </select>
+          </div>
+          <div>
+            <label style={lblStyle}>Admin Notes (Optional)</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Policy remarks"
+              style={inpStyle}
+            />
+          </div>
+        </div>
+
+        {err && (
+          <div style={{ padding: "10px 12px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+            <AlertCircle size={15} color="#DC2626" />
+            <p style={{ fontSize: 12, color: "#DC2626", fontWeight: 600 }}>{err}</p>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "11px", background: "#F8FAFC", border: "1.5px solid #E2E8F0", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#0F172A", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={saving}
+            style={{ flex: 2, padding: "11px", background: saving ? "#93C5FD" : "#1580FF", border: "none", borderRadius: 11, fontSize: 13, fontWeight: 700, color: "#fff", cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+            <Plus size={16} /> {saving ? "Creating Policy…" : "Create Policy"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Policy Drawer ──────────────────────────────────────────────────────────────
 
 function PolicyDrawer({ policy, onClose, onRefresh }: {
@@ -183,6 +448,8 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
   const [tab, setTab]       = useState<"details" | "document">("details");
   const [editing, setEditing]     = useState(false);
   const [saving, setSaving]       = useState(false);
+  const [deleting, setDeleting]   = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saveErr, setSaveErr]     = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
@@ -196,6 +463,7 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
     setForm({ ...policy });
     setTab("details");
     setEditing(false);
+    setShowDeleteConfirm(false);
     setSaveErr(null);
     setUploadErr(null);
     setFile(null);
@@ -255,6 +523,18 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
       onRefresh();
     } catch (e) { setUploadErr(e instanceof Error ? e.message : "Upload failed"); }
     finally { setUploading(false); }
+  }
+
+  async function handleDelete() {
+    if (!policy) return;
+    setDeleting(true); setSaveErr(null);
+    try {
+      await adminApi.deletePolicy(policy.id);
+      setShowDeleteConfirm(false);
+      onClose();
+      onRefresh();
+    } catch (e) { setSaveErr(e instanceof Error ? e.message : "Delete failed"); }
+    finally { setDeleting(false); }
   }
 
   return (
@@ -359,6 +639,11 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
               <section>
                 <p style={label}>Insurance Provider</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{policy.provider}</p>
+                {editing ? (
+                  <input value={form.provider ?? policy.provider} onChange={e => setForm({ ...form, provider: e.target.value })} style={inp} />
+                ) : (
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{policy.provider}</p>
+                )}
               </section>
 
               {/* Status */}
@@ -399,28 +684,26 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
                 </div>
               </section>
 
-              {/* Dates */}
+              {/* Period */}
               <section>
-                <p style={label}>Coverage Period</p>
-                <div style={{ position: "relative", paddingLeft: 20 }}>
-                  {/* vertical line */}
-                  <div style={{ position: "absolute", left: 6, top: 8, bottom: 8, width: 2, background: "#E2E8F0", borderRadius: 2 }} />
-                  {[
-                    { label: "Issue Date", val: policy.startDate, key: "startDate" as const, dotColor: "#1580FF" },
-                    { label: "Expiry Date", val: policy.endDate,  key: "endDate"   as const, dotColor: days <= 0 ? "#DC2626" : days <= 30 ? "#D97706" : "#059669" },
-                  ].map(row => (
-                    <div key={row.key} style={{ marginBottom: 14, position: "relative" }}>
-                      <div style={{ position: "absolute", left: -17, top: 3, width: 10, height: 10, borderRadius: "50%", background: row.dotColor, border: "2px solid #fff", boxShadow: `0 0 0 2px ${row.dotColor}40` }} />
-                      <p style={{ fontSize: 10, color: "#94A3B8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{row.label}</p>
-                      {editing ? (
-                        <input type="date" value={toInput(form[row.key] ?? row.val)}
-                          onChange={e => setForm({ ...form, [row.key]: new Date(e.target.value).toISOString() })}
-                          style={{ ...inp, padding: "7px 10px" }} />
-                      ) : (
-                        <p style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>{fmtDate(row.val)}</p>
-                      )}
-                    </div>
-                  ))}
+                <p style={label}>Policy Period</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+                    <p style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, marginBottom: 4 }}>Start Date</p>
+                    {editing ? (
+                      <input type="date" value={form.startDate ? toInput(form.startDate) : ""} onChange={e => setForm({ ...form, startDate: new Date(e.target.value).toISOString() })} style={{ ...inp, padding: "7px 10px" }} />
+                    ) : (
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{fmtDate(policy.startDate)}</p>
+                    )}
+                  </div>
+                  <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+                    <p style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, marginBottom: 4 }}>End Date</p>
+                    {editing ? (
+                      <input type="date" value={form.endDate ? toInput(form.endDate) : ""} onChange={e => setForm({ ...form, endDate: new Date(e.target.value).toISOString() })} style={{ ...inp, padding: "7px 10px" }} />
+                    ) : (
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{fmtDate(policy.endDate)}</p>
+                    )}
+                  </div>
                 </div>
               </section>
 
@@ -441,11 +724,9 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
 
               {/* Notes */}
               <section>
-                <p style={label}>Internal Notes</p>
+                <p style={label}>Admin Notes</p>
                 {editing ? (
-                  <textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Add notes visible to customer…"
-                    style={{ ...inp, minHeight: 80, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }} />
+                  <textarea value={form.notes ?? ""} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} style={{ ...inp, resize: "vertical" }} />
                 ) : (
                   <p style={{ fontSize: 13, color: policy.notes ? "#0F172A" : "#94A3B8", lineHeight: 1.6 }}>
                     {policy.notes || "No notes"}
@@ -519,19 +800,13 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
                       <Upload size={24} color="#94A3B8" style={{ marginBottom: 8 }} />
                       <p style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Click to upload PDF or document</p>
                       <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>PDF, JPG, PNG, DOC — max 50 MB</p>
+                      <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>Max 20 MB · PDF, PNG, JPG</p>
                     </div>
                   )}
                 </div>
-                <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{ display: "none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f); }} />
+                <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" style={{ display: "none" }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
 
-                {/* Metadata */}
-                <div style={{ marginBottom: 12 }}>
-                  <label style={label}>Policy Number</label>
-                  <input value={docForm.policyNumber} onChange={e => setDocForm({ ...docForm, policyNumber: e.target.value })}
-                    placeholder={policy.policyNumber} style={inp} />
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                   <div>
                     <label style={label}>Issue Date</label>
                     <input type="date" value={docForm.issueDate} onChange={e => setDocForm({ ...docForm, issueDate: e.target.value })} style={inp} />
@@ -567,10 +842,16 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
               </button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)}
-              style={{ flex: 1, padding: "11px", background: "#1580FF", border: "none", borderRadius: 11, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              Edit Policy
-            </button>
+            <>
+              <button onClick={() => setShowDeleteConfirm(true)}
+                style={{ padding: "11px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 11, color: "#DC2626", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <Trash2 size={14} /> Delete
+              </button>
+              <button onClick={() => setEditing(true)}
+                style={{ flex: 1, padding: "11px", background: "#1580FF", border: "none", borderRadius: 11, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                Edit Policy
+              </button>
+            </>
           ))}
 
           {tab === "document" && (
@@ -580,6 +861,31 @@ function PolicyDrawer({ policy, onClose, onRefresh }: {
             </button>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 22, width: "100%", maxWidth: 360, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <Trash2 size={22} color="#DC2626" />
+              </div>
+              <p style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>Delete Policy?</p>
+              <p style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 18 }}>
+                Are you sure you want to permanently delete policy <strong>{policy.policyNumber}</strong>? This action cannot be undone.
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting}
+                  style={{ flex: 1, padding: "9px", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, fontSize: 12, fontWeight: 700, color: "#0F172A", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={handleDelete} disabled={deleting}
+                  style={{ flex: 1, padding: "9px", background: "#DC2626", border: "none", borderRadius: 10, fontSize: 12, fontWeight: 700, color: "#fff", cursor: deleting ? "not-allowed" : "pointer" }}>
+                  {deleting ? "Deleting…" : "Yes, Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -606,6 +912,7 @@ export default function PoliciesPage() {
   const [typeF, setTypeF]         = useState("All");
   const [selected, setSelected]   = useState<AdminPolicy | null>(null);
   const [confirming, setConfirming] = useState<AdminPolicy | null>(null);
+  const [creating, setCreating]   = useState(false);
 
   const load = useCallback(async (p = 1) => {
     setLoading(true); setError(null);
@@ -657,6 +964,18 @@ export default function PoliciesPage() {
           <RefreshCw size={14} style={{ animation: loading ? "spin 0.7s linear infinite" : "none", color: "#1580FF" }} />
           Refresh
         </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setCreating(true)}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "#1580FF", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 8px rgba(21,128,255,0.25)" }}>
+            <Plus size={15} />
+            Add Policy
+          </button>
+          <button onClick={() => load(page)} disabled={loading}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, color: "#0F172A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <RefreshCw size={14} style={{ animation: loading ? "spin 0.7s linear infinite" : "none", color: "#1580FF" }} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Stat cards ── */}
@@ -877,6 +1196,13 @@ export default function PoliciesPage() {
           policy={confirming}
           onClose={() => setConfirming(null)}
           onDone={() => { setConfirming(null); load(page); }}
+        />
+      )}
+
+      {creating && (
+        <CreatePolicyModal
+          onClose={() => setCreating(false)}
+          onDone={() => { setCreating(false); load(page); }}
         />
       )}
 

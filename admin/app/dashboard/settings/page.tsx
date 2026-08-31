@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import { adminApi } from "@/lib/api";
 import { Save, Eye, EyeOff, Loader2, Check, X } from "lucide-react";
@@ -135,6 +135,173 @@ function ProfileSection() {
 }
 
 
+// ── Mobile Maintenance Section ──────────────────────────────────────────────────
+
+import { Wrench, AlertTriangle, ShieldCheck } from "lucide-react";
+
+function MaintenanceSection() {
+  const [maintenance, setMaintenance] = useState<{
+    maintenanceMode: boolean;
+    maintenanceMessage: string;
+    updatedAt?: string;
+  }>({
+    maintenanceMode: false,
+    maintenanceMessage: "We are currently performing scheduled maintenance to improve your experience. The ASK Insurance app will be back online shortly.",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [banner, setBanner]   = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  useEffect(() => {
+    adminApi.getMaintenance()
+      .then(res => {
+        if (res) setMaintenance(res);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleToggle(newMode: boolean) {
+    setSaving(true);
+    setBanner(null);
+    try {
+      const res = await adminApi.setMaintenance({
+        maintenanceMode: newMode,
+        maintenanceMessage: maintenance.maintenanceMessage,
+      });
+      setMaintenance(res);
+      setBanner({
+        type: "success",
+        msg: newMode ? "⚠️ Mobile App Maintenance Mode is now ENABLED." : "✅ Mobile App Maintenance Mode is now DISABLED.",
+      });
+    } catch (e) {
+      setBanner({ type: "error", msg: e instanceof Error ? e.message : "Failed to update maintenance mode." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveMessage() {
+    setSaving(true);
+    setBanner(null);
+    try {
+      const res = await adminApi.setMaintenance({
+        maintenanceMode: maintenance.maintenanceMode,
+        maintenanceMessage: maintenance.maintenanceMessage,
+      });
+      setMaintenance(res);
+      setBanner({ type: "success", msg: "Maintenance announcement message updated." });
+    } catch (e) {
+      setBanner({ type: "error", msg: e instanceof Error ? e.message : "Failed to save message." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section
+      title="Mobile App Maintenance Mode"
+      subtitle="Lock the mobile application and show a scheduled maintenance screen to all users"
+    >
+      {banner && <Banner type={banner.type} msg={banner.msg} />}
+
+      <div style={{
+        background: maintenance.maintenanceMode ? "#FEF2F2" : "#ECFDF5",
+        border: `1.5px solid ${maintenance.maintenanceMode ? "#FECACA" : "#A7F3D0"}`,
+        borderRadius: 12,
+        padding: "16px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 18,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: maintenance.maintenanceMode ? "#FEE2E2" : "#D1FAE5",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            {maintenance.maintenanceMode ? (
+              <AlertTriangle size={22} color="#DC2626" />
+            ) : (
+              <ShieldCheck size={22} color="#059669" />
+            )}
+          </div>
+          <div>
+            <p style={{
+              fontSize: 15,
+              fontWeight: 800,
+              color: maintenance.maintenanceMode ? "#DC2626" : "#059669",
+            }}>
+              {maintenance.maintenanceMode ? "Mobile App Is Under Maintenance" : "Mobile App Is Live & Operational"}
+            </p>
+            <p style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+              {maintenance.maintenanceMode
+                ? "All mobile app users are currently redirected to the Maintenance Screen."
+                : "All mobile app users have normal access to browse, quote, and buy policies."}
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => handleToggle(!maintenance.maintenanceMode)}
+          disabled={loading || saving}
+          style={{
+            padding: "10px 20px",
+            background: maintenance.maintenanceMode ? "#059669" : "#DC2626",
+            border: "none",
+            borderRadius: 10,
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: loading || saving ? "not-allowed" : "pointer",
+            boxShadow: maintenance.maintenanceMode
+              ? "0 4px 12px rgba(5,150,105,0.25)"
+              : "0 4px 12px rgba(220,38,38,0.25)",
+            transition: "all 0.15s",
+          }}
+        >
+          {saving ? "Updating…" : maintenance.maintenanceMode ? "Turn Off Maintenance (Go Live)" : "Enable Maintenance Mode"}
+        </button>
+      </div>
+
+      <Field label="Maintenance Announcement Message (Shown on Mobile Screen)">
+        <textarea
+          value={maintenance.maintenanceMessage}
+          onChange={e => setMaintenance({ ...maintenance, maintenanceMessage: e.target.value })}
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical", marginBottom: 12, lineHeight: 1.5 }}
+        />
+      </Field>
+
+      <button
+        onClick={handleSaveMessage}
+        disabled={saving || loading}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "9px 18px",
+          background: "#1580FF",
+          border: "none",
+          borderRadius: 8,
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: saving ? "not-allowed" : "pointer",
+        }}
+      >
+        <Save size={14} /> Save Message
+      </button>
+    </Section>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -144,6 +311,8 @@ export default function SettingsPage() {
   return (
     <div style={{ width: "100%", maxWidth: 820 }}>
       <ProfileSection />
+
+      <MaintenanceSection />
 
       {/* Additional Settings Quick Navigation */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 24 }}>

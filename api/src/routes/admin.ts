@@ -932,15 +932,135 @@ router.get('/policies/:id', adminAuthenticate, async (req: Request, res: Respons
   }
 });
 
+// ── System Maintenance State (In-Memory / Config) ─────────────────────────────
+let systemMaintenanceConfig = {
+  maintenanceMode: false,
+  maintenanceMessage: "We are currently performing scheduled maintenance to improve your experience. The ASK Insurance app will be back online shortly.",
+  updatedAt: new Date().toISOString(),
+  updatedBy: "Admin",
+};
+
+export function getSystemMaintenanceConfig() {
+  return systemMaintenanceConfig;
+}
+
+export function setSystemMaintenanceConfig(updates: Partial<typeof systemMaintenanceConfig>) {
+  systemMaintenanceConfig = {
+    ...systemMaintenanceConfig,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  return systemMaintenanceConfig;
+}
+
+router.get('/system/maintenance', adminAuthenticate, async (_req: Request, res: Response): Promise<void> => {
+  res.json({ maintenance: getSystemMaintenanceConfig() });
+});
+
+router.post('/system/maintenance', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const schema = z.object({
+      maintenanceMode: z.boolean(),
+      maintenanceMessage: z.string().min(1).optional(),
+    });
+    const parsed = schema.parse(req.body);
+    const updated = setSystemMaintenanceConfig({
+      maintenanceMode: parsed.maintenanceMode,
+      ...(parsed.maintenanceMessage ? { maintenanceMessage: parsed.maintenanceMessage } : {}),
+      updatedBy: (req as any).adminId || "Admin",
+    });
+    res.json({ success: true, maintenance: updated });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/policies', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const schema = z.object({
+      userId: z.string().min(1, 'User ID is required'),
+      type: z.string().min(1, 'Policy type is required'),
+      provider: z.string().min(1, 'Provider is required'),
+      sumInsured: z.number().positive('Sum insured must be positive'),
+      premium: z.number().nonnegative('Premium must be non-negative'),
+      startDate: z.string().or(z.date()),
+      endDate: z.string().or(z.date()),
+      status: z.enum(['active', 'pending', 'expired', 'cancelled']).optional().default('active'),
+      paymentStatus: z.enum(['pending', 'paid', 'failed']).optional().default('paid'),
+      registrationNumber: z.string().optional(),
+      notes: z.string().optional(),
+      insurerId: z.string().optional(),
+      planId: z.string().optional(),
+      policyNumber: z.string().optional(),
+    });
+
+    const parsed = schema.parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { id: parsed.userId } });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const policyNumber = parsed.policyNumber || `ASK-${parsed.type.toUpperCase().slice(0, 3)}-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
+
+    const policy = await prisma.policy.create({
+      data: {
+        policyNumber,
+        type: parsed.type.toLowerCase(),
+        provider: parsed.provider,
+        sumInsured: parsed.sumInsured,
+        premium: parsed.premium,
+        startDate: new Date(parsed.startDate),
+        endDate: new Date(parsed.endDate),
+        status: parsed.status,
+        paymentStatus: parsed.paymentStatus,
+        registrationNumber: parsed.registrationNumber || null,
+        notes: parsed.notes || null,
+        userId: parsed.userId,
+        insurerId: parsed.insurerId || null,
+        planId: parsed.planId || null,
+      },
+      include: {
+        user: { select: { id: true, name: true, phone: true, email: true } },
+        insurer: true,
+        plan: true,
+      },
+    });
+
+    res.status(201).json({ policy });
+    return;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 router.put('/policies/:id', adminAuthenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = z.object({ id: z.string().cuid() }).parse(req.params);
     const schema = z.object({
       status: z.enum(['active', 'expired', 'cancelled']).optional(),
+      status: z.enum(['active', 'pending', 'expired', 'cancelled']).optional(),
       paymentStatus: z.enum(['pending', 'paid', 'failed']).optional(),
       provider: z.string().optional(),
       sumInsured: z.number().positive().optional(),
       premium: z.number().nonnegative().optional()
+      premium: z.number().nonnegative().optional(),
+      startDate: z.string().or(z.date()).optional(),
+      endDate: z.string().or(z.date()).optional(),
+      registrationNumber: z.string().nullable().optional(),
+      notes: z.string().nullable().optional(),
     });
 
     const parsed = schema.parse(req.body);
@@ -950,11 +1070,21 @@ router.put('/policies/:id', adminAuthenticate, async (req: Request, res: Respons
     if (parsed.provider !== undefined) data.provider = parsed.provider;
     if (parsed.sumInsured !== undefined) data.sumInsured = parsed.sumInsured;
     if (parsed.premium !== undefined) data.premium = parsed.premium;
+    if (parsed.startDate !== undefined) data.startDate = new Date(parsed.startDate);
+    if (parsed.endDate !== undefined) data.endDate = new Date(parsed.endDate);
+    if (parsed.registrationNumber !== undefined) data.registrationNumber = parsed.registrationNumber;
+    if (parsed.notes !== undefined) data.notes = parsed.notes;
     if (parsed.status === 'cancelled') data.cancelledAt = new Date();
 
     const policy = await prisma.policy.update({
       where: { id },
       data: data as any
+      data: data as any,
+      include: {
+        user: { select: { id: true, name: true, phone: true, email: true } },
+        insurer: true,
+        plan: true,
+      }
     });
 
     res.json({ policy });

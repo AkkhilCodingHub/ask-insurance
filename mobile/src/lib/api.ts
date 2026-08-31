@@ -1211,3 +1211,18 @@ export const pospExamApi = {
   },
 };
 
+export const systemApi = {
+  getStatus: () =>
+    request<{
+      service: string;
+      status: string;
+      maintenance: {
+        maintenanceMode: boolean;
+        maintenanceMessage: string;
+        updatedAt: string;
+        updatedBy?: string;
+      };
+      timestamp: string;
+    }>('/api/system/status'),
+};
+

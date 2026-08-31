@@ -80,3 +80,15 @@ export const Spacing = {
 // Base height (52) + safe area bottom (34 iPhone, ~24 Android gesture nav)
 export const BottomTabInset = Platform.select({ ios: 86, android: 76 }) ?? 52;
 export const MaxContentWidth = 800;
+
+export {
+  scale,
+  verticalScale,
+  moderateScale,
+  fontScale,
+  wp,
+  hp,
+  isTablet,
+  isSmallDevice,
+  useResponsive,
+} from '@/utils/scaling';
