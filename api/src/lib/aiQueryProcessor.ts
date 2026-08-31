@@ -188,7 +188,6 @@ export function generateFallbackResponse(
         `- **NCB Discrepancy Alert**: Declaring an incorrect NCB when you have made a claim in the previous year can lead to policy rejection or claim repudiation during verification.\n` +
         `- **Transferring NCB**: NCB belongs to the owner, not the vehicle. You can transfer your accumulated NCB when selling your old car to a new one.\n\n` +
         `To fetch accurate quotes, simply enter your vehicle registration number in the app!`;
-      return formatAIResponse(intent, query, msg, context);
       return formatAIResponse(intent, _query, msg, context);
     }
     case 'CLAIMS_HELP': {
@@ -197,7 +196,6 @@ export function generateFallbackResponse(
         `2. **Submit Required Evidence**: Attach incident photos, repair estimate / hospital bills, and FIR (if required for motor theft/third-party damage).\n` +
         `3. **Cashless / Reimbursement**: For health claims, present your e-card at network hospitals for instant cashless approval.\n` +
         `4. **Real-time Tracking**: Monitor claim status updates live from your dashboard.`;
-      return formatAIResponse(intent, query, msg, context);
       return formatAIResponse(intent, _query, msg, context);
     }
     case 'POLICY_ENDORSEMENT': {
@@ -205,7 +203,6 @@ export function generateFallbackResponse(
         `- **Non-Financial Endorsements**: Correction of Name spelling, Address, Registration Number, or Nominee details.\n` +
         `- **Financial Endorsements**: Change in Sum Insured, Add-on covers (Zero Dep, RSA, Engine Protect), or CNG kit addition.\n` +
         `- **Revised Policy Download**: Once approved by your POSP/Admin, your updated policy PDF will be available instantly in **My Policies**.`;
-      return formatAIResponse(intent, query, msg, context);
       return formatAIResponse(intent, _query, msg, context);
     }
     case 'HEALTH_LIFE_COVERAGE': {
@@ -213,7 +210,6 @@ export function generateFallbackResponse(
         `- **Health Insurance**: Look for High Restoration Benefits, Zero Room Rent Capping, and Cashless Hospitalization across 38+ partner insurers.\n` +
         `- **Term Life Insurance**: Secure your family with coverage up to 10x - 15x your annual income at affordable premiums.\n` +
         `- **PBP Nivesh Mitra**: Use our AI-guided investment advisor to select top performing ULIP and savings plans.`;
-      return formatAIResponse(intent, query, msg, context);
       return formatAIResponse(intent, _query, msg, context);
     }
     default: {
@@ -224,7 +220,6 @@ export function generateFallbackResponse(
         `- **Policy Endorsements** & Revised document downloads\n` +
         `- **Claims Guidance** & status updates\n\n` +
         `Feel free to ask any question or request help regarding your policies!`;
-      return formatAIResponse(intent, query, msg, context);
       return formatAIResponse(intent, _query, msg, context);
     }
   }
