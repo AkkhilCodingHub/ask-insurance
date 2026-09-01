@@ -13,6 +13,7 @@ import { useDialog } from '@/components/Dialog';
 
 import * as Clipboard from 'expo-clipboard';
 import { AppState, DeviceEventEmitter } from 'react-native';
+import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from '@/utils/otpCooldown';
 
 const OTP_LEN = 6;
 
@@ -24,6 +25,22 @@ export default function OTPScreen() {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LEN).fill(''));
   const [loading, setLoading]     = useState(false);
   const [resending, setResending] = useState(false);
+
+  const rawPhoneParam = typeof params.phone === 'string' ? params.phone.replace(/\D/g, '').slice(-10) : '';
+  const phone = pendingPhone || rawPhoneParam || '9876543210';
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(1, getRemainingOtpSeconds(phone) || 300));
+
+  // 5-minute (300s) Real-Time Countdown Timer
+  useEffect(() => {
+    const tick = () => {
+      const remaining = getRemainingOtpSeconds(phone);
+      setTimeLeft(remaining);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [phone]);
+
   // Show "Checking SIM…" spinner on Android for up to 6s while Firebase tries auto-verify
   const [autoChecking, setAutoChecking] = useState(Platform.OS === 'android');
   const [clipboardCode, setClipboardCode] = useState<string | null>(null);
@@ -111,8 +128,6 @@ export default function OTPScreen() {
     }
   }, [autoVerified, params.policyType]);
 
-  const rawPhoneParam = typeof params.phone === 'string' ? params.phone.replace(/\D/g, '').slice(-10) : '';
-  const phone = pendingPhone || rawPhoneParam || '9876543210';
   const masked = phone.length === 10
     ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}`
     : '+91 ••••• •••••';
@@ -216,7 +231,9 @@ export default function OTPScreen() {
         {/* ── Card ──────────────────────────────────── */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Enter OTP</Text>
-          <Text style={s.cardSub}>Code expires in 10 minutes</Text>
+          <Text style={[s.cardSub, timeLeft === 0 && { color: '#EF4444', fontWeight: '700' }]}>
+            {timeLeft > 0 ? `Code expires in ${formatOtpTimer(timeLeft)}` : 'Code expired. Please request a new OTP.'}
+          </Text>
 
           {/* OTP boxes */}
           <View style={s.otpRow}>
@@ -269,9 +286,9 @@ export default function OTPScreen() {
 
           {/* Verify button */}
           <TouchableOpacity
-            style={[s.verifyBtn, filled < OTP_LEN && s.verifyBtnDisabled]}
+            style={[s.verifyBtn, (filled < OTP_LEN || timeLeft === 0) && s.verifyBtnDisabled]}
             onPress={() => handleVerify(digits.join(''))}
-            disabled={filled < OTP_LEN || loading}
+            disabled={filled < OTP_LEN || loading || timeLeft === 0}
             activeOpacity={0.85}
           >
             {loading
@@ -288,11 +305,14 @@ export default function OTPScreen() {
           {/* Resend */}
           <View style={s.resendRow}>
             <Text style={s.resendLabel}>Didn't receive the code? </Text>
-            <TouchableOpacity onPress={handleResend} disabled={resending}>
-              {resending
-                ? <ActivityIndicator size="small" color={Colors.primary} />
-                : <Text style={s.resendBtn}>Resend OTP</Text>
-              }
+            <TouchableOpacity onPress={handleResend} disabled={resending || timeLeft > 0}>
+              {resending ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Text style={[s.resendBtn, timeLeft > 0 && { color: '#94A3B8' }]}>
+                  {timeLeft > 0 ? `Resend in ${formatOtpTimer(timeLeft)}` : 'Resend OTP'}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

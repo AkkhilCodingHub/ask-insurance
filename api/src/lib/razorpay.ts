@@ -60,7 +60,10 @@ export async function createPaymentLink(opts: {
   customerPhone?: string;
   description: string;
 }) {
-  const apiUrl = process.env.API_BASE_URL || 'https://ask-api.bitopayments.com';
+  let apiUrl = (process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'https://ask-api.bitopayments.com').trim().replace(/\/$/, '');
+  if (apiUrl.endsWith('/api')) {
+    apiUrl = apiUrl.slice(0, -4);
+  }
   
   // Return the first-party branded ASK Insurance Brokers checkout interface
   return {

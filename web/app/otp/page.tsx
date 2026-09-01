@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Smartphone, Info, AlertCircle, Shield } from "lucide-react";
 import { useAuth } from "@/context/auth";
+import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from "@/lib/otpCooldown";
 
 export default function OTPPage() {
   const router = useRouter();
@@ -12,20 +13,20 @@ export default function OTPPage() {
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [resendTimer, setResendTimer] = useState(30);
-  const [canResend, setCanResend] = useState(false);
-
+  const phone = pendingPhone || "9876543210";
+  const [resendTimer, setResendTimer] = useState(() => Math.max(1, getRemainingOtpSeconds(phone) || 300));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // countdown
+  // 5-minute (300s) Real-Time Countdown Timer
   useEffect(() => {
-    if (resendTimer <= 0) {
-      setCanResend(true);
-      return;
-    }
-    const t = setTimeout(() => setResendTimer((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
+    const tick = () => {
+      const remaining = getRemainingOtpSeconds(phone);
+      setResendTimer(remaining);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [phone]);
 
   function handleDigit(index: number, value: string) {
     const char = value.replace(/\D/g, "").slice(-1);
@@ -88,11 +89,11 @@ export default function OTPPage() {
   }
 
   async function handleResend() {
-    if (!canResend || !pendingPhone) return;
-    setCanResend(false);
-    setResendTimer(30);
+    if (resendTimer > 0 || !pendingPhone) return;
     setDigits(["", "", "", "", "", ""]);
     setError("");
+    startOtpCooldown(pendingPhone, 300);
+    setResendTimer(300);
     await sendOTP(pendingPhone);
   }
 
@@ -276,7 +277,7 @@ export default function OTPPage() {
             ))}
           </div>
 
-          {/* Demo hint */}
+          {/* Timer status */}
           <div
             style={{
               display: "flex",
@@ -288,9 +289,9 @@ export default function OTPPage() {
               marginBottom: 24,
             }}
           >
-            <Info size={14} color="var(--text-muted)" />
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              Use <strong>123456</strong> for demo
+            <Info size={14} color={resendTimer === 0 ? "var(--error)" : "var(--primary)"} />
+            <span style={{ fontSize: 13, color: resendTimer === 0 ? "var(--error)" : "var(--primary)", fontWeight: 700 }}>
+              {resendTimer > 0 ? `Code expires in ${formatOtpTimer(resendTimer)}` : "Code expired. Please request a new OTP."}
             </span>
           </div>
 
@@ -315,25 +316,25 @@ export default function OTPPage() {
 
           <button
             onClick={handleVerify}
-            disabled={!isComplete || loading}
+            disabled={!isComplete || loading || resendTimer === 0}
             style={{
               width: "100%",
               height: 52,
               border: "none",
               borderRadius: 12,
               background:
-                isComplete && !loading
+                isComplete && !loading && resendTimer > 0
                   ? "linear-gradient(135deg, var(--primary), var(--accent-dark))"
                   : "var(--border)",
-              color: isComplete && !loading ? "#fff" : "var(--text-muted)",
+              color: isComplete && !loading && resendTimer > 0 ? "#fff" : "var(--text-muted)",
               fontSize: 16,
               fontWeight: 700,
-              cursor: isComplete && !loading ? "pointer" : "not-allowed",
+              cursor: isComplete && !loading && resendTimer > 0 ? "pointer" : "not-allowed",
               marginBottom: 20,
               transition: "opacity 0.2s",
             }}
             onMouseEnter={(e) => {
-              if (isComplete && !loading)
+              if (isComplete && !loading && resendTimer > 0)
                 (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
             }}
             onMouseLeave={(e) => {
@@ -345,12 +346,12 @@ export default function OTPPage() {
 
           {/* Resend */}
           <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
-            {canResend ? (
+            {resendTimer === 0 ? (
               <span
                 onClick={handleResend}
                 style={{
                   color: "var(--primary)",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: "pointer",
                   textDecoration: "underline",
                 }}
@@ -358,10 +359,7 @@ export default function OTPPage() {
                 Resend OTP
               </span>
             ) : (
-              <>
-                Resend OTP in{" "}
-                <span style={{ fontWeight: 700, color: "var(--text)" }}>{resendTimer}s</span>
-              </>
+              <span>Resend in {formatOtpTimer(resendTimer)}</span>
             )}
           </div>
         </div>

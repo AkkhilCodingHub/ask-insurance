@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Shield, Check, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
+import { getRemainingOtpSeconds, startOtpCooldown } from "@/lib/otpCooldown";
+
 const trustPoints = [
   "IRDAI licensed insurance broker",
   "38+ top insurers on one platform",
@@ -27,7 +29,11 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await sendOTP(phone);
+      const remaining = getRemainingOtpSeconds(phone);
+      if (remaining <= 0) {
+        startOtpCooldown(phone, 300);
+        await sendOTP(phone);
+      }
       router.push("/otp");
     } catch {
       setError("Failed to send OTP. Please try again.");

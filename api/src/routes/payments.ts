@@ -250,7 +250,7 @@ router.post('/razorpay/webhook', async (req: Request, res: Response): Promise<vo
   }
 });
 // ── Branded First-Party ASK Insurance Brokers Checkout Page ─────────────────
-router.get('/checkout/:policyId', async (req: Request, res: Response): Promise<void> => {
+router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: Request, res: Response): Promise<void> => {
   try {
     const policyId = String(req.params.policyId || '');
     const policy = await prisma.policy.findUnique({

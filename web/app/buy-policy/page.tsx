@@ -17,6 +17,7 @@ import {
   Download,
   X,
 } from "lucide-react";
+import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from "@/lib/otpCooldown";
 
 export default function BuyPolicyPage() {
   return (
@@ -98,13 +99,34 @@ function BuyPolicyContent() {
     loadDigiLocker();
   }, [fullName, panNumber, aadhaarNumber, dob, gender, address, pincode, drivingLicenseNumber, vehicleRcNumber]);
 
-  const handleSendConsentOtp = () => {
+  const [consentTimeLeft, setConsentTimeLeft] = useState(0);
+
+  // 5-minute E-Sign Consent OTP Timer
+  useEffect(() => {
+    if (!showOtpModal) return;
+    const tick = () => {
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+      setConsentTimeLeft(getRemainingOtpSeconds(cleanPhone));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [showOtpModal, phone]);
+
+  const handleSendConsentOtp = async () => {
     setOtpSending(true);
     setErrorMessage("");
-    setTimeout(() => {
-      setOtpSending(false);
+    try {
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+      await api.auth.sendOtp(cleanPhone).catch(() => {});
+      startOtpCooldown(cleanPhone, 300);
+      setConsentTimeLeft(300);
       setShowOtpModal(true);
-    }, 600);
+    } catch (e: any) {
+      setErrorMessage(e?.message || "Failed to send OTP.");
+    } finally {
+      setOtpSending(false);
+    }
   };
 
   const handleVerifyAndPay = async () => {
@@ -705,10 +727,10 @@ function BuyPolicyContent() {
                   E-Sign Consent OTP
                 </h3>
                 <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
-                  Enter the 6-digit Aadhaar/Mobile OTP sent to <strong>+91 {phone}</strong>
+                  Enter the 6-digit verification code sent via SMS to <strong>+91 {phone}</strong>
                 </p>
-                <div style={{ fontSize: 11, color: "var(--primary)", fontWeight: 700, marginTop: 4 }}>
-                  (Demo OTP: 123456)
+                <div style={{ fontSize: 12, color: consentTimeLeft === 0 ? "#EF4444" : "var(--primary)", fontWeight: 700, marginTop: 6 }}>
+                  {consentTimeLeft > 0 ? `Code expires in ${formatOtpTimer(consentTimeLeft)}` : "Code expired. Please request a new code."}
                 </div>
               </div>
 
@@ -740,23 +762,49 @@ function BuyPolicyContent() {
 
               <button
                 type="button"
-                disabled={verifying}
+                disabled={verifying || otpCode.trim().length !== 6 || consentTimeLeft === 0}
                 onClick={handleVerifyAndPay}
                 style={{
                   width: "100%",
                   padding: "14px",
-                  background: "var(--primary)",
+                  background: verifying || otpCode.trim().length !== 6 || consentTimeLeft === 0 ? "#CBD5E1" : "var(--primary)",
                   color: "white",
                   border: "none",
                   borderRadius: 10,
                   fontWeight: 800,
                   fontSize: 15,
-                  cursor: verifying ? "not-allowed" : "pointer",
+                  cursor: verifying || otpCode.trim().length !== 6 || consentTimeLeft === 0 ? "not-allowed" : "pointer",
                   boxShadow: "0 4px 14px rgba(21,128,255,0.3)",
                 }}
               >
                 {verifying ? "Authorizing Payment & Binding Policy..." : "Confirm & Pay ₹" + totalPrice.toLocaleString("en-IN")}
               </button>
+
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: 14, gap: 14 }}>
+                <button
+                  type="button"
+                  disabled={otpSending || consentTimeLeft > 0}
+                  onClick={handleSendConsentOtp}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: consentTimeLeft > 0 ? "#94A3B8" : "var(--primary)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: consentTimeLeft > 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {otpSending ? "Sending..." : consentTimeLeft > 0 ? `Resend in ${formatOtpTimer(consentTimeLeft)}` : "Resend OTP"}
+                </button>
+                <span style={{ color: "#CBD5E1" }}>•</span>
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  style={{ background: "none", border: "none", color: "#64748B", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}

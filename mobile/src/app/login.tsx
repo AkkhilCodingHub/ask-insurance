@@ -13,6 +13,7 @@ import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useDialog } from '@/components/Dialog';
+import { getRemainingOtpSeconds } from '@/utils/otpCooldown';
 
 export const POLICY_OPTIONS = [
   { id: 'car', label: 'Car Insurance', emoji: '🚗', type: 'motor' },
@@ -48,8 +49,12 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      sendOTP(phone);
-      router.push({ pathname: '/otp', params: { phone } } as any);
+      const clean = phone.replace(/\D/g, '').slice(-10);
+      const remaining = getRemainingOtpSeconds(clean);
+      if (remaining <= 0) {
+        await sendOTP(clean);
+      }
+      router.push({ pathname: '/otp', params: { phone: clean } } as any);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not send OTP. Please try again.';
       alert({ type: 'error', title: 'Error', message: msg });

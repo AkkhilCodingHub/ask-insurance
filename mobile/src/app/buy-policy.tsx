@@ -15,6 +15,7 @@ import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
+import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from '@/utils/otpCooldown';
 
 export default function BuyPolicyScreen() {
   const router = useRouter();
@@ -104,7 +105,19 @@ export default function BuyPolicyScreen() {
   const rawType = (plan?.type || params.type || '').toLowerCase();
   const isMotor = ['motor', 'car', 'bike', 'two_wheeler', 'commercial', 'commercial_vehicle'].includes(rawType);
 
-  const confirmationRef = React.useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
+  const [consentTimeLeft, setConsentTimeLeft] = useState(0);
+
+  // 5-minute E-Sign Consent OTP Timer
+  useEffect(() => {
+    if (!showOtpModal) return;
+    const tick = () => {
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+      setConsentTimeLeft(getRemainingOtpSeconds(cleanPhone));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [showOtpModal, phone]);
 
   const handleSendConsentOtp = async () => {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -119,25 +132,9 @@ export default function BuyPolicyScreen() {
     setOtpSending(true);
     setOtpCode('');
     try {
-      const formattedPhone = cleanPhone.startsWith('+91') ? cleanPhone : `+91${cleanPhone}`;
-      try {
-        if (getApps().length === 0) {
-          initializeApp({
-            apiKey: "AIzaSyAOO0lS024bTXRNW_-eUptQFx5eV5GlNos",
-            appId: "1:879913171231:android:f214cb309918a1e4ea582a",
-            messagingSenderId: "879913171231",
-            projectId: "ask-in",
-            authDomain: "ask-in.firebaseapp.com",
-            databaseURL: "https://ask-in-default-rtdb.firebaseio.com",
-            storageBucket: "ask-in.firebasestorage.app"
-          });
-        }
-        const confirmation = await signInWithPhoneNumber(getAuth(), formattedPhone);
-        confirmationRef.current = confirmation;
-      } catch (fbErr) {
-        console.warn('[Firebase Consent SMS] fallback to backend SMS gateway:', fbErr);
-        await authApi.sendOTP(cleanPhone);
-      }
+      await authApi.sendOTP(cleanPhone);
+      startOtpCooldown(cleanPhone, 300);
+      setConsentTimeLeft(300);
       setShowOtpModal(true);
       alert({
         type: 'success',
@@ -165,17 +162,8 @@ export default function BuyPolicyScreen() {
       const cleanPan = panNumber.trim().toUpperCase();
       const cleanAadhaar = aadhaarNumber.replace(/\D/g, '').slice(-12);
 
-      // 1. Verify OTP with Firebase or Backend
-      if (confirmationRef.current) {
-        try {
-          await confirmationRef.current.confirm(cleanOtp);
-        } catch (fbErr) {
-          console.warn('[Firebase Consent OTP] fallback backend check:', fbErr);
-          await authApi.verifyOTP(cleanPhone, cleanOtp);
-        }
-      } else {
-        await authApi.verifyOTP(cleanPhone, cleanOtp);
-      }
+      // 1. Direct Backend OTP verification (No Captcha)
+      await authApi.verifyOTP(cleanPhone, cleanOtp);
 
       // 2. Sync verified KYC profile
       await kycApi.verifyInstant({
@@ -751,16 +739,19 @@ export default function BuyPolicyScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <View style={s.modalIconWrap}>
-              <Icon name="key-outline" size={32} color={Colors.primary} />
+              <Icon name="key-outline" size={30} color={Colors.primary} />
             </View>
             <Text style={s.modalTitle}>E-Sign Consent OTP</Text>
             <Text style={s.modalSub}>
               Enter the 6-digit verification code sent via SMS to <Text style={{ fontWeight: '800', color: Colors.primary }}>+91 {phone}</Text> to sign and authorize your insurance purchase.
             </Text>
+            <Text style={[s.modalTimer, consentTimeLeft === 0 && { color: '#EF4444' }]}>
+              {consentTimeLeft > 0 ? `Code expires in ${formatOtpTimer(consentTimeLeft)}` : 'Code expired. Please request a new code.'}
+            </Text>
 
-            <View style={[af.inputRow, { marginTop: 20 }]}>
+            <View style={{ width: '100%', marginTop: 16 }}>
               <TextInput
-                style={[af.input, { textAlign: 'center', fontSize: 24, letterSpacing: 10, fontWeight: '900', color: '#0F172A' }]}
+                style={[af.input, { textAlign: 'center', fontSize: 24, letterSpacing: 8, fontWeight: '900', color: '#0F172A', height: 54 }]}
                 placeholder="------"
                 placeholderTextColor="#94A3B8"
                 keyboardType="numeric"
@@ -772,18 +763,22 @@ export default function BuyPolicyScreen() {
             </View>
 
             <TouchableOpacity
-              style={[s.primaryBtn, { marginTop: 20 }]}
+              style={[s.modalPayBtn, (verifying || otpCode.trim().length !== 6 || consentTimeLeft === 0) && s.modalPayBtnDisabled]}
               onPress={handleVerifyAndPay}
-              disabled={verifying || otpCode.trim().length !== 6}
+              disabled={verifying || otpCode.trim().length !== 6 || consentTimeLeft === 0}
               activeOpacity={0.85}
             >
-              {verifying ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryBtnText}>Confirm & Pay via Razorpay →</Text>}
+              {verifying ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={s.modalPayBtnText} numberOfLines={1}>Confirm & Pay via Razorpay →</Text>
+              )}
             </TouchableOpacity>
 
             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 14, gap: 16 }}>
-              <TouchableOpacity onPress={handleSendConsentOtp} disabled={otpSending}>
-                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700' }}>
-                  {otpSending ? 'Sending SMS...' : 'Resend OTP'}
+              <TouchableOpacity onPress={handleSendConsentOtp} disabled={otpSending || consentTimeLeft > 0}>
+                <Text style={{ fontSize: 13, color: consentTimeLeft > 0 ? '#94A3B8' : Colors.primary, fontWeight: '700' }}>
+                  {otpSending ? 'Sending SMS...' : consentTimeLeft > 0 ? `Resend in ${formatOtpTimer(consentTimeLeft)}` : 'Resend OTP'}
                 </Text>
               </TouchableOpacity>
               <Text style={{ color: '#CBD5E1' }}>•</Text>
@@ -835,7 +830,15 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12,
     borderTopWidth: 1, borderTopColor: '#E2E8F0',
   },
-  primaryBtn: { backgroundColor: Colors.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    minHeight: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
   primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
   reviewCard: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 12 },
   reviewCardTitle: { fontSize: 13, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 8 },
@@ -848,13 +851,74 @@ const s = StyleSheet.create({
   checkboxActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkMark: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   declText: { flex: 1, fontSize: 11, color: Colors.textMuted, lineHeight: 16 },
-  payBtn: { backgroundColor: Colors.success, paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+  payBtn: {
+    backgroundColor: Colors.success,
+    minHeight: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
   payBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { backgroundColor: '#FFFFFF', width: '100%', borderRadius: 18, padding: 24, alignItems: 'center' },
-  modalIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
   modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.text },
   modalSub: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  modalTimer: { fontSize: 12, fontWeight: '700', color: Colors.primary, marginTop: 8 },
+  modalPayBtn: {
+    backgroundColor: Colors.primary,
+    minHeight: 52,
+    width: '100%',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 16,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalPayBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  modalPayBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   cancelBtn: { marginTop: 12, paddingVertical: 6 },
   cancelBtnText: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
   successScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
