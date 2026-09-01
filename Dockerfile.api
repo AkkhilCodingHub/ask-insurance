@@ -24,6 +24,7 @@ COPY api/prisma          ./api/prisma
 RUN npm ci --workspace=api --workspace=shared --include-workspace-root
 
 # Copy source
+COPY tsconfig*.json ./
 COPY shared/ ./shared/
 COPY api/    ./api/
 

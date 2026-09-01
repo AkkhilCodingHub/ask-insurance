@@ -18,7 +18,6 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@ask/shared": ["../shared/src/index.ts"],
