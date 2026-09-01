@@ -6,8 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { getApps, initializeApp } from '@react-native-firebase/app';
-import { getAuth, signInWithPhoneNumber, FirebaseAuthTypes } from '@react-native-firebase/auth';
+
 import { plansApi, policiesApi, paymentsApi, authApi, kycApi, ApiPlan } from '@/lib/api';
 import { useAuth } from '@/context/auth';
 import { useDialog } from '@/components/Dialog';

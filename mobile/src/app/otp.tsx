@@ -13,7 +13,7 @@ import { useDialog } from '@/components/Dialog';
 
 import * as Clipboard from 'expo-clipboard';
 import { AppState, DeviceEventEmitter } from 'react-native';
-import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from '@/utils/otpCooldown';
+import { getRemainingOtpSeconds, formatOtpTimer } from '@/utils/otpCooldown';
 
 const OTP_LEN = 6;
 

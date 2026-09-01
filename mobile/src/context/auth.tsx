@@ -14,7 +14,7 @@ import {
   registerSessionExpiredCallback,
   paymentsApi,
 } from '@/lib/api';
-import { startOtpCooldown, getRemainingOtpSeconds } from '@/utils/otpCooldown';
+import { startOtpCooldown } from '@/utils/otpCooldown';
 
 // ── Push notifications ────────────────────────────────────────────────────────
 
@@ -165,7 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
   const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const manualVerifyInProgressRef = useRef(false);
-  const isLocalOtpRef = useRef(false);
 
   const setUser = (u: AuthUser | null) => {
     setUserState(u);

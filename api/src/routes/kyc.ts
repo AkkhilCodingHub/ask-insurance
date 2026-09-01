@@ -10,10 +10,6 @@ import {
 } from '../lib/digilocker';
 import { escapeHtml } from '../lib/certificateGenerator';
 import {
-  validateAadhaar,
-  validatePAN,
-  validateRC,
-  validateDrivingLicense,
   validateDocumentFile,
   validateDocumentByType,
   DocumentTypeKey,
