@@ -112,10 +112,10 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
-                {user?.name || 'Valued Policyholder'}
+                {user?.name || (user?.phone ? `+91 ${user.phone}` : 'User Profile')}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                {user?.email ? `${user.email} • ` : ''}{user?.phone ? `+91 ${user.phone}` : ''}
+                {user?.email ? `${user.email}${user?.phone ? ' • ' : ''}` : ''}{user?.phone ? `+91 ${user.phone}` : ''}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
                 <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}>

@@ -160,6 +160,14 @@ router.get('/rc-fetch/:registrationNumber', optionalAuth, async (req: Request, r
     const { getVehicleRcDetails } = await import('../lib/mparivahan');
     const rcDetails = await getVehicleRcDetails(regParam);
 
+    if (!rcDetails) {
+      res.status(404).json({
+        success: false,
+        error: 'Vehicle details could not be retrieved from the official mParivahan gateway.',
+      });
+      return;
+    }
+
     let vehicle = null;
     try {
       vehicle = await prisma.vehicle.findUnique({

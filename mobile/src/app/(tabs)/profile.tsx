@@ -296,13 +296,6 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
-            icon="car-sport-outline"
-            label="Vehicle Garage & Challan"
-            sub="mParivahan RC & Traffic Fines"
-            onPress={() => router.push('/garage' as any)}
-          />
-          <View style={s.menuDivider} />
-          <MenuRow
             icon="medical-outline"
             label="Cashless Network Locator"
             sub="10,000+ Hospitals & Garages"

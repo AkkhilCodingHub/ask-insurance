@@ -84,7 +84,7 @@ function RecommendedCardSkeleton() {
 
 const QUICK_ACTIONS = [
   { icon: 'document-text-outline', label: 'Compare\nPlans',    route: '/plans'         },
-  { icon: 'car-sport-outline',     label: 'Vehicle\nGarage',   route: '/garage'        },
+  { icon: 'flash-outline',         label: 'Instant\nQuote',    route: '/quote'         },
   { icon: 'medical-outline',       label: 'Cashless\nLocator', route: '/locator'       },
   { icon: 'warning-outline',       label: 'Claim\nSOS (24x7)', route: '/emergency-sos' },
   { icon: 'shield-outline',        label: 'My\nPolicies',      route: '/my-policies'   },

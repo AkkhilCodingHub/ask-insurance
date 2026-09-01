@@ -281,6 +281,15 @@ export const api = {
         body: JSON.stringify(details),
       });
     },
+    async getDocumentsSummary() {
+      return request("/kyc/documents-summary");
+    },
+    async submitDocument(formData: FormData) {
+      return request("/kyc/submit-document", {
+        method: "POST",
+        body: formData,
+      });
+    },
     async uploadDocument(formData: FormData) {
       return request("/kyc/upload", {
         method: "POST",

@@ -109,15 +109,15 @@ export default function PospRequestsPage() {
   const rejectedCount = apps.filter(a => a.status === "rejected").length;
 
   return (
-    <div style={{ padding: 32, minHeight: "100vh", background: "var(--bg)" }}>
+    <div style={{ padding: "clamp(16px, 3vw, 32px)", minHeight: "100vh", background: "var(--bg)" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 14 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Award size={20} color="#3B82F6" />
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Award size={22} color="#3B82F6" />
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>
+            <h1 style={{ fontSize: "clamp(20px, 3vw, 26px)", fontWeight: 900, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>
               POSP Examination & Registration Requests
             </h1>
           </div>
@@ -132,7 +132,7 @@ export default function PospRequestsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
         {[
           { label: "Total Applications", value: apps.length, color: "#3B82F6", bg: "rgba(59, 130, 246, 0.2)" },
           { label: "Pending Review",     value: pendingCount, color: "#D97706", bg: "rgba(217, 119, 6, 0.2)" },
@@ -148,8 +148,8 @@ export default function PospRequestsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div style={{ display: "flex", gap: 14, marginBottom: 20, alignItems: "center" }}>
-        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+      <div style={{ display: "flex", gap: 14, marginBottom: 20, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 240 }}>
           <Search size={16} color="var(--text-muted)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
           <input
             value={search}
@@ -159,7 +159,7 @@ export default function PospRequestsPage() {
           />
         </div>
 
-        <div style={{ display: "flex", gap: 6, background: "var(--white)", padding: 4, borderRadius: 12, border: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", gap: 6, background: "var(--white)", padding: 4, borderRadius: 12, border: "1px solid var(--border)", flexWrap: "wrap" }}>
           {["all", "pending", "approved", "rejected"].map(st => (
             <button key={st} onClick={() => setStatusFilter(st)} style={{
               padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none",
@@ -172,77 +172,81 @@ export default function PospRequestsPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table with responsive horizontal scroll */}
       <div style={{ background: "var(--white)", borderRadius: 20, border: "1px solid var(--border)", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.6fr 1.1fr 1.2fr 1fr 1fr 120px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-          {["Candidate", "Contact", "IC-38 Score", "Application Ref", "Status", "Date", "Action"].map(h => (
-            <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
-          ))}
-        </div>
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: 840 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.6fr 1.1fr 1.2fr 1fr 1fr 120px", padding: "12px 20px", background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+              {["Candidate", "Contact", "IC-38 Score", "Application Ref", "Status", "Date", "Action"].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 800, color: "var(--text-muted)", letterSpacing: 1 }}>{h.toUpperCase()}</span>
+              ))}
+            </div>
 
-        {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading POSP application requests…</div>}
-        {error && <div style={{ padding: 40, textAlign: "center", color: "#DC2626" }}>{error}</div>}
+            {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading POSP application requests…</div>}
+            {error && <div style={{ padding: 40, textAlign: "center", color: "#DC2626" }}>{error}</div>}
 
-        {!loading && filtered.length === 0 && (
-          <div style={{ padding: 60, textAlign: "center", color: "var(--text-muted)" }}>
-            <Award size={36} color="var(--text-muted)" style={{ marginBottom: 10 }} />
-            <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>No POSP registration requests found</p>
-          </div>
-        )}
+            {!loading && filtered.length === 0 && (
+              <div style={{ padding: 60, textAlign: "center", color: "var(--text-muted)" }}>
+                <Award size={36} color="var(--text-muted)" style={{ marginBottom: 10 }} />
+                <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>No POSP registration requests found</p>
+              </div>
+            )}
 
-        {!loading && filtered.map((app, i) => (
-          <div
-            key={app.id}
-            style={{
-              display: "grid", gridTemplateColumns: "1.5fr 1.6fr 1.1fr 1.2fr 1fr 1fr 120px",
-              padding: "14px 20px", alignItems: "center",
-              borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none",
-              background: "var(--white)",
-            }}
-          >
-            {/* Candidate Name */}
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>{app.name}</p>
-              {app.assignedAgentCode && (
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB", fontFamily: "monospace" }}>
-                  ID: {app.assignedAgentCode}
+            {!loading && filtered.map((app, i) => (
+              <div
+                key={app.id}
+                style={{
+                  display: "grid", gridTemplateColumns: "1.5fr 1.6fr 1.1fr 1.2fr 1fr 1fr 120px",
+                  padding: "14px 20px", alignItems: "center",
+                  borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                  background: "var(--white)",
+                }}
+              >
+                {/* Candidate Name */}
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", margin: 0 }}>{app.name}</p>
+                  {app.assignedAgentCode && (
+                    <span style={{ fontSize: 11, fontWeight: 800, color: "#2563EB", fontFamily: "monospace" }}>
+                      ID: {app.assignedAgentCode}
+                    </span>
+                  )}
+                </div>
+
+                {/* Contact */}
+                <div>
+                  <p style={{ fontSize: 13, color: "var(--text)", margin: 0 }}>{app.email}</p>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>{app.phone}</p>
+                </div>
+
+                {/* Score */}
+                <div>
+                  <span style={{ padding: "4px 10px", borderRadius: 8, background: "#DCFCE7", color: "#15803D", fontWeight: 900, fontSize: 13 }}>
+                    {app.examScore} / 50 (&gt;15 Pass)
+                  </span>
+                </div>
+
+                {/* App Ref */}
+                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "var(--text)" }}>
+                  {app.applicationNumber}
                 </span>
-              )}
-            </div>
 
-            {/* Contact */}
-            <div>
-              <p style={{ fontSize: 13, color: "var(--text)", margin: 0 }}>{app.email}</p>
-              <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>{app.phone}</p>
-            </div>
+                {/* Status */}
+                <div><StatusBadge status={app.status} /></div>
 
-            {/* Score */}
-            <div>
-              <span style={{ padding: "4px 10px", borderRadius: 8, background: "#DCFCE7", color: "#15803D", fontWeight: 900, fontSize: 13 }}>
-                {app.examScore} / 50 (&gt;15 Pass)
-              </span>
-            </div>
+                {/* Date */}
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fmtDate(app.createdAt)}</span>
 
-            {/* App Ref */}
-            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "var(--text)" }}>
-              {app.applicationNumber}
-            </span>
-
-            {/* Status */}
-            <div><StatusBadge status={app.status} /></div>
-
-            {/* Date */}
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{fmtDate(app.createdAt)}</span>
-
-            {/* Action */}
-            <button
-              onClick={() => setSelectedApp(app)}
-              style={{ padding: "7px 14px", borderRadius: 10, background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1D4ED8", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <Eye size={13} /> View
-            </button>
+                {/* Action */}
+                <button
+                  onClick={() => setSelectedApp(app)}
+                  style={{ padding: "7px 14px", borderRadius: 10, background: "#EFF6FF", border: "1px solid #BFDBFE", color: "#1D4ED8", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
+                >
+                  <Eye size={13} /> View
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
 
       {/* Application Detail Modal */}

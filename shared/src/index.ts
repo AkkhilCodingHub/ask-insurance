@@ -9,3 +9,7 @@ export * from "./types/api";
 
 // Constants
 export * from "./constants/index";
+
+// Validators & Document Utilities
+export * from "./utils/documentValidators";
+

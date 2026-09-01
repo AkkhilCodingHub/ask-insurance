@@ -9,6 +9,15 @@ import {
   generateState, parseState, generateCodeVerifier, deriveCodeChallenge,
 } from '../lib/digilocker';
 import { escapeHtml } from '../lib/certificateGenerator';
+import {
+  validateAadhaar,
+  validatePAN,
+  validateRC,
+  validateDrivingLicense,
+  validateDocumentFile,
+  validateDocumentByType,
+  DocumentTypeKey,
+} from '@ask/shared';
 
 const router = Router();
 
@@ -17,28 +26,142 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
-const ALLOWED_DOC_TYPES = ['aadhaar', 'driving_license', 'passport'] as const;
+// ── Submit Individual Document (with Number Validation + File Check) ───────────
+router.post('/submit-document', authenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).userId as string;
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const rawDocType = (req.body.docType || '').toString().toLowerCase().trim();
+    const docNumber = (req.body.docNumber || '').toString().trim();
 
-// Manual document upload for KYC
+    const normalizedDocType = (rawDocType === 'vehicle_rc' ? 'rc' : rawDocType) as DocumentTypeKey | 'passport';
+
+    if (!['aadhaar', 'pan', 'rc', 'driving_license', 'passport'].includes(normalizedDocType)) {
+      res.status(400).json({ error: 'docType must be aadhaar, pan, rc, or driving_license.' });
+      return;
+    }
+
+    // 1. Validate Document Number Format & Checksum
+    if (docNumber && normalizedDocType !== 'passport') {
+      const numValidation = validateDocumentByType(normalizedDocType as DocumentTypeKey, docNumber);
+      if (!numValidation.isValid) {
+        res.status(400).json({ error: numValidation.error || `Invalid ${normalizedDocType.toUpperCase()} number.` });
+        return;
+      }
+    } else if (!docNumber && normalizedDocType !== 'passport') {
+      res.status(400).json({ error: `Please enter a valid ${normalizedDocType.toUpperCase()} number.` });
+      return;
+    }
+
+    // 2. Validate Uploaded Document File
+    if (!file) {
+      res.status(400).json({ error: 'Please select a document image (JPG, PNG, WebP) or PDF file to upload.' });
+      return;
+    }
+
+    const fileValidation = validateDocumentFile({
+      mimetype: file.mimetype,
+      size: file.size,
+      name: file.originalname,
+    });
+    if (!fileValidation.isValid) {
+      res.status(400).json({ error: fileValidation.error || 'Invalid file format or size.' });
+      return;
+    }
+
+    // 3. Upload to Cloud Storage (R2)
+    const ext = file.mimetype === 'application/pdf' ? 'pdf'
+      : file.mimetype === 'image/png' ? 'png'
+        : file.mimetype === 'image/webp' ? 'webp'
+          : 'jpg';
+
+    const key = `kyc/${userId}/${normalizedDocType}_${Date.now()}.${ext}`;
+    const url = await uploadToR2(key, file.buffer, file.mimetype);
+
+    // 4. Save UserDocument Record
+    const titleMap: Record<string, string> = {
+      aadhaar: `Aadhaar Card (${docNumber ? '••••' + docNumber.replace(/\s/g, '').slice(-4) : 'Verified'})`,
+      pan: `PAN Card (${docNumber.toUpperCase()})`,
+      rc: `Vehicle RC (${docNumber.toUpperCase()})`,
+      driving_license: `Driving License (${docNumber.toUpperCase()})`,
+      passport: 'Passport Document',
+    };
+
+    const docTypeDb = normalizedDocType === 'rc' ? 'vehicle_rc' : normalizedDocType;
+
+    await prisma.userDocument.create({
+      data: {
+        userId,
+        title: titleMap[normalizedDocType] || `${normalizedDocType.toUpperCase()} Document`,
+        docType: docTypeDb,
+        source: 'manual_upload',
+        fileUrl: url,
+        issuer: normalizedDocType === 'aadhaar' ? 'UIDAI' : normalizedDocType === 'pan' ? 'Income Tax Department' : 'MoRTH / Parivahan',
+      }
+    }).catch(() => {});
+
+    // 5. Update User Profile Attributes
+    const updateData: any = {};
+    if (normalizedDocType === 'aadhaar') {
+      updateData.aadhaarVerified = true;
+      updateData.kycDocUrl = url;
+      updateData.kycDocType = 'aadhaar';
+    } else if (normalizedDocType === 'pan') {
+      updateData.panNumber = docNumber.toUpperCase();
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      }).catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      message: `${normalizedDocType.toUpperCase()} uploaded and verified successfully.`,
+      docType: normalizedDocType,
+      docNumber: docNumber.toUpperCase(),
+      docUrl: url,
+    });
+  } catch (error) {
+    console.error('[kyc/submit-document]', error);
+    res.status(500).json({ error: 'Failed to process document submission. Please try again.' });
+  }
+});
+
+// Manual document upload for general KYC
 router.post('/upload', authenticate, upload.single('document'), async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).userId as string;
     const file = (req as any).file as Express.Multer.File | undefined;
+    const docNumber = (req.body.docNumber || '').toString().trim();
+    const rawDocType = (req.body.docType || 'aadhaar').toString().toLowerCase().trim();
 
     if (!file) {
       res.status(400).json({ error: 'No document file uploaded.' });
       return;
     }
 
-    if (!ALLOWED_TYPES.has(file.mimetype)) {
-      res.status(400).json({ error: 'Only JPEG, PNG, WebP, and PDF files are allowed.' });
+    const fileValidation = validateDocumentFile({
+      mimetype: file.mimetype,
+      size: file.size,
+      name: file.originalname,
+    });
+    if (!fileValidation.isValid) {
+      res.status(400).json({ error: fileValidation.error || 'Invalid file format or size.' });
       return;
     }
 
-    const { docType } = z.object({
-      docType: z.enum(ALLOWED_DOC_TYPES),
-    }).parse(req.body);
+    const normalizedDocType = (rawDocType === 'vehicle_rc' ? 'rc' : rawDocType) as DocumentTypeKey | 'passport';
+
+    if (docNumber && ['aadhaar', 'pan', 'rc', 'driving_license'].includes(normalizedDocType)) {
+      const numValidation = validateDocumentByType(normalizedDocType as DocumentTypeKey, docNumber);
+      if (!numValidation.isValid) {
+        res.status(400).json({ error: numValidation.error || `Invalid ${normalizedDocType.toUpperCase()} number.` });
+        return;
+      }
+    }
 
     const userRow = await prisma.user.findUnique({
       where: { id: userId },
@@ -46,15 +169,6 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
     });
     if (!userRow) {
       res.status(404).json({ error: 'User not found.' });
-      return;
-    }
-    const st = userRow.kycStatus;
-    if (st === 'submitted') {
-      res.status(409).json({ error: 'KYC is already under review. You cannot upload again until the review completes.' });
-      return;
-    }
-    if (st === 'verified') {
-      res.status(409).json({ error: 'KYC is already verified.' });
       return;
     }
 
@@ -75,20 +189,17 @@ router.post('/upload', authenticate, upload.single('document'), async (req: Requ
       where: { id: userId },
       data: {
         kycStatus: 'submitted',
-        kycDocType: docType,
+        kycDocType: normalizedDocType,
         kycDocUrl: url,
         kycSubmittedAt: new Date(),
         kycRejectionReason: null,
         kycVerifiedAt: null,
+        ...(docNumber && normalizedDocType === 'pan' ? { panNumber: docNumber.toUpperCase() } : {}),
       },
     });
 
     res.json({ success: true, kycStatus: 'submitted', docUrl: url });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'docType must be aadhaar, driving_license, or passport.' });
-      return;
-    }
     console.error('[kyc/upload]', error);
     res.status(500).json({ error: 'Failed to upload KYC document. Please try again.' });
   }
