@@ -88,6 +88,18 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+    async webLogin(payload: { email: string; phone: string; name?: string }) {
+      return request<{
+        success: boolean;
+        token: string;
+        refreshToken: string;
+        user: any;
+        isNewUser: boolean;
+      }>("/auth/web-login", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
     async getMe() {
       return request("/users/me");
     },
@@ -364,8 +376,23 @@ export const api = {
     },
   },
 
-  // ── AI Insurance Assistant ──
+  // ── 24x7 Support Chat ──
   chat: {
+    async getOrCreateConversation(subject?: string) {
+      return request<{ conversation: any }>("/chat/conversations", {
+        method: "POST",
+        body: JSON.stringify({ subject }),
+      });
+    },
+    async getMessages(conversationId: string) {
+      return request<{ messages: any[] }>(`/chat/conversations/${conversationId}/messages`);
+    },
+    async sendMessage(conversationId: string, content: string) {
+      return request<{ message: any; aiResponse?: any }>(`/chat/conversations/${conversationId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      });
+    },
     async send(message: string, conversationHistory?: any[]) {
       return request("/chat", {
         method: "POST",

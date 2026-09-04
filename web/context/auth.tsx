@@ -28,6 +28,7 @@ interface AuthContextValue {
   sendOTP(phone: string): Promise<void>;
   verifyOTP(otp: string): Promise<{ isNewUser: boolean }>;
   completeProfile(name: string, dob: string): Promise<void>;
+  loginWithEmailAndPhone(payload: { email: string; phone: string; name?: string }): Promise<AuthUser>;
   refreshUser(): Promise<void>;
   logout(): void;
 }
@@ -113,6 +114,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
   }
 
+  async function loginWithEmailAndPhone(payload: { email: string; phone: string; name?: string }): Promise<AuthUser> {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "https://ask-insurance.onrender.com/api") + "/auth/web-login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || data.message || "Login failed");
+    }
+
+    const authUser: AuthUser = {
+      id: data.user.id,
+      name: data.user.name || payload.name || "Customer",
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+    };
+
+    // Store token and user
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    registeredPhones.add(data.user.phone);
+    setUser(authUser);
+    return authUser;
+  }
+
   async function refreshUser(): Promise<void> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -131,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, pendingPhone, sendOTP, verifyOTP, completeProfile, refreshUser, logout }}
+      value={{ user, loading, pendingPhone, sendOTP, verifyOTP, completeProfile, loginWithEmailAndPhone, refreshUser, logout }}
     >
       {children}
     </AuthContext.Provider>

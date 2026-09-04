@@ -78,15 +78,15 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
   color: string;
 }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: "18px 20px", flex: 1, minWidth: 160 }}>
+    <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 16, padding: "18px 20px", flex: 1, minWidth: 160 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon size={16} color={color} />
         </div>
       </div>
-      <p style={{ fontSize: 26, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 5, fontWeight: 500 }}>{sub}</p>}
+      <p style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: "var(--text-light)", marginTop: 5, fontWeight: 500 }}>{sub}</p>}
     </div>
   );
 }
@@ -947,8 +947,8 @@ export default function PoliciesPage() {
       {/* ── Page header ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.04em" }}>Policies</h1>
-          <p style={{ fontSize: 13, color: "#64748B", marginTop: 3 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.04em" }}>Policies</h1>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
             {loading ? "Loading…" : `${total.toLocaleString()} total policies · ${fmt(stats.premium)} annual premium`}
           </p>
         </div>
@@ -959,7 +959,7 @@ export default function PoliciesPage() {
             Add Policy
           </button>
           <button onClick={() => load(page)} disabled={loading}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 10, color: "#0F172A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", background: "var(--white)", border: "1.5px solid var(--border)", borderRadius: 10, color: "var(--text)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             <RefreshCw size={14} style={{ animation: loading ? "spin 0.7s linear infinite" : "none", color: "#1580FF" }} />
             Refresh
           </button>
@@ -982,26 +982,26 @@ export default function PoliciesPage() {
       )}
 
       {/* ── Filters ── */}
-      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+      <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
         {/* Search + type row */}
         <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", border: "1.5px solid #E2E8F0", borderRadius: 10, background: "#F8FAFC", height: 40, flex: 1, minWidth: 220 }}>
-            <Search size={14} color="#94A3B8" />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", border: "1.5px solid var(--border)", borderRadius: 10, background: "var(--bg)", height: 40, flex: 1, minWidth: 220 }}>
+            <Search size={14} color="var(--text-muted)" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by policy no., name, provider…"
-              style={{ flex: 1, border: "none", outline: "none", fontSize: 13, color: "#0F172A", background: "transparent" }} />
+              style={{ flex: 1, border: "none", outline: "none", fontSize: 13, color: "var(--text)", background: "transparent" }} />
             {search && (
-              <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8", display: "flex" }}><X size={13} /></button>
+              <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex" }}><X size={13} /></button>
             )}
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-            <Filter size={13} color="#94A3B8" />
+            <Filter size={13} color="var(--text-muted)" />
             {TYPE_FILTERS.map(t => {
               const m = TYPE_META[t];
               const active = typeF === t;
               return (
                 <button key={t} onClick={() => setTypeF(t)}
-                  style={{ padding: "6px 13px", borderRadius: 100, border: active ? "none" : "1.5px solid #E2E8F0", background: active ? (m ? m.color : "#0F172A") : "#fff", color: active ? "#fff" : "#64748B", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "all 0.12s" }}>
+                  style={{ padding: "6px 13px", borderRadius: 100, border: active ? "none" : "1.5px solid var(--border)", background: active ? (m ? m.color : "#1580FF") : "var(--white)", color: active ? "#fff" : "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "all 0.12s" }}>
                   {m && <span style={{ fontSize: 12 }}>{m.emoji}</span>}
                   {t === "All" ? "All Types" : m?.label ?? t}
                 </button>
@@ -1011,14 +1011,14 @@ export default function PoliciesPage() {
         </div>
 
         {/* Status tabs */}
-        <div style={{ display: "flex", gap: 0, borderTop: "1px solid #F1F5F9", paddingTop: 12 }}>
+        <div style={{ display: "flex", gap: 0, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
           {STATUS_TABS.map(({ key, label }) => {
             const count = key === "All" ? policies.length : policies.filter(p => p.status === key).length;
             const active = statusF === key;
             const sm = key !== "All" ? STATUS_META[key] : null;
             return (
               <button key={key} onClick={() => setStatusF(key)}
-                style={{ padding: "7px 14px", marginRight: 4, borderRadius: 8, border: "none", background: active ? (sm ? sm.bg : "#0F172A") : "transparent", color: active ? (sm ? sm.color : "#fff") : "#64748B", fontSize: 12, fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all 0.12s" }}>
+                style={{ padding: "7px 14px", marginRight: 4, borderRadius: 8, border: "none", background: active ? (sm ? sm.bg : "#1580FF") : "transparent", color: active ? (sm ? sm.color : "#fff") : "var(--text-muted)", fontSize: 12, fontWeight: active ? 700 : 500, cursor: "pointer", transition: "all 0.12s" }}>
                 {label} {count > 0 && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.75 }}>({count})</span>}
               </button>
             );
@@ -1027,13 +1027,13 @@ export default function PoliciesPage() {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, overflow: "hidden" }}>
+      <div style={{ background: "var(--white)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
             <thead>
-              <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #F1F5F9" }}>
+              <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
                 {["Policy", "Holder", "Provider", "Coverage", "Premium", "Expiry", "Doc", "Status"].map(h => (
-                  <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 10, fontWeight: 800, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 10, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1084,28 +1084,28 @@ export default function PoliciesPage() {
 
                     {/* Holder */}
                     <td style={{ padding: "14px 16px" }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{p.user?.name ?? "—"}</p>
-                      <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 1 }}>{p.user?.phone ?? ""}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{p.user?.name ?? "—"}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{p.user?.phone ?? ""}</p>
                     </td>
 
                     {/* Provider */}
-                    <td style={{ padding: "14px 16px", fontSize: 13, color: "#475569", fontWeight: 500 }}>{p.provider}</td>
+                    <td style={{ padding: "14px 16px", fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>{p.provider}</td>
 
                     {/* Coverage */}
                     <td style={{ padding: "14px 16px" }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{fmt(p.sumInsured)}</p>
-                      <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>sum insured</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{fmt(p.sumInsured)}</p>
+                      <p style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>sum insured</p>
                     </td>
 
                     {/* Premium */}
                     <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
                       <p style={{ fontSize: 13, fontWeight: 800, color: "#059669" }}>₹{p.premium.toLocaleString("en-IN")}</p>
-                      <p style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>per year</p>
+                      <p style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>per year</p>
                     </td>
 
                     {/* Expiry */}
                     <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      <p style={{ fontSize: 12, color: expired ? "#DC2626" : expiring ? "#D97706" : "#475569", fontWeight: expiring || expired ? 700 : 500 }}>
+                      <p style={{ fontSize: 12, color: expired ? "#DC2626" : expiring ? "#D97706" : "var(--text-muted)", fontWeight: expiring || expired ? 700 : 500 }}>
                         {fmtDate(p.endDate)}
                       </p>
                       {expiring && <p style={{ fontSize: 10, color: "#D97706", fontWeight: 700, marginTop: 2 }}>⚠ {days}d left</p>}
@@ -1116,11 +1116,11 @@ export default function PoliciesPage() {
                     <td style={{ padding: "14px 16px" }}>
                       {p.documentUrl ? (
                         <a href={p.documentUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#059669", textDecoration: "none", padding: "4px 9px", background: "#ECFDF5", borderRadius: 6, border: "1px solid #A7F3D0" }}>
+                          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#059669", textDecoration: "none", padding: "4px 9px", background: "var(--success-light)", borderRadius: 6, border: "1px solid rgba(5,150,105,0.2)" }}>
                           <FileText size={11} /> PDF
                         </a>
                       ) : (
-                        <span style={{ fontSize: 11, color: "#CBD5E1" }}>—</span>
+                        <span style={{ fontSize: 11, color: "var(--text-light)" }}>—</span>
                       )}
                     </td>
 
@@ -1144,13 +1144,13 @@ export default function PoliciesPage() {
 
         {/* ── Pagination ── */}
         {pages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid #F1F5F9" }}>
-            <span style={{ fontSize: 12, color: "#64748B" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid var(--border)" }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Page {page} of {pages} · {total} policies
             </span>
             <div style={{ display: "flex", gap: 6 }}>
               <button disabled={page === 1} onClick={() => load(page - 1)}
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: page === 1 ? "#CBD5E1" : "#0F172A", fontSize: 12, fontWeight: 600, cursor: page === 1 ? "not-allowed" : "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--white)", color: page === 1 ? "var(--text-light)" : "var(--text)", fontSize: 12, fontWeight: 600, cursor: page === 1 ? "not-allowed" : "pointer" }}>
                 <ChevronLeft size={14} /> Prev
               </button>
               {Array.from({ length: Math.min(5, pages) }).map((_, i) => {
@@ -1158,13 +1158,13 @@ export default function PoliciesPage() {
                 if (n < 1 || n > pages) return null;
                 return (
                   <button key={n} onClick={() => load(n)}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: n === page ? "none" : "1.5px solid #E2E8F0", background: n === page ? "#1580FF" : "#fff", color: n === page ? "#fff" : "#0F172A", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    style={{ width: 34, height: 34, borderRadius: 8, border: n === page ? "none" : "1.5px solid var(--border)", background: n === page ? "#1580FF" : "var(--white)", color: n === page ? "#fff" : "var(--text)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                     {n}
                   </button>
                 );
               })}
               <button disabled={page >= pages} onClick={() => load(page + 1)}
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, border: "1.5px solid #E2E8F0", background: "#fff", color: page >= pages ? "#CBD5E1" : "#0F172A", fontSize: 12, fontWeight: 600, cursor: page >= pages ? "not-allowed" : "pointer" }}>
+                style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--white)", color: page >= pages ? "var(--text-light)" : "var(--text)", fontSize: 12, fontWeight: 600, cursor: page >= pages ? "not-allowed" : "pointer" }}>
                 Next <ChevronRight size={14} />
               </button>
             </div>

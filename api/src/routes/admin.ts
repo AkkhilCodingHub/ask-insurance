@@ -2321,9 +2321,24 @@ router.get('/kyc', adminAuthenticate, async (req: Request, res: Response): Promi
     const users = await prisma.user.findMany({
       where: { kycStatus: status },
       select: {
-        id: true, name: true, phone: true, email: true,
-        kycStatus: true, kycDocType: true, kycDocUrl: true,
+        id: true, name: true, phone: true, email: true, customerCode: true,
+        kycStatus: true, kycDocType: true, kycDocUrl: true, panNumber: true, aadhaarVerified: true,
         kycSubmittedAt: true, kycRejectionReason: true, kycVerifiedAt: true,
+        policies: {
+          select: {
+            id: true,
+            policyNumber: true,
+            type: true,
+            provider: true,
+            status: true,
+            premium: true,
+            sumInsured: true,
+            startDate: true,
+            endDate: true,
+            documentUrl: true,
+          },
+          orderBy: { createdAt: 'desc' }
+        }
       },
       orderBy: { kycSubmittedAt: 'asc' },
     });

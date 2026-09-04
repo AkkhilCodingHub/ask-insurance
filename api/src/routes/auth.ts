@@ -329,4 +329,97 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
   }
 });
 
+// ── POST /web-login ────────────────────────────────────────────────────────
+// Web / Support chat authentication requiring Email and Mandatory 10-digit Phone Number.
+// Registers or fetches user, links them to an agent, and issues auth tokens.
+
+const webLoginSchema = z.object({
+  email: z.string().email('A valid email address is required'),
+  phone: z.string().min(10, 'A valid 10-digit phone number is mandatory'),
+  name:  z.string().min(2).max(100).optional(),
+});
+
+router.post('/web-login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, phone: rawPhone, name } = webLoginSchema.parse(req.body);
+    const phone = cleanPhone(rawPhone);
+
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check by phone first or email
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone },
+          { email: normalizedEmail }
+        ]
+      }
+    });
+
+    const isNewUser = !user;
+
+    if (!user) {
+      const customerCode = await generateCustomerId();
+      user = await prisma.user.create({
+        data: {
+          phone,
+          email: normalizedEmail,
+          name: name ? name.trim() : null,
+          customerCode,
+        }
+      });
+    } else {
+      // Update missing fields
+      const updateData: Record<string, any> = {};
+      if (!user.email && normalizedEmail) updateData.email = normalizedEmail;
+      if (!user.name && name) updateData.name = name.trim();
+      if (!user.phone && phone) updateData.phone = phone;
+      if (!user.customerCode || user.customerCode.startsWith('ASK-CUST-')) {
+        updateData.customerCode = await generateCustomerId();
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updateData
+        });
+      }
+    }
+
+    if (user.id) {
+      await autoAssignAgentToUser(user.id);
+    }
+
+    const token        = createAuthToken({ userId: user.id, phone: user.phone });
+    const refreshToken = createRefreshToken({ userId: user.id, phone: user.phone });
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      user: {
+        id: user.id,
+        customerCode: user.customerCode,
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        kycStatus: user.kycStatus,
+      },
+      isNewUser: isNewUser || !Boolean(user.name),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request parameters' });
+      return;
+    }
+    console.error('[web-login] Error during web support login:', error);
+    res.status(500).json({ error: 'Failed to authenticate user. Please try again.' });
+  }
+});
+
 export { router as authRouter };

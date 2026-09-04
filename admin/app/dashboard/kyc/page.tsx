@@ -169,21 +169,93 @@ function SubmissionDrawer({
           </div>
 
           {/* Document info */}
-          <div style={{ marginBottom: 16, display: "flex", gap: 10 }}>
-            <div style={{ flex: 1, padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
+          <div style={{ marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
               <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>Document Type</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{DOC_LABELS[submission.kycDocType ?? ""] ?? submission.kycDocType ?? "—"}</p>
             </div>
-            <div style={{ flex: 1, padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
+            <div style={{ padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
               <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>Submitted</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
                 {submission.kycSubmittedAt ? new Date(submission.kycSubmittedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
               </p>
             </div>
+            {submission.panNumber && (
+              <div style={{ padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
+                <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>PAN Number</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", fontFamily: "monospace" }}>{submission.panNumber}</p>
+              </div>
+            )}
+            {submission.customerCode && (
+              <div style={{ padding: "12px", background: "var(--bg)", borderRadius: 10 }}>
+                <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.04em" }}>Customer Code</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", fontFamily: "monospace" }}>{submission.customerCode}</p>
+              </div>
+            )}
           </div>
 
           {/* Document preview */}
-          {submission.kycDocUrl && <DocViewer url={submission.kycDocUrl} docType={submission.kycDocType} />}
+          {submission.kycDocUrl ? (
+            <DocViewer url={submission.kycDocUrl} docType={submission.kycDocType} />
+          ) : (
+            <div style={{ padding: "16px", background: "var(--bg)", borderRadius: 10, border: "1px dashed var(--border)", textAlign: "center", marginBottom: 16 }}>
+              <FileText size={28} color="var(--text-muted)" style={{ margin: "0 auto 6px" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>No document file attached</p>
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>User may have verified via DigiLocker e-KYC or instant verification.</p>
+            </div>
+          )}
+
+          {/* Available / Associated Policies */}
+          <div style={{ marginTop: 20, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Available Policies ({submission.policies?.length || 0})
+              </p>
+              {submission.policies && submission.policies.length > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#059669" }}>
+                  Active Coverage
+                </span>
+              )}
+            </div>
+
+            {submission.policies && submission.policies.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {submission.policies.map((pol) => {
+                  const isAct = pol.status === "active";
+                  return (
+                    <div key={pol.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 800, color: "var(--primary)", fontFamily: "monospace" }}>{pol.policyNumber}</p>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", textTransform: "capitalize" }}>{pol.type} Insurance · {pol.provider}</p>
+                        </div>
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 100,
+                          background: isAct ? "#ECFDF5" : "#FEF2F2",
+                          color: isAct ? "#059669" : "#DC2626",
+                          border: `1px solid ${isAct ? "#A7F3D0" : "#FECACA"}`,
+                          textTransform: "capitalize"
+                        }}>
+                          {pol.status}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 6 }}>
+                        <span>Coverage: <strong style={{ color: "var(--text)" }}>₹{pol.sumInsured?.toLocaleString("en-IN") || 0}</strong></span>
+                        <span>Premium: <strong style={{ color: "#059669" }}>₹{pol.premium?.toLocaleString("en-IN") || 0}/yr</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ padding: "14px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--border)", textAlign: "center" }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)" }}>No policies purchased yet by this user.</p>
+              </div>
+            )}
+          </div>
 
           {/* Rejection reason (if already rejected) */}
           {submission.kycRejectionReason && (

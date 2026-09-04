@@ -11,7 +11,7 @@ const navLinks = [
   { label: "POSP Partner", href: "/posp" },
   { label: "Cashless Locator", href: "/locator" },
   { label: "Claims & SOS", href: "/claims" },
-  { label: "AI Assistant", href: "/chat" },
+  { label: "Support Chat", href: "/chat" },
 ];
 
 export function Navbar() {
@@ -30,10 +30,13 @@ export function Navbar() {
       }}
     >
       <style>{`
-        .nav-desktop-links { display: flex; gap: 32px; }
+        .nav-desktop-links { display: flex; gap: 24px; align-items: center; }
         .nav-desktop-auth { display: flex; gap: 10px; align-items: center; }
         .nav-mobile-btn { display: none; }
-        @media (max-width: 768px) {
+        @media (max-width: 1100px) {
+          .nav-desktop-links { gap: 16px; }
+        }
+        @media (max-width: 900px) {
           .nav-desktop-links { display: none !important; }
           .nav-desktop-auth { display: none !important; }
           .nav-mobile-btn { display: flex !important; }
@@ -42,25 +45,27 @@ export function Navbar() {
 
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1240,
           margin: "0 auto",
-          padding: "0 24px",
+          padding: "0 20px",
           height: 64,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: 16,
         }}
       >
         {/* Logo */}
-        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <img
             src="/logo.jpg"
             alt="ASK Insurance Broker Logo"
             style={{
-              height: 42,
+              height: 40,
               width: "auto",
               objectFit: "contain",
               borderRadius: 8,
+              display: "block",
             }}
           />
         </Link>
@@ -72,8 +77,9 @@ export function Navbar() {
               key={l.label}
               href={l.href}
               style={{
-                fontSize: 14,
-                fontWeight: 500,
+                fontSize: 13.5,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
                 color: "var(--text-muted)",
                 textDecoration: "none",
                 transition: "color 0.15s",

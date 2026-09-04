@@ -31,7 +31,7 @@ const footerLinks = [
       { name: "Cashless Network Garages", href: "/locator" },
       { name: "24x7 Roadside SOS", href: "/emergency-sos" },
       { name: "File / Track a Claim", href: "/claims" },
-      { name: "Ask AI Assistant", href: "/chat" },
+      { name: "24x7 Support Chat", href: "/chat" },
       { name: "Knowledge Base & FAQs", href: "/faq" },
       { name: "Central KYC (CKYC)", href: "/kyc" },
     ],

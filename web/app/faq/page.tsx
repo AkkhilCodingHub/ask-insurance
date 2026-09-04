@@ -257,7 +257,7 @@ export default function FaqPage() {
                   textDecoration: "none",
                 }}
               >
-                <MessageSquare size={16} /> Chat with AI Assistant
+                <MessageSquare size={16} /> Chat with Support
               </Link>
               <a
                 href="tel:18002099090"

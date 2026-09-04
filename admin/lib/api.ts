@@ -897,17 +897,34 @@ export interface PospApplicationRecord {
   createdAt:          string;
 }
 
+export interface KycSubmissionPolicy {
+  id:           string;
+  policyNumber: string;
+  type:         string;
+  provider:     string;
+  status:       string;
+  premium:      number;
+  sumInsured:   number;
+  startDate:    string;
+  endDate:      string;
+  documentUrl?: string | null;
+}
+
 export interface KycSubmission {
   id:                  string;
   name:                string | null;
   phone:               string;
   email:               string | null;
+  customerCode?:       string | null;
   kycStatus:           string;
   kycDocType:          string | null;
   kycDocUrl:           string | null;
+  panNumber?:          string | null;
+  aadhaarVerified?:    boolean;
   kycSubmittedAt:      string | null;
   kycRejectionReason:  string | null;
   kycVerifiedAt:       string | null;
+  policies?:           KycSubmissionPolicy[];
 }
 
 export const adminApi = new AdminApiClient();
