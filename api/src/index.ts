@@ -137,7 +137,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/endorsements', endorsementsRouter);
 app.use('/api/posp', pospRouter);
 
-app.use('*', (_req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
