@@ -473,9 +473,20 @@ router.get('/digilocker-details', authenticate, async (req: Request, res: Respon
         kycStatus: true,
         digilockerSub: true,
         kycDocuments: true,
-        userDocuments: { orderBy: { createdAt: 'desc' } },
+        userDocuments: {
+          select: {
+            id: true,
+            title: true,
+            docType: true,
+            source: true,
+            fileUrl: true,
+            digilockerUri: true,
+            issuer: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
         vehicles: { take: 1, orderBy: { createdAt: 'desc' } },
-      }
+      },
     });
 
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
@@ -491,6 +502,33 @@ router.get('/digilocker-details', authenticate, async (req: Request, res: Respon
 
     const latestVehicle = user.vehicles?.[0];
 
+    // Extract real document identifiers if available from records or files
+    let panNumber: string | null = null;
+    if (user.panNumber && /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(user.panNumber.trim())) {
+      panNumber = user.panNumber.trim().toUpperCase();
+    } else if (panDoc) {
+      const match = ((panDoc.title || '') + ' ' + (panDoc.digilockerUri || '') + ' ' + (panDoc.name || '')).match(/[A-Z]{5}[0-9]{4}[A-Z]{1}/i);
+      if (match) panNumber = match[0].toUpperCase();
+    }
+
+    let aadhaarNumber: string | null = null;
+    if (aadhaarDoc) {
+      const match = ((aadhaarDoc.title || '') + ' ' + (aadhaarDoc.digilockerUri || '') + ' ' + (aadhaarDoc.name || '')).match(/\b\d{12}\b/);
+      if (match) aadhaarNumber = match[0];
+    }
+
+    let dlNumber: string | null = null;
+    if (dlDoc) {
+      const match = ((dlDoc.title || '') + ' ' + (dlDoc.digilockerUri || '') + ' ' + (dlDoc.name || '')).match(/[A-Z]{2}[0-9-]{7,15}/i);
+      if (match) dlNumber = match[0].toUpperCase();
+    }
+
+    let rcNumber: string | null = latestVehicle?.registrationNumber || null;
+    if (!rcNumber && rcDoc) {
+      const match = ((rcDoc.title || '') + ' ' + (rcDoc.digilockerUri || '') + ' ' + (rcDoc.name || '')).match(/[A-Z]{2}[0-9A-Z]{6,12}/i);
+      if (match) rcNumber = match[0].toUpperCase();
+    }
+
     res.json({
       isDigiLockerLinked: isDigiLocker,
       kycStatus: user.kycStatus,
@@ -501,27 +539,27 @@ router.get('/digilocker-details', authenticate, async (req: Request, res: Respon
       city: user.city || '',
       state: user.state || '',
       pincode: user.pincode || '',
-      panNumber: user.panNumber || (isDigiLocker ? 'ABCDE1234F' : null),
-      aadhaarNumber: (user.aadhaarVerified || isDigiLocker) ? '999988887777' : null,
-      drivingLicenseNumber: isDigiLocker ? 'DL1420110012345' : null,
-      rcNumber: latestVehicle?.registrationNumber || (isDigiLocker ? 'DL01AB1234' : null),
-      panDoc: (user.panNumber || panDoc || isDigiLocker) ? {
-        name: panDoc?.title || panDoc?.name || 'PAN_Card_DigiLocker.pdf',
+      panNumber,
+      aadhaarNumber,
+      drivingLicenseNumber: dlNumber,
+      rcNumber,
+      panDoc: (panNumber || panDoc) ? {
+        name: panDoc?.title || panDoc?.name || `PAN_Card_${panNumber || 'Verified'}.pdf`,
         uri: panDoc?.fileUrl || panDoc?.uri || `https://storage.askinsurance.com/kyc/pan_${userId}.pdf`,
-        source: panDoc?.source || 'digilocker',
+        source: panDoc?.source || (isDigiLocker ? 'digilocker' : 'verified'),
       } : null,
-      aadhaarDoc: (user.aadhaarVerified || aadhaarDoc || isDigiLocker) ? {
-        name: aadhaarDoc?.title || aadhaarDoc?.name || 'Aadhaar_Card_DigiLocker.pdf',
+      aadhaarDoc: (user.aadhaarVerified || aadhaarDoc) ? {
+        name: aadhaarDoc?.title || aadhaarDoc?.name || 'Aadhaar_Card_Verified.pdf',
         uri: aadhaarDoc?.fileUrl || aadhaarDoc?.uri || `https://storage.askinsurance.com/kyc/aadhaar_${userId}.pdf`,
-        source: aadhaarDoc?.source || 'digilocker',
+        source: aadhaarDoc?.source || (isDigiLocker ? 'digilocker' : 'verified'),
       } : null,
-      drivingLicenseDoc: (dlDoc || isDigiLocker) ? {
-        name: dlDoc?.title || dlDoc?.name || 'Driving_Licence_DigiLocker.pdf',
+      drivingLicenseDoc: (dlNumber || dlDoc) ? {
+        name: dlDoc?.title || dlDoc?.name || 'Driving_Licence_Verified.pdf',
         uri: dlDoc?.fileUrl || dlDoc?.uri || `https://storage.askinsurance.com/kyc/dl_${userId}.pdf`,
         source: dlDoc?.source || 'digilocker',
       } : null,
-      rcDoc: (rcDoc || isDigiLocker) ? {
-        name: rcDoc?.title || rcDoc?.name || 'Vehicle_RC_DigiLocker.pdf',
+      rcDoc: (rcNumber || rcDoc) ? {
+        name: rcDoc?.title || rcDoc?.name || `Vehicle_RC_${rcNumber || 'Verified'}.pdf`,
         uri: rcDoc?.fileUrl || rcDoc?.uri || `https://storage.askinsurance.com/kyc/rc_${userId}.pdf`,
         source: rcDoc?.source || 'digilocker',
       } : null,

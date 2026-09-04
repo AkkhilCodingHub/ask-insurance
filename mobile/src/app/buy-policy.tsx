@@ -53,7 +53,6 @@ export default function BuyPolicyScreen() {
       if (user.address) setAddress(user.address);
       if (user.pincode) setPincode(user.pincode);
       if (user.panNumber) setPanNumber(user.panNumber);
-      if (user.aadhaarVerified) setAadhaarNumber('999988887777');
 
       kycApi.getDigiLockerDetails().then(res => {
         if (res && res.isDigiLockerLinked) {

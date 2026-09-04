@@ -80,6 +80,7 @@ export interface AuthUser {
   aadhaarVerified:    boolean;
   panNumber?:         string | null;
   kycDocType?:        string | null;
+  kycDocUrl?:         string | null;
   kycRejectionReason?: string | null;
   kycSubmittedAt?:    string | null;
 }
@@ -122,6 +123,7 @@ export function mapApiUser(u: ApiUser): AuthUser {
     aadhaarVerified:    u.aadhaarVerified    ?? false,
     panNumber:          u.panNumber          ?? undefined,
     kycDocType:         (u as any).kycDocType         ?? null,
+    kycDocUrl:          (u as any).kycDocUrl          ?? null,
     kycRejectionReason: (u as any).kycRejectionReason ?? null,
     kycSubmittedAt:     (u as any).kycSubmittedAt     ?? null,
   };

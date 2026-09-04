@@ -47,17 +47,17 @@ function BuyPolicyContent() {
   // Step 1: Proposer & KYC
   const [fullName, setFullName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone?.replace("+91", "") || "9876543210");
-  const [email, setEmail] = useState(user?.email || "customer@askinsurance.com");
-  const [panNumber, setPanNumber] = useState(user?.panNumber || "ABCDE1234F");
-  const [aadhaarNumber, setAadhaarNumber] = useState(user?.aadhaarNumber || "999988887777");
+  const [email, setEmail] = useState(user?.email || "");
+  const [panNumber, setPanNumber] = useState(user?.panNumber || "");
+  const [aadhaarNumber, setAadhaarNumber] = useState(user?.aadhaarNumber || "");
   const [dob, setDob] = useState(user?.dob || "1994-05-15");
   const [gender, setGender] = useState<string>(user?.gender || "male");
-  const [address, setAddress] = useState(user?.address || "Flat 402, Green Valley Apartments, MG Road");
-  const [pincode, setPincode] = useState(user?.pincode || "110001");
+  const [address, setAddress] = useState(user?.address || "");
+  const [pincode, setPincode] = useState(user?.pincode || "");
 
   // Motor Specific Fields
-  const [drivingLicenseNumber, setDrivingLicenseNumber] = useState(user?.drivingLicenseNumber || "DL1420110012345");
-  const [vehicleRcNumber, setVehicleRcNumber] = useState(regParam || user?.rcNumber || "DL01AB1234");
+  const [drivingLicenseNumber, setDrivingLicenseNumber] = useState(user?.drivingLicenseNumber || "");
+  const [vehicleRcNumber, setVehicleRcNumber] = useState(regParam || user?.rcNumber || "");
 
   // Step 2: Nominee
   const [nomineeName, setNomineeName] = useState("Priya Sharma");
@@ -143,18 +143,20 @@ function BuyPolicyContent() {
 
     try {
       // 1. Sync instant KYC to backend DB
-      const cleanPan = panNumber.trim().toUpperCase() || "ABCDE1234F";
-      const cleanAadhaar = aadhaarNumber.replace(/\D/g, "") || "999988887777";
+      const cleanPan = panNumber.trim().toUpperCase();
+      const cleanAadhaar = aadhaarNumber.replace(/\D/g, "");
 
-      await api.kyc.verifyInstant({
-        name: fullName.trim() || user?.name || "Valued Customer",
-        panNumber: cleanPan,
-        aadhaarNumber: cleanAadhaar.length === 4 ? `99998888${cleanAadhaar}` : cleanAadhaar,
-        dob: dob.trim(),
-        gender,
-        address: address.trim(),
-        pincode: pincode.trim(),
-      }).catch(() => {});
+      if (cleanPan && cleanAadhaar) {
+        await api.kyc.verifyInstant({
+          name: fullName.trim() || user?.name || "Valued Customer",
+          panNumber: cleanPan,
+          aadhaarNumber: cleanAadhaar,
+          dob: dob.trim(),
+          gender,
+          address: address.trim(),
+          pincode: pincode.trim(),
+        }).catch(() => {});
+      }
 
       // 2. Buy policy in backend database    
       const buyRes = await api.policies.buy({

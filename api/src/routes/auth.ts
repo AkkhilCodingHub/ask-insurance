@@ -189,7 +189,8 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<void> =>
         state: user.state,
         pincode: user.pincode,
         kycStatus: user.kycStatus,
-        aadhaarVerified: user.aadhaarVerified
+        aadhaarVerified: user.aadhaarVerified,
+        panNumber: user.panNumber,
       },
       isNewUser: !Boolean(user.name)
     });
@@ -223,6 +224,7 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
         pincode: true,
         kycStatus: true,
         aadhaarVerified: true,
+        panNumber: true,
         kycVerifiedAt: true,
         kycDocType: true,
         kycRejectionReason: true,

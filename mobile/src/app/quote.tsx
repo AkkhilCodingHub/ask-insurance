@@ -562,18 +562,15 @@ export default function QuoteScreen() {
 
       // Check user profile data fallback
       if (user) {
-        if (user.panNumber && !panNumber) {
+        if (user.panNumber && isValidPanNumber(user.panNumber) && !panNumber) {
           setPanNumber(user.panNumber.toUpperCase());
           if (!panDoc) {
-            setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_DigiLocker.pdf' });
+            setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
           }
           foundAny = true;
         }
-        if (user.aadhaarVerified && !aadhaarNumber) {
-          setAadhaarNumber('999988887777');
-          if (!aadhaarDoc) {
-            setAadhaarDoc({ uri: `https://storage.askinsurance.com/kyc/aadhaar_${user.id}.pdf`, name: 'Aadhaar_Card_DigiLocker.pdf' });
-          }
+        if (user.aadhaarVerified && user.kycDocUrl && !aadhaarDoc) {
+          setAadhaarDoc({ uri: user.kycDocUrl, name: 'Aadhaar_Card_Verified.pdf' });
           foundAny = true;
         }
       }
@@ -588,7 +585,7 @@ export default function QuoteScreen() {
           alert({
             type: 'info',
             title: 'No DigiLocker Documents Found',
-            message: 'No saved documents were found in your DigiLocker vault. Please enter your PAN & Aadhaar numbers below.'
+            message: 'No saved documents were found in your DigiLocker vault. Please enter your details below.'
           });
         }
       }
@@ -607,25 +604,22 @@ export default function QuoteScreen() {
 
   React.useEffect(() => {
     if (user) {
-      if (user.panNumber && !panNumber) {
+      if (user.panNumber && isValidPanNumber(user.panNumber) && !panNumber) {
         setPanNumber(user.panNumber.toUpperCase());
         setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
-      }
-      if (user.aadhaarVerified && !aadhaarNumber) {
-        setAadhaarNumber('999988887777');
-        setAadhaarDoc({ uri: `https://storage.askinsurance.com/kyc/aadhaar_${user.id}.pdf`, name: 'Aadhaar_Card_Verified.pdf' });
       }
 
       // Fetch comprehensive eKYC & official documents from DigiLocker
       kycApi.getDigiLockerDetails().then(res => {
         if (res && res.isDigiLockerLinked) {
           setIsDigiLockerLinked(true);
-          if (res.panNumber) setPanNumber(res.panNumber);
+          if (res.panNumber && isValidPanNumber(res.panNumber)) setPanNumber(res.panNumber);
           if (res.panDoc) setPanDoc({ uri: res.panDoc.uri, name: res.panDoc.name });
-          if (res.aadhaarNumber) setAadhaarNumber(res.aadhaarNumber);
+          if (res.aadhaarNumber && isValidAadhaarNumber(res.aadhaarNumber)) setAadhaarNumber(res.aadhaarNumber);
           if (res.aadhaarDoc) setAadhaarDoc({ uri: res.aadhaarDoc.uri, name: res.aadhaarDoc.name });
           if (res.drivingLicenseNumber && !dlNumber) setDlNumber(res.drivingLicenseNumber);
           if (res.drivingLicenseDoc && !dlDoc) setDlDoc({ uri: res.drivingLicenseDoc.uri, name: res.drivingLicenseDoc.name });
+          if (res.rcNumber && !regNumber) setRegNumber(res.rcNumber);
           if (res.rcDoc && !rcDoc) setRcDoc({ uri: res.rcDoc.uri, name: res.rcDoc.name });
         }
       }).catch(() => {});
