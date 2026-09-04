@@ -315,6 +315,8 @@ jobs:
             PRERELEASE="true"
             CUSTOM_SUMMARY=""
           fi
+          TAG="${TAG:-v1.3.1}"
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
           echo "custom_summary<<EOF" >> $GITHUB_OUTPUT
@@ -407,6 +409,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
           name: "ASK Insurance ${{ steps.vars.outputs.tag_name }}"
           body_path: release_body.md
           prerelease: ${{ steps.vars.outputs.prerelease == 'true' }}
