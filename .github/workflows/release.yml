@@ -203,7 +203,7 @@ jobs:
           ls -lh artifacts/
 
       - name: Upload Android Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-release-binaries
           path: artifacts/*
@@ -271,7 +271,7 @@ jobs:
           fi
 
       - name: Upload iOS Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ios-release-binaries
