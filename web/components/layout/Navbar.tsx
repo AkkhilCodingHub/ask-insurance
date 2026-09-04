@@ -84,8 +84,8 @@ export function Navbar() {
                 textDecoration: "none",
                 transition: "color 0.15s",
               }}
-              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--primary)")}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--text-muted)")}
+              onMouseEnter={(e: any) => ((e.target as HTMLElement).style.color = "var(--primary)")}
+              onMouseLeave={(e: any) => ((e.target as HTMLElement).style.color = "var(--text-muted)")}
             >
               {l.label}
             </Link>
@@ -127,10 +127,10 @@ export function Navbar() {
               textDecoration: "none",
               transition: "all 0.15s",
             }}
-            onMouseEnter={(e) => {
+            onMouseEnter={(e: any) => {
               (e.currentTarget as HTMLElement).style.background = "var(--primary-light)";
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={(e: any) => {
               (e.currentTarget as HTMLElement).style.background = "transparent";
             }}
           >
@@ -150,8 +150,8 @@ export function Navbar() {
               textDecoration: "none",
               transition: "opacity 0.15s",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+            onMouseEnter={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
+            onMouseLeave={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
           >
             Get Started
           </Link>

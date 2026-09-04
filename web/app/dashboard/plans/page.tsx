@@ -197,10 +197,10 @@ function PlanCard({ plan }: { plan: Plan }) {
             textDecoration: "none",
             transition: "opacity 0.15s",
           }}
-          onMouseEnter={(e) =>
+          onMouseEnter={(e: any) =>
             ((e.currentTarget as HTMLElement).style.opacity = "0.88")
           }
-          onMouseLeave={(e) =>
+          onMouseLeave={(e: any) =>
             ((e.currentTarget as HTMLElement).style.opacity = "1")
           }
         >

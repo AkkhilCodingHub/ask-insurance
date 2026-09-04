@@ -123,8 +123,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             textDecoration: "none",
             transition: "opacity 0.15s",
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+          onMouseEnter={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "0.75")}
+          onMouseLeave={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
         >
           <div
             className="animate-ring"
@@ -179,13 +179,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   borderLeft: isActive ? "3px solid var(--primary)" : "3px solid transparent",
                   transition: "all 0.15s",
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={(e: any) => {
                   if (!isActive) {
                     (e.currentTarget as HTMLElement).style.background = "var(--bg)";
                     (e.currentTarget as HTMLElement).style.color = "var(--text)";
                   }
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={(e: any) => {
                   if (!isActive) {
                     (e.currentTarget as HTMLElement).style.background = "transparent";
                     (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";

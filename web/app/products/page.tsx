@@ -116,8 +116,8 @@ export default function ProductsPage() {
                       textDecoration: "none",
                       transition: "opacity 0.15s",
                     }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.88")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+                    onMouseEnter={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "0.88")}
+                    onMouseLeave={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
                   >
                     Explore {label} <ArrowRight size={15} />
                   </Link>

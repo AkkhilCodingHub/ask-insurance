@@ -107,8 +107,8 @@ function PlanCard({ plan }: { plan: Plan }) {
             textDecoration: "none",
             transition: "opacity 0.15s",
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.88")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+          onMouseEnter={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "0.88")}
+          onMouseLeave={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
         >
           Get Quote →
         </Link>
@@ -155,8 +155,8 @@ export default function ComparePage() {
                 textDecoration: "none",
                 transition: "opacity 0.15s",
               }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+              onMouseEnter={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
+              onMouseLeave={(e: any) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
             >
               Get personalised quotes <ArrowRight size={16} />
             </Link>

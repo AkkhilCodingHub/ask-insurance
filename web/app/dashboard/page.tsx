@@ -198,11 +198,11 @@ export default function DashboardPage() {
                 textDecoration: "none",
                 transition: "border-color 0.15s, box-shadow 0.15s",
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={(e: any) => {
                 (e.currentTarget as HTMLElement).style.borderColor = color;
                 (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 16px rgba(0,0,0,0.06)`;
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={(e: any) => {
                 (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
                 (e.currentTarget as HTMLElement).style.boxShadow = "none";
               }}
@@ -523,13 +523,13 @@ export default function DashboardPage() {
                   flexShrink: 0,
                   transition: "background 0.15s",
                 }}
-                onMouseEnter={(e) =>
+                onMouseEnter={(e: any) =>
                   ((e.currentTarget as HTMLElement).style.background = "var(--primary)")
                 }
-                onMouseLeave={(e) =>
+                onMouseLeave={(e: any) =>
                   ((e.currentTarget as HTMLElement).style.background = "var(--primary-light)")
                 }
-                onClick={(e) => {
+                onClick={(e: any) => {
                   const el = e.currentTarget as HTMLElement;
                   if (el.style.background === "var(--primary)") {
                     el.style.color = "#fff";

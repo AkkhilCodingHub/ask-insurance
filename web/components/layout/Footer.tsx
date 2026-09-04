@@ -104,8 +104,8 @@ export function Footer() {
                     marginBottom: 10,
                     transition: "color 0.15s",
                   }}
-                  onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#38BDF8")}
-                  onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#6B7280")}
+                  onMouseEnter={(e: any) => ((e.target as HTMLElement).style.color = "#38BDF8")}
+                  onMouseLeave={(e: any) => ((e.target as HTMLElement).style.color = "#6B7280")}
                 >
                   {l.name}
                 </Link>

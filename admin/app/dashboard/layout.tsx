@@ -193,8 +193,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 overflow: "hidden",
                 position: "relative",
               }}
-              onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-              onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              onMouseEnter={(e: any) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={(e: any) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
               <span style={{ position: "relative", flexShrink: 0 }}>
                 <Icon size={17} color={active ? "#1580FF" : "#64748B"} strokeWidth={active ? 2.5 : 2} />

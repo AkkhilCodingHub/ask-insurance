@@ -107,10 +107,10 @@ export function CTA() {
               boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
               transition: "transform 0.15s ease",
             }}
-            onMouseEnter={(e) =>
+            onMouseEnter={(e: any) =>
               ((e.currentTarget as HTMLElement).style.transform = "translateY(-2px)")
             }
-            onMouseLeave={(e) =>
+            onMouseLeave={(e: any) =>
               ((e.currentTarget as HTMLElement).style.transform = "none")
             }
           >
@@ -131,10 +131,10 @@ export function CTA() {
               textDecoration: "none",
               transition: "background 0.15s ease",
             }}
-            onMouseEnter={(e) =>
+            onMouseEnter={(e: any) =>
               ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.2)")
             }
-            onMouseLeave={(e) =>
+            onMouseLeave={(e: any) =>
               ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)")
             }
           >
