@@ -180,7 +180,12 @@ function ClaimsContent() {
               Your Tracked Claims ({claims.length})
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {claims.length === 0 ? (
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", background: "white", borderRadius: 16, border: "1px solid var(--border)" }}>
+                  <ShieldCheck size={48} style={{ color: "var(--primary)", margin: "0 auto 16px", opacity: 0.6 }} />
+                  <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>Loading your tracked claims...</p>
+                </div>
+              ) : claims.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", background: "white", borderRadius: 16, border: "1px solid var(--border)" }}>
                   <ShieldCheck size={48} style={{ color: "var(--text-muted)", margin: "0 auto 16px", opacity: 0.5 }} />
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>No Claims Filed Yet</h3>
