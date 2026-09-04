@@ -10,16 +10,12 @@ import {
   Headphones,
   Send,
   User,
-  Shield,
   Mail,
   Phone,
   ArrowRight,
-  Sparkles,
   Lock,
   LogOut,
   AlertCircle,
-  Clock,
-  CheckCircle2,
 } from "lucide-react";
 
 interface Message {

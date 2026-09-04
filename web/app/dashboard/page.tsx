@@ -96,7 +96,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [policies, setPolicies] = useState<any[]>([]);
   const [claims, setClaims] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -105,7 +104,7 @@ export default function DashboardPage() {
     ]).then(([polRes, clmRes]) => {
       if (Array.isArray(polRes)) setPolicies(polRes);
       if (Array.isArray(clmRes)) setClaims(clmRes);
-    }).finally(() => setLoading(false));
+    });
   }, []);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
