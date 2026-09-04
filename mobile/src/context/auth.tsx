@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { isDevice } from 'expo-device';
 import {
-  getAuth, signInWithPhoneNumber, onAuthStateChanged, signOut as firebaseSignOut,
+  getAuth, onAuthStateChanged, signOut as firebaseSignOut,
   FirebaseAuthTypes,
 } from '@react-native-firebase/auth';
 import {
@@ -163,7 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingPhoneState(p);
   };
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
-  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const manualVerifyInProgressRef = useRef(false);
 
   const setUser = (u: AuthUser | null) => {
@@ -252,7 +251,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mapApiUser(result.user));
     }
     setPendingPhone(null);
-    confirmationRef.current = null;
 
     return { isNewUser: result.isNewUser || !result.user.name };
   };
@@ -336,7 +334,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setPendingPhone(null);
     setAutoVerified(null);
-    confirmationRef.current = null;
   };
 
   return (
