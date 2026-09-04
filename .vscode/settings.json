@@ -18,6 +18,7 @@
     "**/release": true
   },
   "git.refreshOnFocus": false,
+  "git.autofetch": false,
   "git.autoStash": false,
   "git.showProgress": false,
   "git.decorations.enabled": true
