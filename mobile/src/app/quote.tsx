@@ -279,6 +279,10 @@ export default function QuoteScreen() {
   const [rcDoc, setRcDoc]                 = useState<{ uri: string; name: string } | null>(null);
   const [isDigiLockerLinked, setIsDigiLockerLinked] = useState(false);
   const [fetchingDigiLocker, setFetchingDigiLocker] = useState(false);
+  const [manualOverridePan, setManualOverridePan] = useState(false);
+  const [manualOverrideAadhaar, setManualOverrideAadhaar] = useState(false);
+  const [manualOverrideDl, setManualOverrideDl] = useState(false);
+  const [manualOverrideRc, setManualOverrideRc] = useState(false);
 
   // Motor / Vehicle Auto-Fetch State (Feature 3)
   const [regNumber, setRegNumber]           = useState('');
@@ -612,6 +616,19 @@ export default function QuoteScreen() {
         setAadhaarDoc({ uri: `https://storage.askinsurance.com/kyc/aadhaar_${user.id}.pdf`, name: 'Aadhaar_Card_Verified.pdf' });
       }
 
+      // Fetch comprehensive eKYC & official documents from DigiLocker
+      kycApi.getDigiLockerDetails().then(res => {
+        if (res && res.isDigiLockerLinked) {
+          setIsDigiLockerLinked(true);
+          if (res.panNumber) setPanNumber(res.panNumber);
+          if (res.panDoc) setPanDoc({ uri: res.panDoc.uri, name: res.panDoc.name });
+          if (res.aadhaarNumber) setAadhaarNumber(res.aadhaarNumber);
+          if (res.aadhaarDoc) setAadhaarDoc({ uri: res.aadhaarDoc.uri, name: res.aadhaarDoc.name });
+          if (res.drivingLicenseNumber && !dlNumber) setDlNumber(res.drivingLicenseNumber);
+          if (res.drivingLicenseDoc && !dlDoc) setDlDoc({ uri: res.drivingLicenseDoc.uri, name: res.drivingLicenseDoc.name });
+          if (res.rcDoc && !rcDoc) setRcDoc({ uri: res.rcDoc.uri, name: res.rcDoc.name });
+        }
+      }).catch(() => {});
       handleFetchFromDigiLocker(true);
 
       if (user.phone) {
@@ -1596,7 +1613,42 @@ export default function QuoteScreen() {
           const isPanValid = isValidPanNumber(panClean);
           const aadhaarClean = aadhaarNumber.replace(/\D/g, '');
           const isAadhaarValid = isValidAadhaarNumber(aadhaarClean);
-          const isStepValid = isPanValid && isAadhaarValid && (!isMotorInsurance || (dlNumber && dlNumber.trim().length >= 8));
+
+          // Determined based on whether document was retrieved via DigiLocker / eKYC or manual override
+          const isPanFetched = !manualOverridePan && Boolean(
+            panClean &&
+            isPanValid &&
+            panDoc &&
+            (isDigiLockerLinked || (user?.panNumber && isValidPanNumber(user.panNumber)) || panDoc.name.includes('DigiLocker') || panDoc.name.includes('Verified'))
+          );
+
+          const isAadhaarFetched = !manualOverrideAadhaar && Boolean(
+            aadhaarClean &&
+            isAadhaarValid &&
+            aadhaarDoc &&
+            (isDigiLockerLinked || user?.aadhaarVerified || aadhaarDoc.name.includes('DigiLocker') || aadhaarDoc.name.includes('Verified'))
+          );
+
+          const isDlFetched = !manualOverrideDl && Boolean(
+            isMotorInsurance &&
+            dlNumber &&
+            dlNumber.trim().length >= 8 &&
+            dlDoc &&
+            (isDigiLockerLinked || dlDoc.name.includes('DigiLocker') || dlDoc.name.includes('Verified'))
+          );
+
+          const isRcFetched = !manualOverrideRc && Boolean(
+            isMotorInsurance &&
+            regNumber &&
+            regNumber.trim().length >= 6 &&
+            rcDoc &&
+            (isDigiLockerLinked || rcDoc.name.includes('DigiLocker') || rcDoc.name.includes('Verified'))
+          );
+
+          const isStepValid =
+            (isPanFetched || isPanValid) &&
+            (isAadhaarFetched || isAadhaarValid) &&
+            (!isMotorInsurance || ((isDlFetched || dlNumber.trim().length >= 8) && (isRcFetched || regNumber.trim().length >= 6)));
 
           return (
             <View style={s.stepWrap}>
@@ -1607,7 +1659,7 @@ export default function QuoteScreen() {
                   : 'IRDAI guidelines require a valid PAN Card and Aadhaar Card to process your insurance application.'}
               </Text>
 
-              {/* DigiLocker Smart Fetch Card */}
+              {/* DigiLocker Sync Status Banner */}
               <View style={{
                 backgroundColor: isDigiLockerLinked ? '#ECFDF5' : '#F0FDF4',
                 padding: 14,
@@ -1626,12 +1678,12 @@ export default function QuoteScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontWeight: '800', color: '#065F46' }}>
-                      {isDigiLockerLinked ? '✓ eKYC Synced via DigiLocker' : 'Fetch Identity from DigiLocker'}
+                      {isDigiLockerLinked ? '✓ DigiLocker e-KYC Connected' : 'Auto-Fetch from DigiLocker'}
                     </Text>
                     <Text style={{ fontSize: 11, color: '#047857', marginTop: 2, lineHeight: 15 }}>
                       {isDigiLockerLinked
-                        ? 'PAN and Aadhaar pre-filled from government DigiLocker vault.'
-                        : 'Auto-fill verified PAN & Aadhaar from government database in 1 tap.'}
+                        ? 'Government-verified documents are automatically populated from your vault.'
+                        : 'Link DigiLocker to autofetch government-verified PAN, Aadhaar & DL.'}
                     </Text>
                   </View>
                 </View>
@@ -1663,233 +1715,469 @@ export default function QuoteScreen() {
               </View>
 
               {/* 1. PAN Card Section */}
-              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>1. PAN Card Details</Text>
-                  <View style={{
-                    backgroundColor: isPanValid ? '#ECFDF5' : panClean.length === 10 ? '#FEF2F2' : '#EEF2FF',
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: isPanValid ? '#A7F3D0' : panClean.length === 10 ? '#FECACA' : '#BFDBFE',
-                  }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: isPanValid ? '#059669' : panClean.length === 10 ? '#DC2626' : Colors.primary }}>
-                      {isPanValid ? '✓ VERIFIED' : panClean.length === 10 ? 'INVALID' : 'REQUIRED'}
+              {isPanFetched ? (
+                /* Autofetched from DigiLocker Card */
+                <View style={{
+                  backgroundColor: '#ECFDF5',
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  borderWidth: 1.5,
+                  borderColor: '#A7F3D0',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="card-outline" size={16} color="#065F46" />
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>1. PAN Card</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>⚡ e-KYC VERIFIED</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700', marginBottom: 2 }}>PAN NUMBER (VERIFIED)</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#065F46', letterSpacing: 1.5 }}>
+                      {panClean}
                     </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F0FDF4' }}>
+                      <Icon name="document-text-outline" size={14} color="#059669" />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857', flex: 1 }} numberOfLines={1}>
+                        {panDoc?.name || 'PAN_Card_DigiLocker.pdf'}
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>✓ DigiLocker Vault</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, color: '#047857', flex: 1, marginRight: 8 }}>
+                      Autofetched via Income Tax Dept / DigiLocker.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setManualOverridePan(true)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', textDecorationLine: 'underline' }}>
+                        Edit manually
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                <Text style={s.label}>PAN NUMBER (10 CHARACTERS)</Text>
-                <View style={[
-                  af.inputRow,
-                  { marginBottom: 4 },
-                  isPanValid && { borderColor: '#10B981', borderWidth: 1.5 },
-                  panClean.length === 10 && !isPanValid && { borderColor: '#EF4444', borderWidth: 1.5 },
-                ]}>
-                  <TextInput
-                    style={af.input}
-                    placeholder="e.g. ABCDE1234F"
-                    placeholderTextColor={Colors.textLight}
-                    value={panNumber}
-                    onChangeText={(t: string) => setPanNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
-                    autoCapitalize="characters"
-                    maxLength={10}
-                  />
-                  {isPanValid && (
-                    <View style={{ marginRight: 8 }}>
-                      <Icon name="checkmark-circle" size={20} color="#10B981" />
-                    </View>
-                  )}
-                </View>
-
-                {/* PAN Inline Status Message */}
-                {isPanValid ? (
-                  <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
-                    ✓ Valid PAN format (IRDAI Compliant)
-                  </Text>
-                ) : panClean.length === 10 ? (
-                  <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
-                    ⚠️ Invalid PAN: Must be 5 uppercase letters, 4 numbers, 1 letter (e.g. ABCDE1234F)
-                  </Text>
-                ) : panClean.length > 0 ? (
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginBottom: 10, marginLeft: 2 }}>
-                    {panClean.length}/10 characters entered
-                  </Text>
-                ) : (
-                  <View style={{ marginBottom: 10 }} />
-                )}
-
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    paddingVertical: 12,
-                    backgroundColor: (panDoc || isPanValid) ? '#ECFDF5' : Colors.white,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: (panDoc || isPanValid) ? Colors.success : Colors.border,
-                  }}
-                  onPress={pickPanDoc}
-                  activeOpacity={0.8}
-                >
-                  <Icon name={(panDoc || isPanValid) ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={(panDoc || isPanValid) ? Colors.success : Colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: (panDoc || isPanValid) ? Colors.success : Colors.primary }}>
-                    {panDoc ? `✓ ${panDoc.name.slice(0, 28)}` : isPanValid ? '✓ e-PAN Verified (Tap to upload card)' : 'Upload PAN Card Document'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* 2. Aadhaar Card Section */}
-              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>2. Aadhaar Card Details</Text>
-                  <View style={{
-                    backgroundColor: isAadhaarValid ? '#ECFDF5' : aadhaarClean.length === 12 ? '#FEF2F2' : '#EEF2FF',
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: isAadhaarValid ? '#A7F3D0' : aadhaarClean.length === 12 ? '#FECACA' : '#BFDBFE',
-                  }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: isAadhaarValid ? '#059669' : aadhaarClean.length === 12 ? '#DC2626' : Colors.primary }}>
-                      {isAadhaarValid ? '✓ VERIFIED' : aadhaarClean.length === 12 ? 'INVALID' : 'REQUIRED'}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={s.label}>AADHAAR NUMBER (12 DIGITS)</Text>
-                <View style={[
-                  af.inputRow,
-                  { marginBottom: 4 },
-                  isAadhaarValid && { borderColor: '#10B981', borderWidth: 1.5 },
-                  aadhaarClean.length === 12 && !isAadhaarValid && { borderColor: '#EF4444', borderWidth: 1.5 },
-                ]}>
-                  <TextInput
-                    style={af.input}
-                    placeholder="e.g. 1234 5678 9012"
-                    placeholderTextColor={Colors.textLight}
-                    value={aadhaarNumber}
-                    onChangeText={(t: string) => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
-                    keyboardType="numeric"
-                    maxLength={12}
-                  />
-                  {isAadhaarValid && (
-                    <View style={{ marginRight: 8 }}>
-                      <Icon name="checkmark-circle" size={20} color="#10B981" />
-                    </View>
-                  )}
-                </View>
-
-                {/* Aadhaar Inline Status Message */}
-                {isAadhaarValid ? (
-                  <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
-                    ✓ Valid 12-digit Aadhaar (UIDAI Compliant)
-                  </Text>
-                ) : aadhaarClean.length === 12 ? (
-                  <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
-                    ⚠️ Invalid Aadhaar: Cannot start with 0 or 1
-                  </Text>
-                ) : aadhaarClean.length > 0 ? (
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginBottom: 10, marginLeft: 2 }}>
-                    {aadhaarClean.length}/12 digits entered
-                  </Text>
-                ) : (
-                  <View style={{ marginBottom: 10 }} />
-                )}
-
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    paddingVertical: 12,
-                    backgroundColor: (aadhaarDoc || isAadhaarValid) ? '#ECFDF5' : Colors.white,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: (aadhaarDoc || isAadhaarValid) ? Colors.success : Colors.border,
-                  }}
-                  onPress={pickAadhaarDoc}
-                  activeOpacity={0.8}
-                >
-                  <Icon name={(aadhaarDoc || isAadhaarValid) ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={(aadhaarDoc || isAadhaarValid) ? Colors.success : Colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: (aadhaarDoc || isAadhaarValid) ? Colors.success : Colors.primary }}>
-                    {aadhaarDoc ? `✓ ${aadhaarDoc.name.slice(0, 28)}` : isAadhaarValid ? '✓ e-Aadhaar Verified (Tap to upload card)' : 'Upload Aadhaar Card Document'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* 3. Driving Licence Section (Motor Insurance Only) */}
-              {isMotorInsurance && (
+              ) : (
+                /* Manual Entry + Upload Card (Shown when unable to fetch from DigiLocker) */
                 <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>3. Driving Licence (DL) Details</Text>
-                    <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>1. PAN Card Details</Text>
+                    <View style={{
+                      backgroundColor: isPanValid ? '#ECFDF5' : panClean.length === 10 ? '#FEF2F2' : '#EEF2FF',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: isPanValid ? '#A7F3D0' : panClean.length === 10 ? '#FECACA' : '#BFDBFE',
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: isPanValid ? '#059669' : panClean.length === 10 ? '#DC2626' : Colors.primary }}>
+                        {isPanValid ? '✓ VALID FORMAT' : panClean.length === 10 ? 'INVALID FORMAT' : 'MANUAL ENTRY'}
+                      </Text>
                     </View>
                   </View>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 12 }}>
+                    ⚠️ Not found in DigiLocker. Please enter your PAN and upload a photo/PDF.
+                  </Text>
 
-                  <Text style={s.label}>DRIVING LICENCE NUMBER</Text>
-                  <View style={[af.inputRow, { marginBottom: 12 }]}>
+                  <Text style={s.label}>PAN NUMBER (10 CHARACTERS)</Text>
+                  <View style={[
+                    af.inputRow,
+                    { marginBottom: 4 },
+                    isPanValid && { borderColor: '#10B981', borderWidth: 1.5 },
+                    panClean.length === 10 && !isPanValid && { borderColor: '#EF4444', borderWidth: 1.5 },
+                  ]}>
                     <TextInput
                       style={af.input}
-                      placeholder="e.g. DL-0420110012345"
+                      placeholder="e.g. ABCDE1234F"
                       placeholderTextColor={Colors.textLight}
-                      value={dlNumber}
-                      onChangeText={(t: string) => setDlNumber(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16))}
+                      value={panNumber}
+                      onChangeText={(t: string) => setPanNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
                       autoCapitalize="characters"
+                      maxLength={10}
                     />
+                    {isPanValid && (
+                      <View style={{ marginRight: 8 }}>
+                        <Icon name="checkmark-circle" size={20} color="#10B981" />
+                      </View>
+                    )}
                   </View>
 
+                  {/* PAN Inline Status Message */}
+                  {isPanValid ? (
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
+                      ✓ Valid PAN format (IRDAI Compliant)
+                    </Text>
+                  ) : panClean.length === 10 ? (
+                    <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
+                      ⚠️ Invalid PAN: Must be 5 uppercase letters, 4 numbers, 1 letter (e.g. ABCDE1234F)
+                    </Text>
+                  ) : panClean.length > 0 ? (
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginBottom: 10, marginLeft: 2 }}>
+                      {panClean.length}/10 characters entered
+                    </Text>
+                  ) : (
+                    <View style={{ marginBottom: 10 }} />
+                  )}
+
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: dlDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: dlDoc ? Colors.success : Colors.border }}
-                    onPress={pickDlDoc}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      paddingVertical: 12,
+                      backgroundColor: panDoc ? '#ECFDF5' : Colors.white,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: panDoc ? Colors.success : Colors.border,
+                    }}
+                    onPress={pickPanDoc}
                     activeOpacity={0.8}
                   >
-                    <Icon name={dlDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={dlDoc ? Colors.success : Colors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: dlDoc ? Colors.success : Colors.primary }}>
-                      {dlDoc ? `✓ ${dlDoc.name.slice(0, 28)}` : 'Upload Driving Licence Document'}
+                    <Icon name={panDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={panDoc ? Colors.success : Colors.primary} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: panDoc ? Colors.success : Colors.primary }}>
+                      {panDoc ? `✓ ${panDoc.name.slice(0, 28)}` : 'Upload PAN Card Document'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* 4. Vehicle Registration Certificate (RC) Section (Motor Insurance Only) */}
-              {isMotorInsurance && (
-                <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>4. Vehicle Registration Certificate (RC)</Text>
-                    <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+              {/* 2. Aadhaar Card Section */}
+              {isAadhaarFetched ? (
+                /* Autofetched from DigiLocker Card */
+                <View style={{
+                  backgroundColor: '#ECFDF5',
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  borderWidth: 1.5,
+                  borderColor: '#A7F3D0',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="finger-print-outline" size={16} color="#065F46" />
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>2. Aadhaar Card</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>⚡ e-KYC VERIFIED</Text>
                     </View>
                   </View>
 
-                  <Text style={s.label}>VEHICLE REGISTRATION NUMBER</Text>
-                  <View style={[af.inputRow, { marginBottom: 12 }]}>
-                    <TextInput
-                      style={af.input}
-                      placeholder="e.g. DL-01-AB-1234"
-                      placeholderTextColor={Colors.textLight}
-                      value={regNumber}
-                      onChangeText={(t: string) => setRegNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                      autoCapitalize="characters"
-                    />
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700', marginBottom: 2 }}>AADHAAR NUMBER (MASKED)</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#065F46', letterSpacing: 2 }}>
+                      •••• •••• {aadhaarClean.slice(-4) || '7777'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F0FDF4' }}>
+                      <Icon name="document-text-outline" size={14} color="#059669" />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857', flex: 1 }} numberOfLines={1}>
+                        {aadhaarDoc?.name || 'Aadhaar_Card_DigiLocker.pdf'}
+                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>✓ UIDAI Vault</Text>
+                    </View>
                   </View>
 
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 11, color: '#047857', flex: 1, marginRight: 8 }}>
+                      Autofetched via UIDAI e-KYC / DigiLocker vault.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setManualOverrideAadhaar(true)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', textDecorationLine: 'underline' }}>
+                        Edit manually
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                /* Manual Entry + Upload Card (Shown when unable to fetch from DigiLocker) */
+                <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>2. Aadhaar Card Details</Text>
+                    <View style={{
+                      backgroundColor: isAadhaarValid ? '#ECFDF5' : aadhaarClean.length === 12 ? '#FEF2F2' : '#EEF2FF',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: isAadhaarValid ? '#A7F3D0' : aadhaarClean.length === 12 ? '#FECACA' : '#BFDBFE',
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: isAadhaarValid ? '#059669' : aadhaarClean.length === 12 ? '#DC2626' : Colors.primary }}>
+                        {isAadhaarValid ? '✓ VALID FORMAT' : aadhaarClean.length === 12 ? 'INVALID FORMAT' : 'MANUAL ENTRY'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 12 }}>
+                    ⚠️ Not found in DigiLocker. Please enter your 12-digit Aadhaar number and upload your document.
+                  </Text>
+
+                  <Text style={s.label}>AADHAAR NUMBER (12 DIGITS)</Text>
+                  <View style={[
+                    af.inputRow,
+                    { marginBottom: 4 },
+                    isAadhaarValid && { borderColor: '#10B981', borderWidth: 1.5 },
+                    aadhaarClean.length === 12 && !isAadhaarValid && { borderColor: '#EF4444', borderWidth: 1.5 },
+                  ]}>
+                    <TextInput
+                      style={af.input}
+                      placeholder="e.g. 1234 5678 9012"
+                      placeholderTextColor={Colors.textLight}
+                      value={aadhaarNumber}
+                      onChangeText={(t: string) => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
+                      keyboardType="numeric"
+                      maxLength={12}
+                    />
+                    {isAadhaarValid && (
+                      <View style={{ marginRight: 8 }}>
+                        <Icon name="checkmark-circle" size={20} color="#10B981" />
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Aadhaar Inline Status Message */}
+                  {isAadhaarValid ? (
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
+                      ✓ Valid 12-digit Aadhaar (UIDAI Compliant)
+                    </Text>
+                  ) : aadhaarClean.length === 12 ? (
+                    <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '700', marginBottom: 10, marginLeft: 2 }}>
+                      ⚠️ Invalid Aadhaar: Cannot start with 0 or 1
+                    </Text>
+                  ) : aadhaarClean.length > 0 ? (
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginBottom: 10, marginLeft: 2 }}>
+                      {aadhaarClean.length}/12 digits entered
+                    </Text>
+                  ) : (
+                    <View style={{ marginBottom: 10 }} />
+                  )}
+
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: rcDoc ? '#ECFDF5' : Colors.white, borderRadius: 10, borderWidth: 1, borderColor: rcDoc ? Colors.success : Colors.border }}
-                    onPress={pickRcDoc}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      paddingVertical: 12,
+                      backgroundColor: aadhaarDoc ? '#ECFDF5' : Colors.white,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: aadhaarDoc ? Colors.success : Colors.border,
+                    }}
+                    onPress={pickAadhaarDoc}
                     activeOpacity={0.8}
                   >
-                    <Icon name={rcDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={rcDoc ? Colors.success : Colors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: rcDoc ? Colors.success : Colors.primary }}>
-                      {rcDoc ? `✓ ${rcDoc.name.slice(0, 28)}` : 'Upload Vehicle RC Document'}
+                    <Icon name={aadhaarDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={aadhaarDoc ? Colors.success : Colors.primary} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: aadhaarDoc ? Colors.success : Colors.primary }}>
+                      {aadhaarDoc ? `✓ ${aadhaarDoc.name.slice(0, 28)}` : 'Upload Aadhaar Card Document'}
                     </Text>
                   </TouchableOpacity>
                 </View>
+              )}
+
+              {/* 3. Driving Licence Section (Motor Insurance Only) */}
+              {isMotorInsurance && (
+                isDlFetched ? (
+                  /* Autofetched DL Card */
+                  <View style={{
+                    backgroundColor: '#ECFDF5',
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 16,
+                    borderWidth: 1.5,
+                    borderColor: '#A7F3D0',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Icon name="car-outline" size={16} color="#065F46" />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>3. Driving Licence (DL)</Text>
+                      </View>
+                      <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>⚡ mParivahan VERIFIED</Text>
+                      </View>
+                    </View>
+
+                    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700', marginBottom: 2 }}>DL NUMBER (VERIFIED)</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#065F46', letterSpacing: 1 }}>
+                        {dlNumber}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F0FDF4' }}>
+                        <Icon name="document-text-outline" size={14} color="#059669" />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857', flex: 1 }} numberOfLines={1}>
+                          {dlDoc?.name || 'Driving_Licence_Verified.pdf'}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>✓ MoRTH Vault</Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11, color: '#047857', flex: 1, marginRight: 8 }}>
+                        Autofetched via MoRTH mParivahan / DigiLocker.
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setManualOverrideDl(true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', textDecorationLine: 'underline' }}>
+                          Edit manually
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  /* Manual Entry DL Card */
+                  <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>3. Driving Licence (DL) Details</Text>
+                      <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 12 }}>
+                      ⚠️ Not found in DigiLocker. Please enter your DL number and upload document.
+                    </Text>
+
+                    <Text style={s.label}>DRIVING LICENCE NUMBER</Text>
+                    <View style={[af.inputRow, { marginBottom: 12 }]}>
+                      <TextInput
+                        style={af.input}
+                        placeholder="e.g. DL-0420110012345"
+                        placeholderTextColor={Colors.textLight}
+                        value={dlNumber}
+                        onChangeText={(t: string) => setDlNumber(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16))}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        paddingVertical: 12,
+                        backgroundColor: dlDoc ? '#ECFDF5' : Colors.white,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: dlDoc ? Colors.success : Colors.border,
+                      }}
+                      onPress={pickDlDoc}
+                      activeOpacity={0.8}
+                    >
+                      <Icon name={dlDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={dlDoc ? Colors.success : Colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: dlDoc ? Colors.success : Colors.primary }}>
+                        {dlDoc ? `✓ ${dlDoc.name.slice(0, 28)}` : 'Upload Driving Licence Document'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              )}
+
+              {/* 4. Vehicle Registration Certificate (RC) Section (Motor Insurance Only) */}
+              {isMotorInsurance && (
+                isRcFetched ? (
+                  /* Autofetched RC Card */
+                  <View style={{
+                    backgroundColor: '#ECFDF5',
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 20,
+                    borderWidth: 1.5,
+                    borderColor: '#A7F3D0',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Icon name="shield-checkmark-outline" size={16} color="#065F46" />
+                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#065F46' }}>4. Vehicle Registration (RC)</Text>
+                      </View>
+                      <View style={{ backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#6EE7B7' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#047857' }}>⚡ VAHAN VERIFIED</Text>
+                      </View>
+                    </View>
+
+                    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#D1FAE5', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700', marginBottom: 2 }}>VEHICLE REG NUMBER (VERIFIED)</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#065F46', letterSpacing: 1.5 }}>
+                        {regNumber}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F0FDF4' }}>
+                        <Icon name="document-text-outline" size={14} color="#059669" />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857', flex: 1 }} numberOfLines={1}>
+                          {rcDoc?.name || `RC_${regNumber}_Verified.pdf`}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>✓ Vahan Portal</Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11, color: '#047857', flex: 1, marginRight: 8 }}>
+                        Autofetched via Vahan RTO National Registry.
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setManualOverrideRc(true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', textDecorationLine: 'underline' }}>
+                          Edit manually
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  /* Manual Entry RC Card */
+                  <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.text }}>4. Vehicle Registration Certificate (RC)</Text>
+                      <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>MOTOR MANDATORY</Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 12 }}>
+                      ⚠️ Not found in DigiLocker. Please enter your Vehicle Registration number and upload document.
+                    </Text>
+
+                    <Text style={s.label}>VEHICLE REGISTRATION NUMBER</Text>
+                    <View style={[af.inputRow, { marginBottom: 12 }]}>
+                      <TextInput
+                        style={af.input}
+                        placeholder="e.g. DL-01-AB-1234"
+                        placeholderTextColor={Colors.textLight}
+                        value={regNumber}
+                        onChangeText={(t: string) => setRegNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        paddingVertical: 12,
+                        backgroundColor: rcDoc ? '#ECFDF5' : Colors.white,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: rcDoc ? Colors.success : Colors.border,
+                      }}
+                      onPress={pickRcDoc}
+                      activeOpacity={0.8}
+                    >
+                      <Icon name={rcDoc ? 'checkmark-circle' : 'cloud-upload-outline'} size={18} color={rcDoc ? Colors.success : Colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: rcDoc ? Colors.success : Colors.primary }}>
+                        {rcDoc ? `✓ ${rcDoc.name.slice(0, 28)}` : 'Upload Vehicle RC Document'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )
               )}
 
               <TouchableOpacity
