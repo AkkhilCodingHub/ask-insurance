@@ -1,6 +1,9 @@
 {
   "files.watcherExclude": {
+    "**/.git": true,
     "**/.git/**": true,
+    "**/.git/index": true,
+    "**/.git/index.lock": true,
     "**/node_modules/**": true,
     "**/.next/**": true,
     "**/dist/**": true,
@@ -13,5 +16,9 @@
     "**/.next": true,
     "**/dist": true,
     "**/release": true
-  }
+  },
+  "git.refreshOnFocus": false,
+  "git.autoStash": false,
+  "git.showProgress": false,
+  "git.decorations.enabled": true
 }
