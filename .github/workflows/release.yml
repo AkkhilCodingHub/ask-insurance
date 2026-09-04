@@ -43,6 +43,9 @@ jobs:
       - name: Install root & workspace dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
+
       - name: Prisma Schema Validation & Generate
         working-directory: api
         env:
@@ -74,6 +77,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
+
       - name: Typecheck Admin Portal
         working-directory: admin
         run: npx tsc --noEmit
@@ -100,6 +106,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
 
       - name: Typecheck Web App
         working-directory: web

@@ -29,6 +29,9 @@ jobs:
       - name: Install root & workspace dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
+
       - name: Generate Prisma Client
         working-directory: api
         env:
@@ -60,6 +63,9 @@ jobs:
       - name: Install root & workspace dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
+
       - name: Typecheck Admin Portal
         working-directory: admin
         run: npx tsc --noEmit
@@ -86,6 +92,9 @@ jobs:
 
       - name: Install root & workspace dependencies
         run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
 
       - name: Typecheck Web App
         working-directory: web
