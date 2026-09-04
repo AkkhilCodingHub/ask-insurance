@@ -37,7 +37,6 @@
       "@prisma/config": {
         "deepmerge-ts": "8.0.2"
       },
-      "mysql2": "3.23.2"
       "mysql2": "^3.24.3"
     },
     "@prisma/config": {
@@ -51,7 +50,7 @@
     "sharp": "^0.35.0",
     "uuid": "^11.1.1",
     "eslint": "^9.21.0",
-    "mysql2": "3.23.2",
+    "mysql2": "^3.24.3",
     "qs": "^6.16.0"
   }
 }

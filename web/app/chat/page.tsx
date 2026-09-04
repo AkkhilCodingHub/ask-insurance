@@ -11,7 +11,6 @@ import {
   Send,
   User,
   Mail,
-  Phone,
   ArrowRight,
   Lock,
   LogOut,
