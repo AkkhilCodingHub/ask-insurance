@@ -147,6 +147,34 @@ export default function ProfileTab() {
   const activePolicies  = policies.filter(p => p.status === 'active').length;
   const totalPaid       = totalPremiumPaid(payments);
 
+  const isKycVerified  = user?.kycStatus === 'verified' || Boolean(user?.aadhaarVerified && user?.panNumber);
+  const isKycSubmitted = user?.kycStatus === 'submitted';
+  const isKycRejected  = user?.kycStatus === 'rejected';
+
+  const kycBadge = isKycVerified
+    ? 'Verified'
+    : isKycSubmitted
+    ? 'In Review'
+    : isKycRejected
+    ? 'Action Req.'
+    : 'Pending';
+
+  const kycBadgeColor = isKycVerified
+    ? '#059669'
+    : isKycSubmitted
+    ? '#D97706'
+    : isKycRejected
+    ? '#DC2626'
+    : '#EF4444';
+
+  const kycSub = isKycVerified
+    ? 'Identity verified · IRDAI Compliant'
+    : isKycSubmitted
+    ? 'Documents under review · Usually takes 2 hrs'
+    : isKycRejected
+    ? (user?.kycRejectionReason ? `Rejected: ${user.kycRejectionReason.slice(0, 45)}…` : 'Verification failed · Tap to resubmit')
+    : 'Identity verification pending · Tap to complete';
+
   // ── Guest view ─────────────────────────────────────────────────────────────
   if (!user) {
     return (
@@ -215,9 +243,41 @@ export default function ProfileTab() {
               </Text>
             )}
           </View>
-          <View style={s.verifiedBadge}>
-            <Text style={s.verifiedText}>✓ Verified</Text>
-          </View>
+          <TouchableOpacity
+            style={[
+              s.verifiedBadge,
+              {
+                backgroundColor: isKycVerified
+                  ? (colors.isDark ? '#064E3B' : '#ECFDF5')
+                  : isKycSubmitted
+                  ? (colors.isDark ? '#78350F' : '#FEF3C7')
+                  : (colors.isDark ? '#7F1D1D' : '#FEF2F2'),
+                borderWidth: 1,
+                borderColor: isKycVerified
+                  ? (colors.isDark ? '#059669' : '#A7F3D0')
+                  : isKycSubmitted
+                  ? (colors.isDark ? '#D97706' : '#FDE68A')
+                  : (colors.isDark ? '#DC2626' : '#FECACA'),
+              }
+            ]}
+            onPress={() => router.push('/kyc')}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                s.verifiedText,
+                {
+                  color: isKycVerified
+                    ? '#059669'
+                    : isKycSubmitted
+                    ? '#D97706'
+                    : '#DC2626'
+                }
+              ]}
+            >
+              {isKycVerified ? '✓ Verified' : isKycSubmitted ? '⏳ In Review' : isKycRejected ? '⚠️ Rejected' : '⚠️ KYC Pending'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Stats */}
@@ -282,6 +342,15 @@ export default function ProfileTab() {
           />
           <View style={s.menuDivider} />
           <MenuRow
+            icon="shield-checkmark-outline"
+            label="KYC Verification"
+            sub={kycSub}
+            onPress={() => router.push('/kyc')}
+            badge={kycBadge}
+            badgeColor={kycBadgeColor}
+          />
+          <View style={s.menuDivider} />
+          <MenuRow
             icon="chatbubble-ellipses-outline"
             label="My Quotes"
             sub="Track quote requests & responses"
@@ -293,24 +362,6 @@ export default function ProfileTab() {
             label="Payment History"
             sub={payments.length > 0 ? `${payments.filter(p => p.status === 'success').length} successful payments` : 'Premiums & receipts'}
             onPress={() => router.push('/payments')}
-          />
-          <View style={s.menuDivider} />
-          <MenuRow
-            icon="medical-outline"
-            label="Cashless Network Locator"
-            sub="10,000+ Hospitals & Garages"
-            onPress={() => router.push('/locator' as any)}
-            badge="Cashless"
-            badgeColor="#059669"
-          />
-          <View style={s.menuDivider} />
-          <MenuRow
-            icon="warning-outline"
-            label="24x7 Emergency Claim SOS"
-            sub="Roadside assistance & helpline"
-            onPress={() => router.push('/emergency-sos' as any)}
-            badge="24×7"
-            badgeColor="#DC2626"
           />
           <View style={s.menuDivider} />
           <MenuRow

@@ -148,24 +148,37 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {/* Verified badge */}
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#059669",
-              background: "#ECFDF5",
-              padding: "5px 12px",
-              borderRadius: 100,
-              marginBottom: 20,
-            }}
-          >
-            <CheckCircle size={13} />
-            Verified Account
-          </span>
+          {/* KYC Status badge */}
+          {(() => {
+            const isVerified = user.kycStatus === "verified";
+            const isSubmitted = user.kycStatus === "submitted";
+            const isRejected = user.kycStatus === "rejected";
+            const color = isVerified ? "#059669" : isSubmitted ? "#D97706" : isRejected ? "#DC2626" : "#EF4444";
+            const bg = isVerified ? "#ECFDF5" : isSubmitted ? "#FEF3C7" : isRejected ? "#FEE2E2" : "#FEF2F2";
+            const label = isVerified ? "KYC Verified" : isSubmitted ? "KYC In Review" : isRejected ? "KYC Rejected" : "KYC Pending";
+            return (
+              <a
+                href="/kyc"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color,
+                  background: bg,
+                  padding: "5px 12px",
+                  borderRadius: 100,
+                  marginBottom: 20,
+                  textDecoration: "none",
+                  border: `1px solid ${color}33`,
+                }}
+              >
+                <CheckCircle size={13} />
+                {label}
+              </a>
+            );
+          })()}
 
           {/* Stats */}
           <div
