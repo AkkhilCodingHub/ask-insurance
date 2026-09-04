@@ -27,11 +27,18 @@ export default function OTPScreen() {
   const [resending, setResending] = useState(false);
 
   const rawPhoneParam = typeof params.phone === 'string' ? params.phone.replace(/\D/g, '').slice(-10) : '';
-  const phone = pendingPhone || rawPhoneParam || '9876543210';
-  const [timeLeft, setTimeLeft] = useState(() => Math.max(1, getRemainingOtpSeconds(phone) || 300));
+  const phone = pendingPhone || rawPhoneParam || '';
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(1, (phone ? getRemainingOtpSeconds(phone) : 300) || 300));
+
+  useEffect(() => {
+    if (!phone) {
+      router.replace('/(auth)/login');
+    }
+  }, [phone, router]);
 
   // 5-minute (300s) Real-Time Countdown Timer
   useEffect(() => {
+    if (!phone) return;
     const tick = () => {
       const remaining = getRemainingOtpSeconds(phone);
       setTimeLeft(remaining);

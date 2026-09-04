@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -34,31 +34,6 @@ interface UserClaim {
   description?: string;
 }
 
-const FALLBACK_CLAIMS: UserClaim[] = [
-  {
-    id: "clm_1",
-    claimNumber: "CLM-2026-88019",
-    policyNumber: "HDFC-MOT-2025-991204",
-    type: "Motor Accidental Repair (Cashless)",
-    amount: 28500,
-    status: "surveyor_assigned",
-    submittedDate: "24-Aug-2026",
-    hospitalOrGarage: "AutoNation HDFC Approved Body Shop, Delhi",
-    description: "Bumper and left headlamp damage in parking collision.",
-  },
-  {
-    id: "clm_2",
-    claimNumber: "CLM-2026-77102",
-    policyNumber: "STAR-HLT-2026-440182",
-    type: "Hospitalization Cashless Pre-Auth",
-    amount: 145000,
-    status: "settled",
-    submittedDate: "12-Jul-2026",
-    hospitalOrGarage: "Max Super Speciality Hospital, Saket",
-    description: "Dengue inpatient care 4 days cashless settlement.",
-  },
-];
-
 const CLAIM_STAGES = [
   { key: "submitted", label: "Claim Filed" },
   { key: "surveyor_assigned", label: "Surveyor Assigned" },
@@ -70,16 +45,43 @@ const CLAIM_STAGES = [
 function ClaimsContent() {
   const searchParams = useSearchParams();
   const policyParam = searchParams.get("policy") || "";
-  const [claims, setClaims] = useState<UserClaim[]>(FALLBACK_CLAIMS);
+  const [claims, setClaims] = useState<UserClaim[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFileModal, setShowFileModal] = useState(Boolean(policyParam));
-  const [policyNum, setPolicyNum] = useState(policyParam || "HDFC-MOT-2025-991204");
+  const [policyNum, setPolicyNum] = useState(policyParam || "");
   const [claimType, setClaimType] = useState("Motor Accidental Repair (Cashless)");
-  const [incidentDate, setIncidentDate] = useState("2026-08-25");
-  const [estAmount, setEstAmount] = useState("25000");
-  const locationOrGarage = "Authorized Network Garage, Delhi";
+  const [incidentDate, setIncidentDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [estAmount, setEstAmount] = useState("");
+  const [locationOrGarage, setLocationOrGarage] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  useEffect(() => {
+    async function loadClaims() {
+      try {
+        const res = await api.claims.getMyClaims();
+        if (Array.isArray(res)) {
+          setClaims(res.map((c: any) => ({
+            id: c.id,
+            claimNumber: c.claimNumber || `CLM-${c.id.slice(-6)}`,
+            policyNumber: c.policy?.policyNumber || c.policyNumber || "—",
+            type: c.type || "Insurance Claim",
+            amount: Number(c.amount) || 0,
+            status: c.status?.toLowerCase() || "submitted",
+            submittedDate: c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—",
+            hospitalOrGarage: c.hospitalOrGarage,
+            description: c.description,
+          })));
+        }
+      } catch (err) {
+        console.warn("[Claims] Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadClaims();
+  }, []);
 
   const handleFileClaim = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +95,7 @@ function ClaimsContent() {
         type: claimType,
         incidentDate,
         amount: parseInt(estAmount, 10) || 0,
-        hospitalOrGarage: locationOrGarage,
+        hospitalOrGarage: locationOrGarage.trim() || undefined,
         description: description.trim(),
       });
       const newClm: UserClaim = {
@@ -101,7 +103,7 @@ function ClaimsContent() {
         claimNumber: `CLM-${new Date().getFullYear()}-${randomSuffix}`,
         policyNumber: policyNum,
         type: claimType,
-        amount: parseInt(estAmount, 10) || 25000,
+        amount: parseInt(estAmount, 10) || 0,
         status: "submitted",
         submittedDate: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
         hospitalOrGarage: locationOrGarage,
@@ -119,6 +121,7 @@ function ClaimsContent() {
       setTimeout(() => {
         setSubmitSuccess(false);
         setShowFileModal(false);
+        setDescription("");
       }, 2000);
     } finally {
       setIsSubmitting(false);
@@ -177,7 +180,17 @@ function ClaimsContent() {
               Your Tracked Claims ({claims.length})
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {claims.map((clm: UserClaim) => {
+              {claims.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", background: "white", borderRadius: 16, border: "1px solid var(--border)" }}>
+                  <ShieldCheck size={48} style={{ color: "var(--text-muted)", margin: "0 auto 16px", opacity: 0.5 }} />
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>No Claims Filed Yet</h3>
+                  <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20 }}>You do not have any active or previous insurance claims.</p>
+                  <button type="button" onClick={() => setShowFileModal(true)} style={{ background: "var(--primary)", color: "white", padding: "10px 20px", borderRadius: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>
+                    File a New Claim
+                  </button>
+                </div>
+              ) : (
+                claims.map((clm: UserClaim) => {
                 let currentIdx = CLAIM_STAGES.findIndex((s) => s.key === clm.status);
                 if (currentIdx === -1) currentIdx = clm.status === "settled" ? 4 : 0;
                 return (
@@ -212,7 +225,8 @@ function ClaimsContent() {
                     </div>
                   </div>
                 );
-              })}
+              })
+            )}
             </div>
           </div>
 
@@ -275,6 +289,10 @@ function ClaimsContent() {
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Estimated Claim Amount (₹)</label>
                       <input type="number" required value={estAmount} onChange={(e) => setEstAmount(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
                     </div>
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Network Hospital / Garage Name (Optional)</label>
+                    <input type="text" placeholder="e.g. Apollo Hospital or City Auto Body Shop" value={locationOrGarage} onChange={(e) => setLocationOrGarage(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
                   </div>
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Incident Details</label>

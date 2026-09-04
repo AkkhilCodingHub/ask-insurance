@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle,
@@ -13,7 +13,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
-import { MY_POLICIES, MY_CLAIMS } from "@/lib/mock";
+import { api } from "@/lib/api";
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -56,15 +56,29 @@ export default function ProfilePage() {
   const [notifications, setNotifications] = useState(true);
   const [biometric, setBiometric] = useState(false);
   const [language, setLanguage] = useState("English");
+  const [activePolicies, setActivePolicies] = useState(0);
+  const [claimsCount, setClaimsCount] = useState(0);
+  const [approvedClaims, setApprovedClaims] = useState(0);
+
+  useEffect(() => {
+    api.policies.getMyPolicies().then((res) => {
+      if (Array.isArray(res)) {
+        setActivePolicies(res.filter((p: any) => p.status === "active" || p.status === "Active").length);
+      }
+    }).catch(() => {});
+    api.claims.getMyClaims().then((res) => {
+      if (Array.isArray(res)) {
+        setClaimsCount(res.length);
+        setApprovedClaims(res.filter((c: any) => c.status === "approved" || c.status === "Approved" || c.status === "settled").length);
+      }
+    }).catch(() => {});
+  }, []);
 
   if (!user) return null;
 
   function getInitials(name: string) {
     return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
   }
-
-  const activePolicies = MY_POLICIES.filter((p) => p.status === "Active").length;
-  const approvedClaims = MY_CLAIMS.filter((c) => c.status === "Approved").length;
 
   function handleLogout() {
     logout();
@@ -192,7 +206,7 @@ export default function ProfilePage() {
           >
             {[
               { label: "Policies", value: activePolicies },
-              { label: "Claims", value: MY_CLAIMS.length },
+              { label: "Claims", value: claimsCount },
               { label: "Approved", value: approvedClaims },
             ].map(({ label, value }) => (
               <div key={label} style={{ textAlign: "center" }}>

@@ -82,11 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isNewUser = !registeredPhones.has(phone);
     if (!isNewUser) {
       // Returning user — restore saved profile or default
+      let existing: AuthUser | null = null;
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) existing = JSON.parse(raw);
+      } catch {}
       const restoredUser: AuthUser = {
-        id: `user_${phone}`,
-        name: "Akkhil Sharma",
+        id: existing?.id || `user_${phone}`,
+        name: existing?.name || "",
         phone,
-        dob: "15/08/1992",
+        dob: existing?.dob || "",
       };
       setUser(restoredUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(restoredUser));

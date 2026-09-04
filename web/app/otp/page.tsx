@@ -13,12 +13,13 @@ export default function OTPPage() {
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const phone = pendingPhone || "9876543210";
-  const [resendTimer, setResendTimer] = useState(() => Math.max(1, getRemainingOtpSeconds(phone) || 300));
+  const phone = pendingPhone || "";
+  const [resendTimer, setResendTimer] = useState(() => Math.max(1, (phone ? getRemainingOtpSeconds(phone) : 300) || 300));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // 5-minute (300s) Real-Time Countdown Timer
   useEffect(() => {
+    if (!phone) return;
     const tick = () => {
       const remaining = getRemainingOtpSeconds(phone);
       setResendTimer(remaining);

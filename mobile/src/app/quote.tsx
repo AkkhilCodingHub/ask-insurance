@@ -320,7 +320,7 @@ export default function QuoteScreen() {
   const [otpSending, setOtpSending] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(30);
-  const [applicantPhone, setApplicantPhone] = useState(user?.phone?.replace(/\D/g, '').slice(-10) || '9876543210');
+  const [applicantPhone, setApplicantPhone] = useState(user?.phone?.replace(/\D/g, '').slice(-10) || '');
 
   // Edit Vehicle Details Modal State
   const [showEditVehicleModal, setShowEditVehicleModal] = useState(false);
@@ -328,25 +328,25 @@ export default function QuoteScreen() {
   const [editModel, setEditModel] = useState('');
   const [editVariant, setEditVariant] = useState('');
   const [editFuel, setEditFuel] = useState('petrol');
-  const [editYear, setEditYear] = useState('2022');
+  const [editYear, setEditYear] = useState('');
   const [customModelInput, setCustomModelInput] = useState('');
 
   const handleOpenEditVehicleModal = () => {
-    setEditMake(vehicleMake || 'Maruti Suzuki');
-    setEditModel(vehicleModel || 'Swift');
-    setEditVariant(vehicleVariant || 'VXi 1.2L');
+    setEditMake(vehicleMake || '');
+    setEditModel(vehicleModel || '');
+    setEditVariant(vehicleVariant || '');
     setEditFuel(fuelType ? fuelType.toLowerCase() : 'petrol');
-    setEditYear(regYear || '2022');
+    setEditYear(regYear || '');
     setCustomModelInput(vehicleModel || '');
     setShowEditVehicleModal(true);
   };
 
   const handleSaveVehicleEdits = () => {
-    const finalModel = editModel === 'Other' || !editModel ? customModelInput.trim() || 'Custom Model' : editModel;
-    const finalMake = editMake.trim() || 'Maruti Suzuki';
-    const finalVariant = editVariant.trim() || 'Standard Variant';
+    const finalModel = editModel === 'Other' || !editModel ? customModelInput.trim() : editModel;
+    const finalMake = editMake.trim();
+    const finalVariant = editVariant.trim();
     const finalFuel = editFuel.toLowerCase();
-    const finalYear = editYear || '2022';
+    const finalYear = editYear || '';
 
     setVehicleMake(finalMake);
     setVehicleModel(finalModel);
@@ -358,7 +358,7 @@ export default function QuoteScreen() {
 
     // Re-fetch live quotes with updated car details
     policiesApi.fetchLiveProviderQuotes({
-      registrationNumber: regNumber || 'MH02CB1234',
+      registrationNumber: regNumber || '',
       registrationYear: finalYear,
       registrationDate,
       make: finalMake,
@@ -565,7 +565,7 @@ export default function QuoteScreen() {
         if (user.panNumber && isValidPanNumber(user.panNumber) && !panNumber) {
           setPanNumber(user.panNumber.toUpperCase());
           if (!panDoc) {
-            setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
+            setPanDoc({ uri: user.kycDocUrl || `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
           }
           foundAny = true;
         }
@@ -606,7 +606,10 @@ export default function QuoteScreen() {
     if (user) {
       if (user.panNumber && isValidPanNumber(user.panNumber) && !panNumber) {
         setPanNumber(user.panNumber.toUpperCase());
-        setPanDoc({ uri: `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
+        setPanDoc({ uri: user.kycDocUrl || `https://storage.askinsurance.com/kyc/pan_${user.id}.pdf`, name: 'PAN_Card_Verified.pdf' });
+      }
+      if (user.aadhaarVerified && user.kycDocUrl && !aadhaarDoc) {
+        setAadhaarDoc({ uri: user.kycDocUrl, name: 'Aadhaar_Card_Verified.pdf' });
       }
 
       // Fetch comprehensive eKYC & official documents from DigiLocker
@@ -623,7 +626,6 @@ export default function QuoteScreen() {
           if (res.rcDoc && !rcDoc) setRcDoc({ uri: res.rcDoc.uri, name: res.rcDoc.name });
         }
       }).catch(() => {});
-      handleFetchFromDigiLocker(true);
 
       if (user.phone) {
         setApplicantPhone(user.phone.replace(/\D/g, '').slice(-10));

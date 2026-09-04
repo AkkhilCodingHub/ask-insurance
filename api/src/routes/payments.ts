@@ -267,10 +267,10 @@ router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: 
     const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_SPxF487RfB0Pfu';
     const amountInRupees = policy.premium;
     const amountInPaise = Math.round(policy.premium * 100);
-    const proposerName = user?.name || 'Akkhil Sharma';
-    const phone = user?.phone || '7497007881';
-    const email = user?.email || 'akkhil@askinsurance.in';
-    const insurer = policy.provider || 'Bajaj Allianz General Insurance';
+    const proposerName = user?.name || (policy as any).proposerName || 'Policyholder';
+    const phone = user?.phone || '';
+    const email = user?.email || '';
+    const insurer = policy.provider || 'Insurance Provider';
     const policyType = (policy.type || 'Insurance').toUpperCase();
 
     const html = `<!DOCTYPE html>

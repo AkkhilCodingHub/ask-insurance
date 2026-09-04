@@ -154,14 +154,16 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
     let verifiedStatus = true;
     let confidenceScore = 0.96;
 
-    let profileName = (req.body.name as string | undefined)?.trim();
-    if (!profileName && userId) {
+    let u: any = null;
+    if (userId) {
       try {
-        const u = await prisma.user.findUnique({ where: { id: userId } });
-        if (u?.name) profileName = u.name;
+        u = await prisma.user.findUnique({ where: { id: userId } });
       } catch {}
     }
+    const profileName = (req.body.name as string | undefined)?.trim() || u?.name;
     const resolvedName = (profileName || 'Verified Policyholder').toUpperCase();
+    const resolvedDob = (req.body.dateOfBirth as string | undefined)?.trim() || (u?.dateOfBirth ? u.dateOfBirth.toISOString().split('T')[0] : null);
+    const resolvedGender = (req.body.gender as string | undefined)?.trim() || u?.gender || 'Not Specified';
 
     if (docType === 'pan') {
       const inputPan = (req.body.panNumber as string | undefined)?.toUpperCase().trim();
@@ -170,7 +172,7 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
         docType: 'PAN Card',
         panNumber: panNum,
         fullName: resolvedName,
-        dateOfBirth: '1995-08-15',
+        dateOfBirth: resolvedDob,
         status: 'VERIFIED_INCOME_TAX_DEPT',
       };
       if (userId && panNum !== 'XXXXX0000X') {
@@ -186,7 +188,7 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
         docType: 'Aadhaar Card',
         aadhaarNumber: `XXXXXXXX${aadhaarNum.slice(-4)}`,
         fullName: resolvedName,
-        gender: 'Male',
+        gender: resolvedGender,
         status: 'VERIFIED_UIDAI',
       };
       if (userId) {
@@ -196,24 +198,24 @@ router.post('/ocr', authenticate, upload.single('document'), async (req: Request
         }).catch(() => {});
       }
     } else if (docType === 'rc') {
-      const cleanReg = (req.body.registrationNumber as string | undefined)?.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'DL01AB1234';
+      const cleanReg = (req.body.registrationNumber as string | undefined)?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
       const { getVehicleRcDetails } = await import('../lib/mparivahan');
-      const rcDetails = await getVehicleRcDetails(cleanReg);
+      const rcDetails = cleanReg ? await getVehicleRcDetails(cleanReg) : null;
       extractedFields = {
         docType: 'Vehicle RC Copy',
-        registrationNumber: rcDetails.registrationNumber,
-        ownerName: rcDetails.ownerName || resolvedName,
-        make: rcDetails.make,
-        model: rcDetails.model,
-        variant: rcDetails.variant,
-        fuelType: rcDetails.fuelType.toUpperCase(),
-        cubicCapacity: rcDetails.cubicCapacity || '1197 CC',
-        chassisNumber: rcDetails.chassisNumber,
-        engineNumber: rcDetails.engineNumber,
-        registrationDate: rcDetails.registrationDate,
-        fitnessExpiry: rcDetails.fitnessUpto || '2036-04-09',
-        rtoLocation: rcDetails.rtoName,
-        status: 'VERIFIED_MPARIVAHAN',
+        registrationNumber: rcDetails?.registrationNumber || cleanReg || null,
+        ownerName: rcDetails?.ownerName || resolvedName,
+        make: rcDetails?.make || (req.body.make as string | undefined) || null,
+        model: rcDetails?.model || (req.body.model as string | undefined) || null,
+        variant: rcDetails?.variant || (req.body.variant as string | undefined) || null,
+        fuelType: rcDetails?.fuelType?.toUpperCase() || (req.body.fuelType as string | undefined)?.toUpperCase() || null,
+        cubicCapacity: rcDetails?.cubicCapacity || null,
+        chassisNumber: rcDetails?.chassisNumber || null,
+        engineNumber: rcDetails?.engineNumber || null,
+        registrationDate: rcDetails?.registrationDate || null,
+        fitnessExpiry: rcDetails?.fitnessUpto || null,
+        rtoLocation: rcDetails?.rtoName || null,
+        status: rcDetails ? 'VERIFIED_MPARIVAHAN' : 'UPLOADED',
       };
     } else if (docType === 'policy_copy') {
       extractedFields = {

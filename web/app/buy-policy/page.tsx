@@ -46,11 +46,11 @@ function BuyPolicyContent() {
 
   // Step 1: Proposer & KYC
   const [fullName, setFullName] = useState(user?.name || "");
-  const [phone, setPhone] = useState(user?.phone?.replace("+91", "") || "9876543210");
+  const [phone, setPhone] = useState(user?.phone?.replace("+91", "") || "");
   const [email, setEmail] = useState(user?.email || "");
   const [panNumber, setPanNumber] = useState(user?.panNumber || "");
   const [aadhaarNumber, setAadhaarNumber] = useState(user?.aadhaarNumber || "");
-  const [dob, setDob] = useState(user?.dob || "1994-05-15");
+  const [dob, setDob] = useState(user?.dob || "");
   const [gender, setGender] = useState<string>(user?.gender || "male");
   const [address, setAddress] = useState(user?.address || "");
   const [pincode, setPincode] = useState(user?.pincode || "");
@@ -60,9 +60,9 @@ function BuyPolicyContent() {
   const [vehicleRcNumber, setVehicleRcNumber] = useState(regParam || user?.rcNumber || "");
 
   // Step 2: Nominee
-  const [nomineeName, setNomineeName] = useState("Priya Sharma");
+  const [nomineeName, setNomineeName] = useState("");
   const [nomineeRelation, setNomineeRelation] = useState("Spouse");
-  const [nomineeAge, setNomineeAge] = useState("29");
+  const [nomineeAge, setNomineeAge] = useState("");
 
   // Step 3: Consent & OTP Modal
   const [consentAgreed, setConsentAgreed] = useState(true);

@@ -292,7 +292,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
     manualVerifyInProgressRef.current = true;
     try {
-      const targetPhone = pendingPhoneRef.current || pendingPhone || '9876543210';
+      const targetPhone = pendingPhoneRef.current || pendingPhone;
+      if (!targetPhone) {
+        throw new Error('No pending phone number found. Please restart authentication.');
+      }
       const cleanPhone = targetPhone.replace(/\D/g, '').slice(-10);
       const result = await authApi.verifyOTP(cleanPhone, otp);
       await setToken(result.token);

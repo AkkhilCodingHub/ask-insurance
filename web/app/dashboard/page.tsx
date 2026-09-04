@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Shield,
@@ -10,7 +11,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
-import { MY_POLICIES, MY_CLAIMS, PLANS } from "@/lib/mock";
+import { api } from "@/lib/api";
+import { PLANS } from "@/lib/mock";
 
 function StatCard({
   icon,
@@ -92,9 +94,23 @@ const quickActions = [
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [claims, setClaims] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.policies.getMyPolicies().catch(() => []),
+      api.claims.getMyClaims().catch(() => []),
+    ]).then(([polRes, clmRes]) => {
+      if (Array.isArray(polRes)) setPolicies(polRes);
+      if (Array.isArray(clmRes)) setClaims(clmRes);
+    }).finally(() => setLoading(false));
+  }, []);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
-  const openClaims = MY_CLAIMS.filter((c) => c.status === "Processing").length;
+  const activeCount = policies.filter((p) => p.status === "active" || p.status === "Active").length;
+  const openClaims = claims.filter((c) => c.status === "processing" || c.status === "submitted" || c.status === "under_review").length;
 
   return (
     <div style={{ width: "100%" }}>
@@ -130,7 +146,7 @@ export default function DashboardPage() {
           icon={<Shield size={22} color="var(--primary)" />}
           iconBg="var(--primary-light)"
           label="Active Policies"
-          value={MY_POLICIES.filter((p) => p.status === "Active").length}
+          value={activeCount}
         />
         <StatCard
           icon={<FileText size={22} color="#059669" />}
@@ -255,109 +271,117 @@ export default function DashboardPage() {
             gap: 16,
           }}
         >
-          {MY_POLICIES.map((policy) => (
-            <div
-              key={policy.id}
-              style={{
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: 16,
-                overflow: "hidden",
-              }}
-            >
-              {/* Colored top band */}
-              <div
-                style={{
-                  background: policy.color,
-                  padding: "16px 20px",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 800,
-                    color: "#fff",
-                    letterSpacing: "-0.02em",
-                    marginBottom: 2,
-                  }}
-                >
-                  {policy.planName}
-                </p>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{policy.insurer}</p>
-              </div>
-              {/* Metrics */}
-              <div style={{ padding: "14px 20px" }}>
+          {policies.length === 0 ? (
+            <div style={{ background: "var(--white)", border: "1px dashed var(--border)", borderRadius: 16, padding: "36px 24px", textAlign: "center", gridColumn: "1 / -1" }}>
+              <Shield size={40} style={{ color: "var(--text-muted)", opacity: 0.6, margin: "0 auto 12px" }} />
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>No Active Policies Yet</h3>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Explore plans from 38+ verified insurers with instant digital activation.</p>
+              <Link href="/dashboard/plans" style={{ display: "inline-block", background: "var(--primary)", color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                Browse Plans →
+              </Link>
+            </div>
+          ) : (
+            policies.map((policy) => {
+              const brandColor = policy.provider?.toLowerCase().includes("hdfc") ? "#1580FF" : policy.provider?.toLowerCase().includes("star") ? "#059669" : "#7C3AED";
+              return (
                 <div
+                  key={policy.id}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: 8,
-                    marginBottom: 14,
+                    background: "var(--white)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 16,
+                    overflow: "hidden",
                   }}
                 >
-                  {[
-                    { label: "Cover", value: policy.cover },
-                    { label: "Premium", value: policy.premium },
-                    { label: "Type", value: policy.category },
-                  ].map(({ label, value }) => (
-                    <div key={label} style={{ background: "var(--bg)", borderRadius: 8, padding: "8px 10px" }}>
-                      <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>
-                        {label}
-                      </p>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{
+                      background: brandColor,
+                      padding: "16px 20px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        color: "#fff",
+                        letterSpacing: "-0.02em",
+                        marginBottom: 2,
+                      }}
+                    >
+                      {policy.policyNumber || "Digital Policy"}
+                    </p>
+                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>{policy.provider}</p>
+                  </div>
+                  <div style={{ padding: "14px 20px" }}>
                     <div
                       style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "var(--success)",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gap: 8,
+                        marginBottom: 14,
                       }}
-                    />
-                    <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 600 }}>
-                      {policy.status}
-                    </span>
+                    >
+                      {[
+                        { label: "Cover", value: `₹${Number(policy.sumInsured || 0).toLocaleString("en-IN")}` },
+                        { label: "Premium", value: `₹${Number(policy.premium || 0).toLocaleString("en-IN")}` },
+                        { label: "Type", value: String(policy.type || "Insurance").toUpperCase() },
+                      ].map(({ label, value }) => (
+                        <div key={label} style={{ background: "var(--bg)", borderRadius: 8, padding: "8px 10px" }}>
+                          <p style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>
+                            {label}
+                          </p>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: policy.status === "active" ? "var(--success)" : "#F59E0B",
+                          }}
+                        />
+                        <span style={{ fontSize: 12, color: policy.status === "active" ? "var(--success)" : "#F59E0B", fontWeight: 600, textTransform: "capitalize" }}>
+                          {policy.status}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        {policy.endDate ? `Valid till ${new Date(policy.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                      </span>
+                    </div>
+                    <Link
+                      href="/my-policies"
+                      style={{
+                        display: "block",
+                        textAlign: "center",
+                        textDecoration: "none",
+                        marginTop: 12,
+                        width: "100%",
+                        padding: "9px",
+                        border: `1.5px solid ${brandColor}`,
+                        borderRadius: 8,
+                        background: "transparent",
+                        color: brandColor,
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      View Policy Details →
+                    </Link>
                   </div>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                    Renews {policy.renewalDate}
-                  </span>
                 </div>
-                <button
-                  style={{
-                    marginTop: 12,
-                    width: "100%",
-                    padding: "9px",
-                    border: `1.5px solid ${policy.color}`,
-                    borderRadius: 8,
-                    background: "transparent",
-                    color: policy.color,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = policy.color + "18";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                  }}
-                >
-                  Renew →
-                </button>
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       </div>
 

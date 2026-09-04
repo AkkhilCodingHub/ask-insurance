@@ -29,34 +29,8 @@ interface Policy {
   registrationNumber?: string;
 }
 
-const FALLBACK_POLICIES: Policy[] = [
-  {
-    id: "pol_1",
-    policyNumber: "HDFC-MOT-2025-991204",
-    type: "motor",
-    provider: "HDFC ERGO General Insurance",
-    sumInsured: 1420000,
-    premium: 14250,
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "active",
-    registrationNumber: "DL01AB1234",
-  },
-  {
-    id: "pol_2",
-    policyNumber: "STAR-HLT-2026-440182",
-    type: "health",
-    provider: "Star Health & Allied Insurance",
-    sumInsured: 10000000,
-    premium: 19800,
-    startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    endDate: new Date(Date.now() + 305 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "active",
-  },
-];
-
 export default function MyPoliciesPage() {
-  const [policies, setPolicies] = useState<Policy[]>(FALLBACK_POLICIES);
+  const [policies, setPolicies] = useState<Policy[]>([]);
   const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
   const [, setLoading] = useState(true);
 
@@ -71,7 +45,7 @@ export default function MyPoliciesPage() {
     async function loadPolicies() {
       try {
         const res = await api.policies.getMyPolicies();
-        if (Array.isArray(res) && res.length > 0) {
+        if (Array.isArray(res)) {
           setPolicies(res);
         }
       } catch (err) {
@@ -187,7 +161,17 @@ export default function MyPoliciesPage() {
 
           {/* Policies Cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {filtered.map((pol) => {
+            {filtered.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", background: "white", borderRadius: 16, border: "1px solid var(--border)" }}>
+                <Shield size={48} style={{ color: "var(--text-muted)", margin: "0 auto 16px", opacity: 0.5 }} />
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>No Policies Found</h3>
+                <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20 }}>You do not have any {filter !== "all" ? filter : ""} insurance policies yet.</p>
+                <Link href="/quote" style={{ display: "inline-block", background: "var(--primary)", color: "white", padding: "10px 20px", borderRadius: 10, fontWeight: 600, textDecoration: "none" }}>
+                  Get an Instant Quote
+                </Link>
+              </div>
+            ) : (
+              filtered.map((pol) => {
               const isMotor = pol.type?.toLowerCase().includes("motor") || Boolean(pol.registrationNumber);
               const isHealth = pol.type?.toLowerCase().includes("health");
               const IconComponent = isMotor ? Car : isHealth ? HeartPulse : Shield;
@@ -350,7 +334,8 @@ export default function MyPoliciesPage() {
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
 
           {/* ── ENDORSEMENT REQUEST MODAL ── */}

@@ -31,15 +31,15 @@ function PospResultsContent() {
   const total = parseInt(searchParams.get("total") || "10", 10);
   const isPassed = score >= 40;
 
-  const candidateName = user?.name || "Akkhil Sharma";
+  const candidateName = user?.name || "Certified POSP Advisor";
   const [certificateId] = useState(() => {
     if (typeof window !== "undefined" && window.crypto?.randomUUID) {
       const hex = window.crypto.randomUUID().replace(/-/g, "").slice(0, 6);
       return `ASK-POSP-${hex.toUpperCase()}`;
     }
-    return "ASK-POSP-582910";
+    return `ASK-POSP-${String(Date.now()).slice(-6)}`;
   });
-  const issueDate = "19-Aug-2026";
+  const issueDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
     <>

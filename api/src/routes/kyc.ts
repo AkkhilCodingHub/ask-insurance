@@ -548,7 +548,7 @@ router.get('/digilocker-details', authenticate, async (req: Request, res: Respon
         uri: panDoc?.fileUrl || panDoc?.uri || `https://storage.askinsurance.com/kyc/pan_${userId}.pdf`,
         source: panDoc?.source || (isDigiLocker ? 'digilocker' : 'verified'),
       } : null,
-      aadhaarDoc: (user.aadhaarVerified || aadhaarDoc) ? {
+      aadhaarDoc: (aadhaarNumber || aadhaarDoc || user.aadhaarVerified) ? {
         name: aadhaarDoc?.title || aadhaarDoc?.name || 'Aadhaar_Card_Verified.pdf',
         uri: aadhaarDoc?.fileUrl || aadhaarDoc?.uri || `https://storage.askinsurance.com/kyc/aadhaar_${userId}.pdf`,
         source: aadhaarDoc?.source || (isDigiLocker ? 'digilocker' : 'verified'),
