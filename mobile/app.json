@@ -2,7 +2,7 @@
   "expo": {
     "name": "ASK Insurance",
     "slug": "ask-insurance",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "askinsurance",
@@ -19,10 +19,10 @@
           "$(AppIdentifierPrefix)com.ask.insurance"
         ]
       },
-      "buildNumber": "8"
+      "buildNumber": "9"
     },
     "android": {
-      "versionCode": 8,
+      "versionCode": 9,
       "icon": "./assets/images/playstore.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/playstore.png",

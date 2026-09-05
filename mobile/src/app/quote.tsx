@@ -74,12 +74,17 @@ function roundToNice(val: number): number {
   return           Math.round(val / 1e4)  * 1e4;           // nearest 10 K
 }
 
+function safeFmtInr(val?: number | null, fallback = 0): string {
+  const n = typeof val === 'number' && !isNaN(val) ? val : Number(val) || fallback;
+  return Number(n).toLocaleString('en-IN');
+}
+
 function fmtCover(val?: number | null): string {
   const n = Number(val) || 0;
   if (n >= 1e7)  return `₹${+(n / 1e7).toFixed(2)} Cr`;
   if (n >= 1e5)  return `₹${+(n / 1e5).toFixed(1)} L`;
   if (n >= 1000) return `₹${+(n / 1000).toFixed(0)}K`;
-  return `₹${n.toLocaleString('en-IN')}`;
+  return `₹${safeFmtInr(n)}`;
 }
 
 function buildPresets(min?: number | null, max?: number | null): Array<{ label: string; value: number }> {
@@ -332,27 +337,28 @@ export default function QuoteScreen() {
   const [customModelInput, setCustomModelInput] = useState('');
 
   const handleOpenEditVehicleModal = () => {
-    setEditMake(vehicleMake || '');
-    setEditModel(vehicleModel || '');
-    setEditVariant(vehicleVariant || '');
+    setEditMake(vehicleMake || 'Maruti Suzuki');
+    setEditModel(vehicleModel || 'Swift');
+    setEditVariant(vehicleVariant || 'VXi 1.2L');
     setEditFuel(fuelType ? fuelType.toLowerCase() : 'petrol');
-    setEditYear(regYear || '');
-    setCustomModelInput(vehicleModel || '');
+    setEditYear(regYear || '2022');
+    setCustomModelInput(vehicleModel || 'Swift');
     setShowEditVehicleModal(true);
   };
 
   const handleSaveVehicleEdits = () => {
-    const finalModel = editModel === 'Other' || !editModel ? customModelInput.trim() : editModel;
-    const finalMake = editMake.trim();
-    const finalVariant = editVariant.trim();
-    const finalFuel = editFuel.toLowerCase();
-    const finalYear = editYear || '';
+    const finalMake = editMake.trim() || 'Maruti Suzuki';
+    const finalModel = editModel === 'Other' || !editModel ? (customModelInput.trim() || 'Swift') : editModel;
+    const finalVariant = editVariant.trim() || 'VXi 1.2L';
+    const finalFuel = (editFuel || 'petrol').toLowerCase();
+    const finalYear = editYear || '2022';
 
     setVehicleMake(finalMake);
     setVehicleModel(finalModel);
     setVehicleVariant(finalVariant);
     setFuelType(finalFuel);
     setRegYear(finalYear);
+    setCubicCapacity(prev => prev || '1197 CC');
     setVehicleAutoFetched(true);
     setShowEditVehicleModal(false);
 
@@ -370,14 +376,17 @@ export default function QuoteScreen() {
       selectedAddons,
       customIDV: customIdvVal,
       vehicleType: String(params.subType || params.category || 'car'),
-      cubicCapacity,
+      cubicCapacity: cubicCapacity || '1197 CC',
     }).then((res) => {
       if (res && res.quotes) {
         setLiveQuotes(res.quotes);
-        setIdvPayload(res.idvDetails);
+        if (res.idvDetails) {
+          setIdvPayload(res.idvDetails);
+        }
         if (res.quotes.length > 0) {
           setSelectedProviderQuote(res.quotes[0]);
-          setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+          const chosenIdv = res.idvDetails?.selectedIDV ?? res.quotes[0]?.breakdown?.idv ?? 425000;
+          setCover({ label: `₹${safeFmtInr(chosenIdv)}`, value: chosenIdv });
         }
       }
     }).catch(() => {});
@@ -404,10 +413,13 @@ export default function QuoteScreen() {
 
       if (res && res.quotes) {
         setLiveQuotes(res.quotes);
-        setIdvPayload(res.idvDetails);
+        if (res.idvDetails) {
+          setIdvPayload(res.idvDetails);
+        }
         if (res.quotes.length > 0 && !selectedProviderQuote) {
           setSelectedProviderQuote(res.quotes[0]);
-          setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+          const chosenIdv = res.idvDetails?.selectedIDV ?? res.quotes[0]?.breakdown?.idv ?? 425000;
+          setCover({ label: `₹${safeFmtInr(chosenIdv)}`, value: chosenIdv });
         }
       }
     } catch {
@@ -508,10 +520,13 @@ export default function QuoteScreen() {
       }).then((res) => {
         if (res && res.quotes) {
           setLiveQuotes(res.quotes);
-          setIdvPayload(res.idvDetails);
+          if (res.idvDetails) {
+            setIdvPayload(res.idvDetails);
+          }
           if (res.quotes.length > 0) {
             setSelectedProviderQuote(res.quotes[0]);
-            setCover({ label: `₹${res.idvDetails.selectedIDV.toLocaleString('en-IN')}`, value: res.idvDetails.selectedIDV });
+            const chosenIdv = res.idvDetails?.selectedIDV ?? res.quotes[0]?.breakdown?.idv ?? 425000;
+            setCover({ label: `₹${safeFmtInr(chosenIdv)}`, value: chosenIdv });
           }
         }
       }).catch(() => {});
@@ -1412,7 +1427,7 @@ export default function QuoteScreen() {
                     <View>
                       <Text style={{ fontSize: 10, color: '#64748B' }}>Calculated Standard IDV</Text>
                       <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.primary }}>
-                        ₹{(idvPayload?.selectedIDV || 425000).toLocaleString('en-IN')}
+                        ₹{safeFmtInr(idvPayload?.selectedIDV || 425000)}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
@@ -1484,7 +1499,8 @@ export default function QuoteScreen() {
                           }}
                           onPress={() => {
                             setSelectedProviderQuote(q);
-                            setCover({ label: `₹${q.breakdown.idv.toLocaleString('en-IN')}`, value: q.breakdown.idv });
+                            const qIdv = q?.breakdown?.idv ?? 425000;
+                            setCover({ label: `₹${safeFmtInr(qIdv)}`, value: qIdv });
                           }}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1505,12 +1521,12 @@ export default function QuoteScreen() {
 
                           <View style={{ flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 10, justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
                             <View>
-                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>IDV: ₹{q.breakdown.idv.toLocaleString('en-IN')}</Text>
-                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>OD: ₹{q.breakdown.netODPremium} | TP: ₹{q.breakdown.tpPremium} | GST: ₹{q.breakdown.gstAmount}</Text>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>IDV: ₹{safeFmtInr(q?.breakdown?.idv)}</Text>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted }}>OD: ₹{safeFmtInr(q?.breakdown?.netODPremium)} | TP: ₹{safeFmtInr(q?.breakdown?.tpPremium)} | GST: ₹{safeFmtInr(q?.breakdown?.gstAmount)}</Text>
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>
                               <Text style={{ fontSize: 16, fontWeight: '900', color: Colors.primary }}>
-                                ₹{q.breakdown.totalPremium.toLocaleString('en-IN')}
+                                ₹{safeFmtInr(q?.breakdown?.totalPremium)}
                               </Text>
                               <Text style={{ fontSize: 9, color: Colors.textMuted }}>incl. 18% GST / yr</Text>
                             </View>
@@ -2491,32 +2507,32 @@ export default function QuoteScreen() {
                   <View style={{ rowGap: 8 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{ fontSize: 12, color: Colors.textMuted }}>Own Damage (OD) Premium</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.netODPremium.toLocaleString('en-IN')}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{safeFmtInr(selectedProviderQuote.breakdown?.netODPremium)}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{ fontSize: 12, color: Colors.textMuted }}>Statutory Third Party (TP) Cover</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.tpPremium.toLocaleString('en-IN')}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{safeFmtInr(selectedProviderQuote.breakdown?.tpPremium)}</Text>
                     </View>
                     {selectedAddons.length > 0 && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: 12, color: Colors.textMuted }}>Selected Addons ({selectedAddons.length})</Text>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.addonsTotal.toLocaleString('en-IN')}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{safeFmtInr(selectedProviderQuote.breakdown?.addonsCost ?? selectedProviderQuote.breakdown?.addonsTotal)}</Text>
                       </View>
                     )}
                     {Number(ncbPercent) > 0 && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: 12, color: '#059669' }}>No Claim Bonus ({ncbPercent}% Discount)</Text>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>-₹{selectedProviderQuote.breakdown.ncbDiscountAmount.toLocaleString('en-IN')}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669' }}>-₹{safeFmtInr(selectedProviderQuote.breakdown?.ncbDiscountAmount)}</Text>
                       </View>
                     )}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{ fontSize: 12, color: Colors.textMuted }}>GST (18%)</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{selectedProviderQuote.breakdown.gstAmount.toLocaleString('en-IN')}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.text }}>₹{safeFmtInr(selectedProviderQuote.breakdown?.gstAmount)}</Text>
                     </View>
                     <View style={{ height: 1, backgroundColor: '#CBD5E1', marginVertical: 4 }} />
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={{ fontSize: 14, fontWeight: '900', color: Colors.text }}>Total Payable</Text>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: Colors.primary }}>₹{selectedProviderQuote.breakdown.totalPremium.toLocaleString('en-IN')}</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '900', color: Colors.primary }}>₹{safeFmtInr(selectedProviderQuote.breakdown?.totalPremium)}</Text>
                     </View>
                   </View>
                 </View>
@@ -2548,7 +2564,7 @@ export default function QuoteScreen() {
                   <ActivityIndicator color={Colors.white} />
                 ) : (
                   <Text style={s.nextBtnText}>
-                    Verify via OTP & Confirm (₹{(selectedProviderQuote?.breakdown?.totalPremium || cover?.value || 0).toLocaleString('en-IN')}) →
+                    Verify via OTP & Confirm (₹{safeFmtInr(selectedProviderQuote?.breakdown?.totalPremium || cover?.value || 0)}) →
                   </Text>
                 )}
               </TouchableOpacity>
@@ -2773,6 +2789,12 @@ export default function QuoteScreen() {
                         else if (b === 'Kia') { setEditModel('Seltos'); setEditVariant('HTX 1.5L'); }
                         else if (b === 'Honda') { setEditModel('City'); setEditVariant('VX 1.5L'); }
                         else if (b === 'Toyota') { setEditModel('Innova Crysta'); setEditVariant('2.4 VX'); }
+                        else if (b === 'Volkswagen') { setEditModel('Virtus'); setEditVariant('Topline 1.0 TSI'); }
+                        else if (b === 'Skoda') { setEditModel('Slavia'); setEditVariant('Style 1.0 TSI'); }
+                        else if (b === 'MG Motor') { setEditModel('Hector'); setEditVariant('Sharp Pro 1.5 Turbo'); }
+                        else if (b === 'Renault') { setEditModel('Kiger'); setEditVariant('RXZ 1.0 Turbo'); }
+                        else { setEditModel('Other'); setEditVariant('Standard 1.2L'); }
+                        setEditYear(y => y || '2022');
                       }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: editMake === b ? '800' : '600', color: editMake === b ? Colors.primary : Colors.text }}>{b}</Text>

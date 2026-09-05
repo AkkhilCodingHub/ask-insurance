@@ -547,6 +547,7 @@ export const policiesApi = {
         netODPremium: number;
         tpPremium: number;
         addonsCost: number;
+        addonsTotal?: number;
         netPremium: number;
         gstAmount: number;
         totalPremium: number;

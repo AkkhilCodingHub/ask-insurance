@@ -24,6 +24,7 @@ export interface PremiumBreakdown {
   netODPremium: number;
   tpPremium: number;
   addonsCost: number;
+  addonsTotal?: number;
   netPremium: number;
   gstAmount: number; // 18%
   totalPremium: number;
@@ -225,6 +226,7 @@ export function calculateLiveProviderQuotes(req: ProviderQuoteRequest): LiveQuot
         netODPremium,
         tpPremium,
         addonsCost,
+        addonsTotal: addonsCost,
         netPremium,
         gstAmount,
         totalPremium,
