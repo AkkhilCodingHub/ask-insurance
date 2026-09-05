@@ -3,10 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { createAuthToken, createRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { createOtpChallenge, verifyOtpChallenge } from '../lib/otp';
-import { getFirebaseAdmin } from '../lib/firebase';
+import { verifyFirebaseIdToken } from '../lib/firebase';
 import { authenticate } from '../middleware/auth';
-
-import { getAuth } from 'firebase-admin/auth';
 
 const router = Router();
 
@@ -284,7 +282,7 @@ router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
 router.post('/verify-firebase', async (req: Request, res: Response): Promise<void> => {
   try {
     const { idToken } = z.object({ idToken: z.string().min(10, 'Firebase ID token is required') }).parse(req.body);
-    const decoded = await getAuth(getFirebaseAdmin()).verifyIdToken(idToken);
+    const decoded = await verifyFirebaseIdToken(idToken);
     const rawPhone = decoded.phone_number;
     if (!rawPhone) {
       res.status(401).json({ error: 'Token does not contain a verified phone number' });
@@ -310,7 +308,7 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
     }
 
     if (user.id) {
-      await autoAssignAgentToUser(user.id);
+      autoAssignAgentToUser(user.id).catch(err => console.error('[AutoAssign] Async error in verify-firebase:', err));
     }
 
     const token        = createAuthToken({ userId: user.id, phone: user.phone });
@@ -323,8 +321,8 @@ router.post('/verify-firebase', async (req: Request, res: Response): Promise<voi
       user: { id: user.id, phone: user.phone, name: user.name, email: user.email },
       isNewUser: isNewUser || !Boolean(user.name),
     });
-  } catch {
-    console.error('[verify-firebase] Verification failed');
+  } catch (error: any) {
+    console.error('[verify-firebase] Verification failed:', error?.message || error);
     res.status(401).json({ error: 'Invalid or expired Firebase token' });
   }
 });
