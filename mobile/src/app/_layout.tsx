@@ -70,7 +70,6 @@ function RootContent() {
         <Stack.Screen name="posp-register" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="posp-exam"     options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="posp-results"  options={{ animation: 'slide_from_right' }} />
-        <Stack.Screen name="locator"       options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="emergency-sos" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="files"         options={{ animation: 'slide_from_right' }} />
 
