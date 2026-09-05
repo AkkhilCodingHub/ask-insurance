@@ -45,6 +45,9 @@ updates:
       - dependency-name: "expo-*"
       - dependency-name: "react-native*"
       - dependency-name: "@react-native*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "@types/react*"
       - dependency-name: "typescript"
     labels:
       - "mobile"
