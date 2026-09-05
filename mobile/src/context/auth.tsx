@@ -3,10 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { isDevice } from 'expo-device';
-import {
-  getAuth, onAuthStateChanged, signOut as firebaseSignOut,
-  FirebaseAuthTypes,
-} from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import {
   authApi, usersApi, ApiUser,
   getToken, setToken, clearAllTokens,
@@ -131,28 +128,6 @@ export function mapApiUser(u: ApiUser): AuthUser {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-import { initializeApp, getApps } from '@react-native-firebase/app';
-
-function getFirebaseAuth() {
-  try {
-    if (getApps().length === 0) {
-      initializeApp({
-        apiKey: "AIzaSyAOO0lS024bTXRNW_-eUptQFx5eV5GlNos",
-        appId: "1:879913171231:android:f214cb309918a1e4ea582a",
-        messagingSenderId: "879913171231",
-        projectId: "ask-in",
-        authDomain: "ask-in.firebaseapp.com",
-        databaseURL: "https://ask-in-default-rtdb.firebaseio.com",
-        storageBucket: "ask-in.firebasestorage.app"
-      });
-    }
-    return getAuth();
-  } catch (e) {
-    console.warn('[Auth] Firebase getAuth() initialization error:', e);
-    return null;
-  }
-}
-
 const USER_PROFILE_CACHE_KEY = 'user_profile_cache_v1';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -165,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingPhoneState(p);
   };
   const [autoVerified, setAutoVerified] = useState<{ isNewUser: boolean } | null>(null);
+  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const manualVerifyInProgressRef = useRef(false);
 
   const setUser = (u: AuthUser | null) => {
@@ -241,9 +217,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Shared: exchange Firebase ID token for ASK JWT ───────────────────────
   const finishFirebaseLogin = async (firebaseUser: FirebaseAuthTypes.User): Promise<{ isNewUser: boolean }> => {
     const idToken = await firebaseUser.getIdToken();
-    // Sign out from Firebase — we only need the ID token, ASK issues its own JWT
-    const fbAuth = getFirebaseAuth();
-    if (fbAuth) await firebaseSignOut(fbAuth);
+    try {
+      await auth().signOut();
+    } catch {}
 
     const result = await authApi.verifyFirebase(idToken);
     await setToken(result.token);
@@ -253,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mapApiUser(result.user));
     }
     setPendingPhone(null);
+    confirmationRef.current = null;
 
     return { isNewUser: result.isNewUser || !result.user.name };
   };
@@ -261,9 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Only active while pendingPhone is set to avoid firing on unrelated auth changes.
   useEffect(() => {
     if (!pendingPhone) return;
-    const fbAuth = getFirebaseAuth();
-    if (!fbAuth) return;
-    const unsubscribe = onAuthStateChanged(fbAuth, async (firebaseUser) => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       if (!firebaseUser) return;
       // Skip if verifyOTP is already handling this sign-in
       if (manualVerifyInProgressRef.current) return;
@@ -278,20 +253,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPhone]);
 
-  // ── Step 1: send OTP via Direct API with 5-minute cooldown (No Captcha) ───
+  // ── Step 1: send OTP via Firebase Phone Auth with 5-minute cooldown ───────
   const sendOTP = async (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
     pendingPhoneRef.current = cleanPhone;
     setPendingPhone(cleanPhone);
     startOtpCooldown(cleanPhone, 300); // 5 minutes
-    await authApi.sendOTP(cleanPhone);
-    setAutoVerified(null);
+
+    // Kick off backend send-otp in background (creates user & customerCode, assigns agent, stores OTP record)
+    authApi.sendOTP(cleanPhone).catch(err => console.warn('[Auth] background sendOTP error:', err));
+
+    const formatted = `+91${cleanPhone}`;
+    try {
+      const confirmation = await auth().signInWithPhoneNumber(formatted);
+      confirmationRef.current = confirmation;
+      setAutoVerified(null);
+    } catch (firebaseErr: any) {
+      console.warn('[Auth] Firebase signInWithPhoneNumber error:', firebaseErr);
+      setAutoVerified(null);
+    }
   };
 
-  // ── Step 2: verify OTP entered by the user ─────────────────────────────────
+  // ── Step 2: verify OTP entered by the user (Firebase first, backend fallback) ──
   const verifyOTP = async (otp: string): Promise<{ isNewUser: boolean }> => {
     manualVerifyInProgressRef.current = true;
     try {
+      // 1. Try Firebase confirmation first if available
+      if (confirmationRef.current) {
+        try {
+          const credential = await confirmationRef.current.confirm(otp);
+          if (credential?.user) {
+            return await finishFirebaseLogin(credential.user);
+          }
+        } catch (fbErr: any) {
+          console.warn('[Auth] Firebase confirm failed, attempting backend verify fallback:', fbErr?.message || fbErr);
+        }
+      }
+
+      // 2. Fallback to direct backend API (handles 123456 or backend OTP challenge)
       const targetPhone = pendingPhoneRef.current || pendingPhone;
       if (!targetPhone) {
         throw new Error('No pending phone number found. Please restart authentication.');
@@ -304,6 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(mapApiUser(result.user));
       }
       setPendingPhone(null);
+      confirmationRef.current = null;
       return { isNewUser: result.isNewUser || !result.user?.name };
     } finally {
       manualVerifyInProgressRef.current = false;
@@ -339,6 +339,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setPendingPhone(null);
     setAutoVerified(null);
+    confirmationRef.current = null;
+    try {
+      await auth().signOut();
+    } catch {}
   };
 
   return (
