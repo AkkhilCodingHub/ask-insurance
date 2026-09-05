@@ -23,9 +23,10 @@ export default function Index() {
 
   if (loading || checking) return null;
 
-  // If logged in OR previously completed/skipped onboarding, enter app directly
-  if (user || seenWelcome) return <Redirect href="/(tabs)" />;
+  // If authenticated, enter app directly
+  if (user) return <Redirect href="/(tabs)" />;
 
-  // First time launch: show welcome briefing screen (with Next/Skip buttons & app introduction)
-  return <Redirect href="/welcome" />;
+  // First time launch: show welcome briefing screen, otherwise go to login
+  if (!seenWelcome) return <Redirect href="/welcome" />;
+  return <Redirect href="/login" />;
 }

@@ -175,28 +175,7 @@ export default function ProfileTab() {
     ? (user?.kycRejectionReason ? `Rejected: ${user.kycRejectionReason.slice(0, 45)}…` : 'Verification failed · Tap to resubmit')
     : 'Identity verification pending · Tap to complete';
 
-  // ── Guest view ─────────────────────────────────────────────────────────────
-  if (!user) {
-    return (
-      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
-        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <Text style={[s.pageTitle, { color: colors.text }]}>Profile</Text>
-        </View>
-        <View style={s.guestWrap}>
-          <View style={s.guestIconCircle}>
-            <Icon name="person-outline" size={40} color={Colors.silver} />
-          </View>
-          <Text style={[s.guestTitle, { color: colors.text }]}>You're browsing as a guest</Text>
-          <Text style={[s.guestSub, { color: colors.textMuted }]}>
-            Sign in to view your policies, file claims, and track everything in one place.
-          </Text>
-          <TouchableOpacity style={s.guestLoginBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
-            <Text style={s.guestLoginText}>Sign In / Create Account</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!user) return null;
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>

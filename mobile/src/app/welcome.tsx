@@ -150,24 +150,20 @@ export default function WelcomeScreen() {
     setActiveIndex(idx);
   };
 
-  const finish = (route: '/(tabs)' | '/login' = '/login') => {
+  const finish = (_route?: string) => {
     SecureStore.setItemAsync(SEEN_KEY, '1').catch(() => {});
-    if (route === '/(tabs)') {
-      router.replace('/(tabs)');
-    } else {
-      router.push(route);
-    }
+    router.replace('/login');
   };
 
   const goNext = () => {
     if (activeIndex < SLIDES.length - 1) {
       scrollRef.current?.scrollTo({ x: (activeIndex + 1) * W, animated: true });
     } else {
-      finish('/login');
+      finish();
     }
   };
 
-  const skip = () => finish('/(tabs)');
+  const skip = () => finish();
   const slide = SLIDES[activeIndex];
 
   return (
@@ -179,10 +175,10 @@ export default function WelcomeScreen() {
 
       {/* Top / Animated Header Branding */}
       <View style={s.headerBranding}>
-        {/* Skip button appears top right */}
+        {/* Sign In button appears top right */}
         <Animated.View style={[s.skipContainer, { opacity: contentOpacity }]}>
           <TouchableOpacity onPress={skip} style={s.skipBtn} activeOpacity={0.7}>
-            <Text style={s.skipText}>Skip</Text>
+            <Text style={s.skipText}>Sign In</Text>
           </TouchableOpacity>
         </Animated.View>
 

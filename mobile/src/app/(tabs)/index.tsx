@@ -372,28 +372,6 @@ export default function HomeTab() {
             )}
           </View>
 
-          {/* Guest nudge — shown when not logged in */}
-          {!user && (
-            <View style={s.section}>
-              <TouchableOpacity
-                style={[s.guestBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
-                activeOpacity={0.85}
-                onPress={() => router.push('/login')}
-              >
-                <View style={s.guestBannerBg} />
-                <View style={s.guestBannerLeft}>
-                  <View style={s.guestIconCircle}>
-                    <Icon name="person-outline" size={20} color={Colors.primary} />
-                  </View>
-                  <View>
-                    <Text style={[s.guestBannerTitle, { color: colors.text }]}>Sign in to your account</Text>
-                    <Text style={[s.guestBannerSub, { color: colors.textMuted }]}>View policies, track claims & get quotes</Text>
-                  </View>
-                </View>
-                <Icon name="arrow-forward-outline" size={18} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* KYC banner — pending / submitted / rejected (not verified) */}
           {user && user.kycStatus !== 'verified' && (() => {

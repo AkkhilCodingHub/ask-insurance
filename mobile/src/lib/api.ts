@@ -157,7 +157,7 @@ async function request<T>(
   const method = options.method ?? 'GET';
   const url    = `${getBaseUrl()}${path}`;
   const t0     = Date.now();
-  const timeoutMs = options.timeoutMs ?? 7000;
+  const timeoutMs = options.timeoutMs ?? 20000;
 
   if (__DEV__) {
     const logHeaders = { ...headers };
@@ -185,8 +185,14 @@ async function request<T>(
       console.error('Error   :', networkErr);
       console.groupEnd();
     }
-    if (networkErr?.name === 'AbortError') {
-      throw new ApiError('Request timed out', 408);
+    const isTimeout =
+      networkErr?.name === 'AbortError' ||
+      networkErr?.message?.toLowerCase().includes('canceled') ||
+      networkErr?.message?.toLowerCase().includes('aborted') ||
+      networkErr?.message?.toLowerCase().includes('timeout');
+
+    if (isTimeout) {
+      throw new ApiError('Connection timed out. Please check your network and try again.', 408);
     }
     throw networkErr;
   } finally {
@@ -391,14 +397,14 @@ export interface DashboardData {
 
 // ── HTTP Shorthands ───────────────────────────────────────────────────────────
 
-const post = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+const post = <T>(path: string, body?: unknown, auth = false, options?: Partial<RequestOptions>) =>
+  request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined, ...options }, auth);
 
-const put = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+const put = <T>(path: string, body?: unknown, auth = false, options?: Partial<RequestOptions>) =>
+  request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined, ...options }, auth);
 
-export const patch = <T>(path: string, body?: unknown, auth = false) =>
-  request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }, auth);
+export const patch = <T>(path: string, body?: unknown, auth = false, options?: Partial<RequestOptions>) =>
+  request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined, ...options }, auth);
 
 export const del = <T>(path: string, auth = false) =>
   request<T>(path, { method: 'DELETE' }, auth);
@@ -407,16 +413,27 @@ export const del = <T>(path: string, auth = false) =>
 
 export const authApi = {
   sendOTP: (phone: string) =>
-    post<{ success: boolean; isNewUser: boolean; otp?: string; customerCode?: string }>('/api/auth/send-otp', { phone }),
+    post<{ success: boolean; isNewUser: boolean; otp?: string; customerCode?: string }>(
+      '/api/auth/send-otp',
+      { phone },
+      false,
+      { timeoutMs: 30000 }
+    ),
 
   verifyOTP: (phone: string, otp: string) =>
     post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-otp', { phone, otp }
+      '/api/auth/verify-otp',
+      { phone, otp },
+      false,
+      { timeoutMs: 30000 }
     ),
 
   verifyFirebase: (idToken: string) =>
     post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
-      '/api/auth/verify-firebase', { idToken }
+      '/api/auth/verify-firebase',
+      { idToken },
+      false,
+      { timeoutMs: 30000 }
     ),
 
   refresh: (refreshToken: string) =>

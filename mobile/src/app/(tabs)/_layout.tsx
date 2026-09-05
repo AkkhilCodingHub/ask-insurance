@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import React, { useRef } from 'react';
@@ -39,7 +39,7 @@ export function FadeScreen({ children }: { children: React.ReactNode }) {
 }
 
 export default function TabLayout() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
   const { t } = useLanguage();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -47,6 +47,7 @@ export default function TabLayout() {
   const tabBarHeight = 56 + extraBottomPadding;
 
   if (loading) return null;
+  if (!user) return <Redirect href="/login" />;
 
   const TAB_LABELS: Record<string, string> = {
     index:   t('home', 'Home'),

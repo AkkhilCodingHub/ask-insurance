@@ -87,7 +87,7 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
     }
 
     if (user.id) {
-      await autoAssignAgentToUser(user.id);
+      autoAssignAgentToUser(user.id).catch(err => console.error('[AutoAssign] Async error:', err));
     }
 
     const otp = await createOtpChallenge(phone, user.id);

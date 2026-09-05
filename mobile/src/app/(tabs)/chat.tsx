@@ -357,28 +357,7 @@ export default function ChatTab() {
     }
   };
 
-  // ── Guest wall ─────────────────────────────────────────────────────────────
-  if (!user) {
-    return (
-      <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
-        <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-          <Text style={[s.headerTitle, { color: colors.text }]}>Support Chat</Text>
-        </View>
-        <View style={e.wrap}>
-          <View style={e.iconCircle}>
-            <Icon name="lock-closed-outline" size={36} color={Colors.primary} />
-          </View>
-          <Text style={[e.title, { color: colors.text }]}>Sign in to chat</Text>
-          <Text style={[e.sub, { color: colors.textMuted }]}>
-            Chat with our advisors is available to registered users.
-          </Text>
-          <TouchableOpacity style={e.startBtn} onPress={() => router.push('/login')} activeOpacity={0.85}>
-            <Text style={e.startBtnText}>Sign In →</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  if (!user) return null;
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
