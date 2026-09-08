@@ -48,7 +48,7 @@ export function Footer() {
         .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         @media (max-width: 540px) { .footer-bottom { flex-direction: column !important; align-items: flex-start !important; } }
       `}</style>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 28px" }}>
+      <div style={{ maxWidth: "min(1560px, 94vw)", margin: "0 auto", padding: "56px 24px 28px" }}>
         <div className="grid-responsive-footer">
           {/* Brand */}
           <div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Shield, Check, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -15,7 +16,7 @@ const trustPoints = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { sendOTP } = useAuth();
+  const { sendOTP, directLogin } = useAuth();
 
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,18 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      try {
+        await directLogin(phone);
+        router.push("/dashboard");
+        return;
+      } catch (err: any) {
+        const message = err?.message?.toLowerCase() || "";
+        if (message.includes("not found") || message.includes("register") || message.includes("incomplete")) {
+          router.push(`/register?phone=${phone}`);
+          return;
+        }
+      }
+
       const remaining = getRemainingOtpSeconds(phone);
       if (remaining <= 0) {
         startOtpCooldown(phone, 300);
@@ -37,6 +50,7 @@ export default function LoginPage() {
       router.push("/otp");
     } catch {
       setError("Failed to send OTP. Please try again.");
+      setError("Failed to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -309,8 +323,30 @@ export default function LoginPage() {
               }}
             >
               {loading ? "Sending OTP…" : "Get OTP"}
+              {loading ? "Signing in…" : "Continue"}
             </button>
           </form>
+
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              textAlign: "center",
+              marginBottom: 20,
+            }}
+          >
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              style={{
+                color: "var(--primary)",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Register here
+            </Link>
+          </p>
 
           <p
             style={{

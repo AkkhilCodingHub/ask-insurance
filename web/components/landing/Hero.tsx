@@ -60,15 +60,18 @@ export function Hero() {
         .grid-responsive-hero { display: grid; grid-template-columns: 1fr 420px; gap: 56px; align-items: center; position: relative; }
         @media (max-width: 900px) {
           .grid-responsive-hero { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .grid-responsive-hero { grid-template-columns: 1fr !important; gap: 32px !important; }
           .grid-responsive-hero > div:last-child { max-width: 480px; width: 100%; margin: 0 auto; }
         }
         @media (max-width: 640px) {
           .hero-section { padding: 48px 16px 56px !important; }
+          .hero-section { padding: 32px 14px 44px !important; }
+          .quote-hero-card { padding: 18px !important; }
         }
       `}</style>
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: "min(1560px, 94vw)",
           margin: "0 auto",
           display: "grid",
           gridTemplateColumns: "1fr 420px",
@@ -110,12 +113,13 @@ export function Hero() {
 
           <h1
             style={{
-              fontSize: "clamp(36px, 5vw, 56px)",
+              fontSize: "clamp(22px, 4.8vw, 54px)",
               fontWeight: 900,
-              lineHeight: 1.08,
-              letterSpacing: "-0.04em",
+              lineHeight: 1.12,
+              letterSpacing: "-0.03em",
               color: "var(--text)",
               marginBottom: 20,
+              wordBreak: "break-word",
             }}
           >
             Insurance that{" "}
@@ -125,6 +129,7 @@ export function Hero() {
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
+                display: "inline",
               }}
             >
               actually works
@@ -160,11 +165,11 @@ export function Hero() {
 
         {/* Right — quote card */}
         <div
-          className="animate-fade-up-delay glow-blue-sm"
+          className="animate-fade-up-delay glow-blue-sm quote-hero-card"
           style={{
             background: "var(--white)",
-            borderRadius: 24,
-            padding: 32,
+            borderRadius: "clamp(16px, 3vw, 24px)",
+            padding: "clamp(14px, 3.5vw, 32px)",
             border: "1px solid var(--border)",
             boxShadow: "0 12px 48px rgba(26,107,245,0.1)",
           }}

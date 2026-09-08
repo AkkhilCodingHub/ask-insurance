@@ -13,9 +13,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
 import { initSystemNotifications } from '@/lib/notifications';
+import { GlobalErrorBoundary, ErrorFallbackScreen } from '@/components/GlobalErrorBoundary';
 
 // Prevent splash screen auto-hiding while loading fonts
 SplashScreen.preventAutoHideAsync().catch(() => {});
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return <ErrorFallbackScreen error={error} resetError={retry} />;
+}
 
 function RootContent() {
   const colors = useThemeColors();
@@ -37,6 +41,7 @@ function RootContent() {
   }, [router]);
 
   return (
+    <GlobalErrorBoundary>
     <MaintenanceProvider>
     <NotificationProvider>
     <DialogProvider>
@@ -62,6 +67,7 @@ function RootContent() {
         <Stack.Screen name="my-policies"  options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="my-quotes"    options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="payments"     options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="payment-success" options={{ animation: 'fade' }} />
         <Stack.Screen name="buy-policy"   options={{ animation: 'slide_from_bottom', gestureEnabled: true, gestureDirection: 'vertical' }} />
         <Stack.Screen name="kyc"          options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="kyc-callback" options={{ animation: 'none' }} />
@@ -84,6 +90,7 @@ function RootContent() {
     </DialogProvider>
     </NotificationProvider>
     </MaintenanceProvider>
+    </GlobalErrorBoundary>
   );
 }
 

@@ -45,7 +45,7 @@ export function Navbar() {
 
       <div
         style={{
-          maxWidth: 1240,
+          maxWidth: "min(1560px, 94vw)",
           margin: "0 auto",
           padding: "0 20px",
           height: 64,

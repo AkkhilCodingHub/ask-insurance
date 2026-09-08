@@ -208,8 +208,20 @@ export const api = {
 
   // ── Payments & Tax Receipts ──
   payments: {
+    async list() {
+      const res = await request<{ payments: any[] }>("/payments");
+      return res?.payments || [];
+    },
     async getHistory() {
       return request("/payments/history");
+      const res = await request<{ payments: any[] }>("/payments");
+      return res?.payments || [];
+    },
+    async createRazorpayLink(policyId?: string, quoteId?: string) {
+      return request<{ paymentUrl: string; paymentLinkId: string; amount: number }>("/payments/razorpay/create-link", {
+        method: "POST",
+        body: JSON.stringify({ policyId, quoteId }),
+      });
     },
     async createOrder(amount: number, policyId?: string) {
       return request("/payments/create-order", {

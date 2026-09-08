@@ -37,3 +37,7 @@ yarn-error.log*
 
 # Local environment secrets
 .env*.local
+
+# Preview APK duplicates (tracked release is in release-bundle/app-release.apk)
+ASK-Insurance-*-Preview.apk
+release-bundle/*Preview*.apk

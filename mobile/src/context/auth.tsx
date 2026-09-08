@@ -89,6 +89,9 @@ interface AuthContextValue {
   loading:         boolean;
   pendingPhone:    string | null;
   autoVerified:    { isNewUser: boolean } | null;
+  directLogin:     (identifier: string) => Promise<AuthUser>;
+  registerSendOTP: (data: { phone: string; name: string; email: string; dateOfBirth?: string; gender?: string }) => Promise<void>;
+  registerVerifyOTP: (data: { phone: string; otp: string; name: string; email: string; dateOfBirth?: string; gender?: string }) => Promise<AuthUser>;
   sendOTP:         (phone: string) => Promise<void>;
   verifyOTP:       (otp: string) => Promise<{ isNewUser: boolean }>;
   completeProfile: (name: string, dob: string) => Promise<void>;
@@ -253,6 +256,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPhone]);
 
+  // ── Direct Login: authenticate existing registered user without OTP ──────
+  const directLogin = async (identifier: string): Promise<AuthUser> => {
+    const result = await authApi.directLogin(identifier);
+    await setToken(result.token);
+    await setRefreshToken(result.refreshToken);
+    const mapped = mapApiUser(result.user);
+    setUser(mapped);
+    setPendingPhone(null);
+    return mapped;
+  };
+
+  // ── Register: send OTP for new users ─────────────────────────────────────
+  const registerSendOTP = async (data: { phone: string; name: string; email: string; dateOfBirth?: string; gender?: string }) => {
+    const clean = data.phone.replace(/\D/g, '').slice(-10);
+    pendingPhoneRef.current = clean;
+    setPendingPhone(clean);
+    startOtpCooldown(clean, 300);
+    await authApi.registerSendOTP({ ...data, phone: clean });
+
+    try {
+      const formatted = `+91${clean}`;
+      const confirmation = await auth().signInWithPhoneNumber(formatted);
+      confirmationRef.current = confirmation;
+    } catch {
+      // Backend SMS gateway handles fallback
+    }
+  };
+
+  // ── Register: verify OTP and create account ──────────────────────────────
+  const registerVerifyOTP = async (data: { phone: string; otp: string; name: string; email: string; dateOfBirth?: string; gender?: string }): Promise<AuthUser> => {
+    const clean = data.phone.replace(/\D/g, '').slice(-10);
+    const result = await authApi.registerVerifyOTP({ ...data, phone: clean });
+    await setToken(result.token);
+    await setRefreshToken(result.refreshToken);
+    const mapped = mapApiUser(result.user);
+    setUser(mapped);
+    setPendingPhone(null);
+    confirmationRef.current = null;
+    return mapped;
+  };
+
   // ── Step 1: send OTP via Firebase Phone Auth with 5-minute cooldown ───────
   const sendOTP = async (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
@@ -348,6 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, loading, pendingPhone, autoVerified,
+      directLogin, registerSendOTP, registerVerifyOTP,
       sendOTP, verifyOTP, completeProfile,
       updateUser, refreshUser, logout,
     }}>

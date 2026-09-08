@@ -59,6 +59,267 @@ export const autoAssignAgentToUser = async (userId: string) => {
   }
 };
 
+// ── POST /direct-login ────────────────────────────────────────────────────────
+// Allows existing registered users to log in directly using Phone or Customer ID without OTP.
+const directLoginSchema = z.object({
+  identifier: z.string().min(1, 'Phone number or Customer ID is required'),
+});
+
+router.post('/direct-login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { identifier } = directLoginSchema.parse(req.body);
+    const rawInput = identifier.trim();
+    const uppercaseInput = rawInput.toUpperCase();
+
+    let user = null;
+
+    // Check by Customer ID (e.g. CU849201)
+    if (uppercaseInput.startsWith('CU')) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { customerCode: uppercaseInput },
+            { customerCode: rawInput },
+            { customerCode: uppercaseInput.replace(/^CU-?/, 'CU') }
+          ]
+        }
+      });
+    }
+
+    // Check by 10-digit Phone number
+    if (!user) {
+      const clean = cleanPhone(rawInput);
+      if (clean && /^[6-9]\d{9}$/.test(clean)) {
+        user = await prisma.user.findUnique({ where: { phone: clean } });
+      }
+    }
+
+    if (!user) {
+      res.status(404).json({
+        error: 'No account found with this Phone Number or Customer ID. Please register first.',
+        isRegistered: false,
+      });
+      return;
+    }
+
+    // If user has no name, they haven't completed registration details
+    if (!user.name) {
+      res.status(404).json({
+        error: 'Account details incomplete. Please register with your details first.',
+        isRegistered: false,
+        phone: user.phone,
+      });
+      return;
+    }
+
+    if (user.id) {
+      autoAssignAgentToUser(user.id).catch(err => console.error('[AutoAssign] Async error:', err));
+    }
+
+    const token        = createAuthToken({ userId: user.id, phone: user.phone });
+    const refreshToken = createRefreshToken({ userId: user.id, phone: user.phone });
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      user: {
+        id: user.id,
+        customerCode: user.customerCode,
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        pincode: user.pincode,
+        kycStatus: user.kycStatus,
+        aadhaarVerified: user.aadhaarVerified,
+        panNumber: user.panNumber,
+      },
+      isNewUser: false
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request body' });
+      return;
+    }
+    console.error('[direct-login] Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /register-send-otp ───────────────────────────────────────────────────
+// Validates new user registration details and dispatches OTP verification code.
+const registerSendOtpSchema = z.object({
+  phone: z.string().min(10, 'A valid 10-digit phone number is required'),
+  name: z.string().min(2, 'Full Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  dateOfBirth: z.string().optional(),
+  gender: z.string().optional(),
+});
+
+router.post('/register-send-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone: rawPhone, name, email } = registerSendOtpSchema.parse(req.body);
+    const phone = cleanPhone(rawPhone);
+
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if phone is already registered with a name
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone },
+          { email: normalizedEmail }
+        ]
+      }
+    });
+
+    if (existingUser && existingUser.name) {
+      res.status(409).json({
+        error: 'An account with this phone number or email is already registered. Please sign in directly.',
+        isRegistered: true,
+      });
+      return;
+    }
+
+    const otp = await createOtpChallenge(phone, existingUser?.id);
+    console.log('[register-send-otp] OTP generated successfully for new user registration');
+
+    const responsePayload: Record<string, any> = {
+      success: true,
+      message: 'OTP sent successfully for registration',
+    };
+
+    if (process.env.NODE_ENV === 'test') {
+      responsePayload.otp = otp;
+    }
+
+    res.json(responsePayload);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request body' });
+      return;
+    }
+    console.error('[register-send-otp] Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /register-verify-otp ─────────────────────────────────────────────────
+// Verifies OTP code, creates user profile with full details, assigns Customer ID, and logs in.
+const registerVerifyOtpSchema = z.object({
+  phone: z.string().min(10),
+  otp: z.string().regex(/^\d{6}$/, 'OTP must be a 6-digit code'),
+  name: z.string().min(2, 'Full Name must be at least 2 characters'),
+  email: z.string().email('Valid email is required'),
+  dateOfBirth: z.string().optional(),
+  gender: z.string().optional(),
+});
+
+router.post('/register-verify-otp', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const parsed = registerVerifyOtpSchema.parse(req.body);
+    const phone = cleanPhone(parsed.phone);
+
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      res.status(400).json({ error: 'Invalid phone number' });
+      return;
+    }
+
+    const verifyResult = await verifyOtpChallenge(phone, parsed.otp);
+    if (!verifyResult.success) {
+      res.status(400).json({ error: verifyResult.error });
+      return;
+    }
+
+    const normalizedEmail = parsed.email.trim().toLowerCase();
+    const customerCode = await generateCustomerId();
+
+    let user = await prisma.user.findUnique({ where: { phone } });
+
+    let dobDate: Date | undefined = undefined;
+    if (parsed.dateOfBirth) {
+      if (parsed.dateOfBirth.includes('/')) {
+        const [d, m, y] = parsed.dateOfBirth.split('/');
+        dobDate = new Date(`${y}-${m}-${d}`);
+      } else {
+        dobDate = new Date(parsed.dateOfBirth);
+      }
+      if (isNaN(dobDate.getTime())) dobDate = undefined;
+    }
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone,
+          customerCode,
+          name: parsed.name.trim(),
+          email: normalizedEmail,
+          dateOfBirth: dobDate,
+          gender: parsed.gender ?? null,
+        }
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: parsed.name.trim(),
+          email: normalizedEmail,
+          customerCode: user.customerCode || customerCode,
+          dateOfBirth: dobDate ?? user.dateOfBirth,
+          gender: parsed.gender ?? user.gender,
+        }
+      });
+    }
+
+    if (user.id) {
+      autoAssignAgentToUser(user.id).catch(err => console.error('[AutoAssign] Async error:', err));
+    }
+
+    const token        = createAuthToken({ userId: user.id, phone: user.phone });
+    const refreshToken = createRefreshToken({ userId: user.id, phone: user.phone });
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      user: {
+        id: user.id,
+        customerCode: user.customerCode,
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        dateOfBirth: user.dateOfBirth,
+        gender: user.gender,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        pincode: user.pincode,
+        kycStatus: user.kycStatus,
+        aadhaarVerified: user.aadhaarVerified,
+        panNumber: user.panNumber,
+      },
+      isNewUser: true,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: (error.issues || (error as any).errors)?.[0]?.message ?? 'Invalid request body' });
+      return;
+    }
+    console.error('[register-verify-otp] Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/send-otp', async (req: Request, res: Response): Promise<void> => {
   try {
     const rawInput = String(req.body.phone || req.body.identifier || req.body.customerCode || '').trim();

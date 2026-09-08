@@ -10,7 +10,7 @@ function resolveBaseUrl(): string {
   return 'https://ask-insurance.onrender.com';
 }
 
-const getBaseUrl = () => resolveBaseUrl();
+export const getBaseUrl = () => resolveBaseUrl();
 if (__DEV__) console.log('[API] base URL →', getBaseUrl());
 
 // ── Token storage ─────────────────────────────────────────────────────────────
@@ -309,6 +309,7 @@ export interface ApiPlan {
   maxCover:    number;
   basePremium: number;
   isFeatured:  boolean;
+  rating?:     number;
   insurer:     ApiInsurer;
 }
 
@@ -325,6 +326,7 @@ export interface ApiPolicy {
   paymentStatus: string;
   documentUrl:   string | null;
   notes:         string | null;
+  registrationNumber?: string | null;
 }
 
 export interface ApiClaim {
@@ -412,6 +414,30 @@ export const del = <T>(path: string, auth = false) =>
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const authApi = {
+  directLogin: (identifier: string) =>
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/direct-login',
+      { identifier },
+      false,
+      { timeoutMs: 30000 }
+    ),
+
+  registerSendOTP: (data: { phone: string; name: string; email: string; dateOfBirth?: string; gender?: string }) =>
+    post<{ success: boolean; message: string; otp?: string }>(
+      '/api/auth/register-send-otp',
+      data,
+      false,
+      { timeoutMs: 30000 }
+    ),
+
+  registerVerifyOTP: (data: { phone: string; otp: string; name: string; email: string; dateOfBirth?: string; gender?: string }) =>
+    post<{ success: boolean; token: string; refreshToken: string; user: ApiUser; isNewUser: boolean }>(
+      '/api/auth/register-verify-otp',
+      data,
+      false,
+      { timeoutMs: 30000 }
+    ),
+
   sendOTP: (phone: string) =>
     post<{ success: boolean; isNewUser: boolean; otp?: string; customerCode?: string }>(
       '/api/auth/send-otp',
@@ -496,6 +522,7 @@ export const policiesApi = {
     nomineeRelation?: string;
     panNumber?: string;
     aadhaarNumber?: string;
+    targetUserId?: string;
   }) => post<{ policy: ApiPolicy }>('/api/policies', data, true),
   renew:(id: string) => put<{ policy: ApiPolicy }>(`/api/policies/${id}/renew`, {}, true),
   fetchLiveProviderQuotes: (payload: {

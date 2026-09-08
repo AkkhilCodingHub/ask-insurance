@@ -56,6 +56,12 @@ export function Stats() {
       >
         <style>{`
           @media (max-width: 640px) { .grid-responsive-stats { grid-template-columns: repeat(2, 1fr) !important; } }
+          @media (max-width: 640px) { 
+            .grid-responsive-stats { 
+              grid-template-columns: repeat(2, 1fr) !important; 
+              gap: 16px !important;
+            } 
+          }
         `}</style>
         {stats.map((s, i) => (
           <div
@@ -69,7 +75,7 @@ export function Stats() {
           >
             <div
               style={{
-                fontSize: 36,
+                fontSize: "clamp(22px, 5.5vw, 36px)",
                 fontWeight: 900,
                 color: "#fff",
                 letterSpacing: "-0.03em",

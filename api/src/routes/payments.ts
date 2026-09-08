@@ -425,7 +425,10 @@ router.get('/razorpay/callback', async (req: Request, res: Response): Promise<vo
       console.error('[razorpay callback activation error]:', e);
     }
   }
-  res.redirect('askinsurance://payment-success');
+  const redirectUrl = policyId
+    ? `askinsurance://payment-success?policyId=${encodeURIComponent(String(policyId))}&paymentId=${encodeURIComponent(String(paymentId || 'pay_live'))}&status=success`
+    : 'askinsurance://payment-success';
+  res.redirect(redirectUrl);
 });
 // ── Test Mode Verification Endpoint (Instant Activation) ─────────────────────
 router.post('/verify-test-payment', authenticate, async (req: Request, res: Response): Promise<void> => {

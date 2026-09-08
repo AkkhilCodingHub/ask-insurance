@@ -91,4 +91,6 @@ export {
   isTablet,
   isSmallDevice,
   useResponsive,
+  ResponsiveContainerWidth,
+  responsiveContainerStyle,
 } from '@/utils/scaling';

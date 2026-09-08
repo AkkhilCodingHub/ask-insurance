@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Smartphone, Info, AlertCircle, Shield } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from "@/lib/otpCooldown";
 
-export default function OTPPage() {
+function OTPPageContent() {
   const router = useRouter();
-  const { verifyOTP, pendingPhone, sendOTP } = useAuth();
+  const searchParams = useSearchParams();
+  const { verifyOTP, registerVerifyOTP, registerSendOTP, pendingPhone, sendOTP } = useAuth();
+
+  const mode = searchParams.get("mode");
+  const phoneQuery = searchParams.get("phone") || "";
+  const nameQuery = searchParams.get("name") || "";
+  const emailQuery = searchParams.get("email") || "";
+  const dobQuery = searchParams.get("dob") || "";
+  const genderQuery = searchParams.get("gender") || "";
 
   const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const phone = pendingPhone || "";
+  const phone = pendingPhone || phoneQuery || "";
   const [resendTimer, setResendTimer] = useState(() => Math.max(1, (phone ? getRemainingOtpSeconds(phone) : 300) || 300));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -74,14 +82,27 @@ export default function OTPPage() {
     setError("");
     setLoading(true);
     try {
-      const { isNewUser } = await verifyOTP(digits.join(""));
-      if (isNewUser) {
-        router.push("/onboarding");
-      } else {
+      if (mode === "register") {
+        await registerVerifyOTP({
+          phone,
+          otp: digits.join(""),
+          name: nameQuery,
+          email: emailQuery,
+          dob: dobQuery,
+          gender: genderQuery,
+        });
         router.push("/dashboard");
+      } else {
+        const { isNewUser } = await verifyOTP(digits.join(""));
+        if (isNewUser) {
+          router.push("/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
       }
-    } catch {
-      setError("Invalid OTP. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Invalid OTP. Please try again.";
+      setError(msg);
       setDigits(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -90,16 +111,26 @@ export default function OTPPage() {
   }
 
   async function handleResend() {
-    if (resendTimer > 0 || !pendingPhone) return;
+    if (resendTimer > 0 || !phone) return;
     setDigits(["", "", "", "", "", ""]);
     setError("");
-    startOtpCooldown(pendingPhone, 300);
+    startOtpCooldown(phone, 300);
     setResendTimer(300);
-    await sendOTP(pendingPhone);
+    if (mode === "register") {
+      await registerSendOTP({
+        phone,
+        name: nameQuery,
+        email: emailQuery,
+        dob: dobQuery,
+        gender: genderQuery,
+      });
+    } else {
+      await sendOTP(phone);
+    }
   }
 
-  const maskedPhone = pendingPhone
-    ? `+91 ${pendingPhone.slice(0, 5)}${"•".repeat(5)}`
+  const maskedPhone = phone
+    ? `+91 ${phone.slice(0, 5)}${"•".repeat(5)}`
     : "+91 •••••••••";
 
   return (
@@ -368,3 +399,12 @@ export default function OTPPage() {
     </div>
   );
 }
+
+export default function OTPPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading...</div>}>
+      <OTPPageContent />
+    </Suspense>
+  );
+}
+

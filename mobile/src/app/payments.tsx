@@ -318,6 +318,7 @@ export default function PaymentsScreen() {
         ];
         setPayments(mockList);
       }
+      setPayments(res.payments || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load payments');
     } finally {

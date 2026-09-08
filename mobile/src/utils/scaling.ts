@@ -40,8 +40,8 @@ export function fontScale(size: number): number {
   const currentWidth = Dimensions.get('window').width;
   const scaleFactor = currentWidth / GUIDELINE_BASE_WIDTH;
   const newSize = size * scaleFactor;
-  // Cap font scaling between 0.85x and 1.35x
-  const minSize = size * 0.85;
+  // Cap font scaling between 0.80x (Android 7 / small phone safety) and 1.35x (tablet ceiling)
+  const minSize = size * 0.80;
   const maxSize = size * 1.35;
   const boundedSize = Math.max(minSize, Math.min(maxSize, newSize));
   return Math.round(PixelRatio.roundToNearestPixel(boundedSize));
@@ -68,6 +68,13 @@ export function hp(percentage: number): number {
  */
 export const isSmallDevice = SCREEN_WIDTH < 360;
 export const isTablet = SCREEN_WIDTH >= 768 || (SCREEN_WIDTH >= 600 && SCREEN_HEIGHT / SCREEN_WIDTH < 1.6);
+export const ResponsiveContainerWidth = 800;
+
+export const responsiveContainerStyle = {
+  width: '100%' as const,
+  maxWidth: ResponsiveContainerWidth,
+  alignSelf: 'center' as const,
+};
 
 /**
  * React hook that reactively updates dimensions, orientation, and scaling functions
@@ -86,7 +93,7 @@ export function useResponsive() {
   const rFontScale = (size: number) => {
     const scaleFactor = width / GUIDELINE_BASE_WIDTH;
     const newSize = size * scaleFactor;
-    const minSize = size * 0.85;
+    const minSize = size * 0.80;
     const maxSize = size * 1.35;
     return Math.round(PixelRatio.roundToNearestPixel(Math.max(minSize, Math.min(maxSize, newSize))));
   };
@@ -105,6 +112,12 @@ export function useResponsive() {
     fontScale: rFontScale,
     wp: rWp,
     hp: rHp,
+    containerStyle: {
+      width: '100%' as const,
+      maxWidth: ResponsiveContainerWidth,
+      alignSelf: 'center' as const,
+    },
   };
 }
+
 

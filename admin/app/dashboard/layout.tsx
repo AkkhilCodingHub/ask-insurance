@@ -398,7 +398,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="admin-content" style={{ flex: 1, padding: "24px" }}>
+        <main className="admin-content" style={{ flex: 1, padding: "24px", maxWidth: 1600, width: "100%", margin: "0 auto" }}>
           {children}
         </main>
       </div>
@@ -414,6 +414,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .admin-mobile-menu { display: flex !important; }
           .admin-search { display: none !important; }
           .admin-content { padding: 16px !important; }
+          .admin-content { padding: 14px !important; }
+          header { padding: 0 12px !important; }
+        }
+        @media (max-width: 360px) {
+          .admin-content { padding: 10px !important; }
         }
       `}</style>
     </div>

@@ -20,6 +20,7 @@ const createPolicySchema = z.object({
   aadhaarNumber: z.string().optional(),
   nomineeName: z.string().optional(),
   nomineeRelation: z.string().optional(),
+  targetUserId: z.string().optional(),
 });
 // POST /api/policies/live-quotes - Fetch live provider policy quotes & PolicyBazaar IDV calculation
 router.post('/live-quotes', async (req: Request, res: Response): Promise<void> => {
@@ -188,6 +189,14 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
       }
     }
 
+    let policyUserId = userId;
+    if (payload.targetUserId) {
+      const targetUser = await prisma.user.findUnique({ where: { id: payload.targetUserId } });
+      if (targetUser) {
+        policyUserId = targetUser.id;
+      }
+    }
+
     const policy = await prisma.policy.create({
       data: {
         policyNumber: `POL${Date.now()}`,
@@ -198,7 +207,7 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
         registrationNumber: payload.registrationNumber ?? null,
         startDate: now,
         endDate: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
-        userId
+        userId: policyUserId,
       }
     });
 

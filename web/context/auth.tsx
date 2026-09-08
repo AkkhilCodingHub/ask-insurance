@@ -25,6 +25,9 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   pendingPhone: string | null;
+  directLogin(identifier: string): Promise<AuthUser>;
+  registerSendOTP(data: { phone: string; name: string; email: string; dob?: string; gender?: string }): Promise<void>;
+  registerVerifyOTP(data: { phone: string; otp: string; name: string; email: string; dob?: string; gender?: string }): Promise<AuthUser>;
   sendOTP(phone: string): Promise<void>;
   verifyOTP(otp: string): Promise<{ isNewUser: boolean }>;
   completeProfile(name: string, dob: string): Promise<void>;
@@ -43,6 +46,9 @@ const STORAGE_KEY = "ask_user";
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
+
+const getApiBaseUrl = () =>
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:4000";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -67,6 +73,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   }, []);
+
+  async function directLogin(identifier: string): Promise<AuthUser> {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/direct-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ identifier }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
+    }
+
+    const authUser: AuthUser = {
+      id: data.user.id,
+      name: data.user.name || "Customer",
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+      dob: data.user.dateOfBirth,
+      gender: data.user.gender,
+      address: data.user.address,
+      city: data.user.city,
+      state: data.user.state,
+      pincode: data.user.pincode,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    registeredPhones.add(data.user.phone);
+    setUser(authUser);
+    return authUser;
+  }
+
+  async function registerSendOTP(payload: { phone: string; name: string; email: string; dob?: string; gender?: string }): Promise<void> {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/register-send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to send registration OTP");
+    }
+    setPendingPhone(payload.phone);
+  }
+
+  async function registerVerifyOTP(payload: { phone: string; otp: string; name: string; email: string; dob?: string; gender?: string }): Promise<AuthUser> {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/register-verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        dateOfBirth: payload.dob,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to verify registration code");
+    }
+
+    const authUser: AuthUser = {
+      id: data.user.id,
+      name: data.user.name || payload.name,
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+      dob: data.user.dateOfBirth,
+      gender: data.user.gender,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    registeredPhones.add(data.user.phone);
+    setUser(authUser);
+    setPendingPhone(null);
+    return authUser;
+  }
 
   async function sendOTP(phone: string): Promise<void> {
     await delay(800);
@@ -162,7 +245,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, pendingPhone, sendOTP, verifyOTP, completeProfile, loginWithEmailAndPhone, refreshUser, logout }}
+      value={{
+        user,
+        loading,
+        pendingPhone,
+        directLogin,
+        registerSendOTP,
+        registerVerifyOTP,
+        sendOTP,
+        verifyOTP,
+        completeProfile,
+        loginWithEmailAndPhone,
+        refreshUser,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

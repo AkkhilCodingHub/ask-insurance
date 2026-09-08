@@ -48,6 +48,9 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: "100vh",
+        width: "100%",
+        maxWidth: "100vw",
+        overflowX: "hidden",
         display: "flex",
         background: "var(--sidebar-bg)",
       }}
@@ -110,17 +113,21 @@ export default function LoginPage() {
       {/* Right — login form */}
       <div
         style={{
-          width: 480,
+          width: "100%",
+          maxWidth: 480,
+          minWidth: 0,
           background: "var(--white)",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "48px 48px",
           flexShrink: 0,
+          padding: "clamp(20px, 4vw, 48px)",
+          boxSizing: "border-box",
         }}
         className="login-form"
       >
-        <div style={{ width: "100%" }}>
+        <div style={{ width: "100%", maxWidth: 384, minWidth: 0, boxSizing: "border-box", margin: "0 auto" }}>
           <h2 style={{ fontSize: 26, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.03em", marginBottom: 6 }}>
             Welcome back
           </h2>
@@ -222,13 +229,13 @@ export default function LoginPage() {
               Signing in with Google…
             </div>
           ) : (
-            <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", width: "100%", maxWidth: "100%", overflow: "hidden" }}>
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={() => setError("Google sign-in was cancelled or failed.")}
                 theme="outline"
                 size="large"
-                width={384}
+                width="280"
                 text="signin_with"
                 shape="rectangular"
               />
@@ -246,7 +253,20 @@ export default function LoginPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 768px) {
           .login-brand { display: none !important; }
-          .login-form { width: 100% !important; }
+          .login-form { 
+            width: 100% !important; 
+            padding: 32px 20px !important; 
+          }
+        }
+        @media (max-width: 480px) {
+          .login-form { 
+            padding: 24px 16px !important; 
+          }
+        }
+        @media (max-width: 360px) {
+          .login-form { 
+            padding: 20px 12px !important; 
+          }
         }
       `}</style>
     </div>

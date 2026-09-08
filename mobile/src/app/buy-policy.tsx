@@ -18,7 +18,15 @@ import { getRemainingOtpSeconds, startOtpCooldown, formatOtpTimer } from '@/util
 
 export default function BuyPolicyScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ planId?: string; type?: string; planName?: string }>();
+  const params = useLocalSearchParams<{
+    planId?: string;
+    type?: string;
+    planName?: string;
+    clientId?: string;
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+  }>();
   const { user, refreshUser } = useAuth();
   const { alert } = useDialog();
 
@@ -26,9 +34,9 @@ export default function BuyPolicyScreen() {
   const [loading, setLoading] = useState(true);
 
   // Proposer Details
-  const [fullName, setFullName] = useState(user?.name || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [fullName, setFullName] = useState(params.clientName || user?.name || '');
+  const [phone, setPhone] = useState(params.clientPhone || user?.phone || '');
+  const [email, setEmail] = useState(params.clientEmail || user?.email || '');
   const [dob, setDob] = useState(user?.dob || '');
   const [gender, setGender] = useState(user?.gender || 'Male');
   const [address, setAddress] = useState(user?.address || '');
@@ -44,7 +52,11 @@ export default function BuyPolicyScreen() {
   const [nomineeAge, setNomineeAge] = useState('');
 
   useEffect(() => {
-    if (user) {
+    if (params.clientId) {
+      if (params.clientName) setFullName(params.clientName);
+      if (params.clientPhone) setPhone(params.clientPhone);
+      if (params.clientEmail) setEmail(params.clientEmail);
+    } else if (user) {
       if (user.name) setFullName(user.name);
       if (user.phone) setPhone(user.phone);
       if (user.email) setEmail(user.email);
@@ -195,6 +207,7 @@ export default function BuyPolicyScreen() {
         panNumber: cleanPan,
         aadhaarNumber: cleanAadhaar,
         registrationNumber: isMotor && vehicleRcNumber ? vehicleRcNumber.trim().toUpperCase() : undefined,
+        targetUserId: params.clientId || undefined,
       });
 
       const newPolicy = polRes.policy;
@@ -206,6 +219,11 @@ export default function BuyPolicyScreen() {
       if (linkRes?.paymentUrl) {
         try {
           await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
+          const authRes = await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
+          if (authRes.type === 'success' && authRes.url) {
+            router.replace(authRes.url as any);
+            return;
+          }
         } catch {
           await WebBrowser.openBrowserAsync(linkRes.paymentUrl);
         }
@@ -213,6 +231,7 @@ export default function BuyPolicyScreen() {
 
       setCreatedPolicy(newPolicy);
       await refreshUser();
+      router.replace(`/payment-success?policyId=${newPolicy.id}`);
     } catch (e: any) {
       alert({ type: 'error', title: 'Transaction Failed', message: e?.message || 'Could not complete verification or payment.' });
     } finally {
@@ -435,6 +454,17 @@ export default function BuyPolicyScreen() {
           <Text style={s.planGst}>(incl. 18% GST)</Text>
         </View>
       </View>
+
+      {/* POSP Assigned Client Banner */}
+      {params.clientId ? (
+        <View style={{ backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1, borderRadius: 10, padding: 12, marginHorizontal: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Icon name="person" size={20} color="#D97706" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontWeight: '900', color: '#92400E', letterSpacing: 0.5 }}>PURCHASING FOR ASSIGNED CLIENT</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#78350F' }}>{params.clientName || fullName} · {params.clientPhone || phone}</Text>
+          </View>
+        </View>
+      ) : null}
 
       <ScrollView
         style={s.scroll}

@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   Modal, TextInput, ActivityIndicator, Alert, Pressable, Platform
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '@/components/Icon';
 import { Colors } from '@/constants/theme';
@@ -17,6 +18,7 @@ interface Customer {
 }
 
 export default function AgentCustomersScreen() {
+  const router = useRouter();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,19 +78,40 @@ export default function AgentCustomersScreen() {
     const isKyc = item.kycStatus === 'verified';
     return (
       <View style={s.itemCard}>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>{item.name.slice(0,2).toUpperCase()}</Text>
+        <View style={s.itemMainRow}>
+          <View style={s.avatar}>
+            <Text style={s.avatarText}>{item.name.slice(0, 2).toUpperCase()}</Text>
+          </View>
+          <View style={s.details}>
+            <Text style={s.customerName}>{item.name}</Text>
+            <Text style={s.customerPhone}>📞 {item.phone}</Text>
+            {item.email ? <Text style={s.customerEmail}>✉️ {item.email}</Text> : null}
+          </View>
+          <View style={[s.badge, { backgroundColor: isKyc ? '#ECFDF5' : '#FFFBEB' }]}>
+            <Text style={[s.badgeText, { color: isKyc ? '#059669' : '#D97706' }]}>
+              {isKyc ? 'Verified' : 'Pending'}
+            </Text>
+          </View>
         </View>
-        <View style={s.details}>
-          <Text style={s.customerName}>{item.name}</Text>
-          <Text style={s.customerPhone}>📞 {item.phone}</Text>
-          {item.email && <Text style={s.customerEmail}>✉️ {item.email}</Text>}
-        </View>
-        <View style={[s.badge, { backgroundColor: isKyc ? '#ECFDF5' : '#FFFBEB' }]}>
-          <Text style={[s.badgeText, { color: isKyc ? '#059669' : '#D97706' }]}>
-            {isKyc ? 'Verified' : 'Pending'}
-          </Text>
-        </View>
+
+        <TouchableOpacity
+          style={s.buyForClientBtn}
+          onPress={() => {
+            router.push({
+              pathname: '/buy-policy',
+              params: {
+                clientId: item.id,
+                clientName: item.name,
+                clientPhone: item.phone,
+                clientEmail: item.email || '',
+              },
+            });
+          }}
+          activeOpacity={0.8}
+        >
+          <Icon name="shield-checkmark-outline" size={15} color={Colors.white} />
+          <Text style={s.buyForClientBtnText}>Buy Insurance for Client</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -176,8 +199,29 @@ const s = StyleSheet.create({
   kycBannerText: { flex: 1, fontSize: 12, fontWeight: '700', color: '#78350F', lineHeight: 16 },
   list: { padding: 16, gap: 12 },
   itemCard: {
-    flexDirection: 'row', alignItems: 'center', padding: 14,
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, backgroundColor: '#F8FAFC'
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    gap: 12,
+  },
+  itemMainRow: {
+    flexDirection: 'row', alignItems: 'center',
+  },
+  buyForClientBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  buyForClientBtnText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '700',
   },
   avatar: {
     width: 42, height: 42, borderRadius: 12, backgroundColor: '#EFF6FF',

@@ -163,7 +163,7 @@ function BuyPolicyContent() {
         provider: insurer,
         type: isMotor ? "motor" : typeParam,
         sumInsured: idvParam || 500000,
-        premium: priceParam,
+        premium: totalPrice || priceParam,
         registrationNumber: isMotor ? vehicleRcNumber.trim().toUpperCase() : undefined,
         durationDays: 365,
         panNumber: cleanPan,
@@ -172,21 +172,24 @@ function BuyPolicyContent() {
         nomineeRelation,
       });
 
-      const policyObj = buyRes?.policy || buyRes?.data || {
-        id: `pol_${Date.now()}`,
-        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
-        provider: insurer,
-        type: isMotor ? "motor" : typeParam,
-        sumInsured: idvParam || 500000,
-        premium: priceParam,
-        registrationNumber: isMotor ? vehicleRcNumber.trim().toUpperCase() : undefined,
-        status: "active",
-      };
-
-      setCreatedPolicy(policyObj);
-      setShowOtpModal(false);
-      setCheckoutStep(4);
-      if (refreshUser) refreshUser();
+      const policyObj = buyRes?.policy || buyRes?.data;
+      if (policyObj && policyObj.id) {
+        // 3. Create Razorpay Payment Link
+        try {
+          const rzpRes = await api.payments.createRazorpayLink(policyObj.id);
+          if (rzpRes?.paymentUrl) {
+            window.open(rzpRes.paymentUrl, "_blank");
+          }
+        } catch (rzpErr) {
+          console.warn("[BuyPolicy] Razorpay link dispatch notice:", rzpErr);
+        }
+        setCreatedPolicy(policyObj);
+        setShowOtpModal(false);
+        setCheckoutStep(4);
+        if (refreshUser) refreshUser();
+      } else {
+        throw new Error(buyRes?.error || "Failed to create policy schedule. Please check details.");
+      }
     } catch (err: any) {
       console.warn("[BuyPolicy] API payment fallback:", err);
       // Fallback
@@ -203,6 +206,8 @@ function BuyPolicyContent() {
       setCreatedPolicy(polObj);
       setShowOtpModal(false);
       setCheckoutStep(4);
+      console.error("[BuyPolicy] Purchase error:", err);
+      setErrorMessage(err?.message || "Could not complete verification or payment. Please try again.");
     } finally {
       setVerifying(false);
     }
