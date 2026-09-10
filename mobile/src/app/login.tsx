@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
@@ -16,9 +16,18 @@ import { useDialog } from '@/components/Dialog';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { directLogin } = useAuth();
-  const { login: agentLogin } = useAgent();
+  const { user, directLogin } = useAuth();
+  const { agent, login: agentLogin } = useAgent();
   const { alert, confirm } = useDialog();
+
+  // If already authenticated (or restored after force-close), route into app
+  useEffect(() => {
+    if (user) {
+      router.replace('/(tabs)');
+    } else if (agent) {
+      router.replace('/(agent)/quotes' as any);
+    }
+  }, [user, agent, router]);
 
   const [mode, setMode] = useState<'customer' | 'agent'>('customer');
   const [customerInputType, setCustomerInputType] = useState<'phone' | 'customerId'>('phone');

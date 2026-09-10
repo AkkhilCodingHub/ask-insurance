@@ -6,6 +6,7 @@ import {
 import type { ComponentProps } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '@/context/auth';
 import { usersApi, plansApi, ApiPolicy, ApiPlan, DashboardData } from '@/lib/api';
 import { Icon } from '@/components/Icon';
@@ -14,6 +15,7 @@ import { useThemeColors } from '@/context/agent';
 import { dispatchSystemPolicyAlerts } from '@/lib/notifications';
 
 const { width: W } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(W - 40, 360);
 
 const TYPE_ICONS: Record<string, string> = {
   life: 'heart-outline', health: 'medical-outline', motor: 'car-outline', travel: 'airplane-outline',
@@ -165,6 +167,7 @@ export default function HomeTab() {
 
   const [dashboard, setDashboard]       = useState<DashboardData | null>(null);
   const [featured, setFeatured]         = useState<ApiPlan[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
   
@@ -172,9 +175,19 @@ export default function HomeTab() {
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await plansApi.categories();
+      if (res?.categories && Array.isArray(res.categories)) {
+        setAvailableCategories(res.categories.map(c => c.toLowerCase()));
+      }
+    } catch {}
+  }, []);
+
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoadingFeatured(true);
+    loadCategories();
     try {
       const [dash, plansRes] = await Promise.allSettled([
         user ? usersApi.dashboard() : Promise.reject(new Error('not logged in')),
@@ -186,7 +199,7 @@ export default function HomeTab() {
       setLoadingFeatured(false);
       if (isRefresh) setRefreshing(false);
     }
-  }, [user]);
+  }, [user, loadCategories]);
 
   useEffect(() => {
     load();
@@ -201,6 +214,7 @@ export default function HomeTab() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.bg }]} edges={['top']}>
+      <StatusBar style="light" />
       <ScrollView
         style={[s.scroll, { backgroundColor: colors.bg }]}
         contentContainerStyle={{ paddingBottom: BottomTabInset + 32 }}
@@ -271,7 +285,7 @@ export default function HomeTab() {
                 { id: 'all', label: 'All Intents' },
                 { id: 'motor', label: '🚗 Motor' },
                 { id: 'health', label: '🏥 Health' },
-                { id: 'travel', label: '✈️ Travel' },
+                ...(availableCategories.includes('travel') ? [{ id: 'travel', label: '✈️ Travel' }] : []),
                 { id: 'life', label: '🛡️ Life' },
               ].map(t => (
                 <TouchableOpacity
@@ -290,7 +304,7 @@ export default function HomeTab() {
             </View>
 
             {/* Travel Recommendation Details (Feature 3 Explicit Requirements) */}
-            {(selectedIntentType === 'all' || selectedIntentType === 'travel') && (
+            {availableCategories.includes('travel') && (selectedIntentType === 'all' || selectedIntentType === 'travel') && (
               <View style={{ backgroundColor: '#FFF7ED', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: '#F97316', marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -469,6 +483,9 @@ export default function HomeTab() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={s.hScroll}
+                  snapToInterval={CARD_WIDTH + 14}
+                  decelerationRate="fast"
+                  snapToAlignment="start"
                 >
                   {policies.map((p: ApiPolicy) => {
                     const typeStr = p.type ?? '';
@@ -492,8 +509,8 @@ export default function HomeTab() {
                               </View>
                             </View>
                             <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={[s.policyNum, { color: colors.text }]} numberOfLines={1}>{p.policyNumber}</Text>
-                              <Text style={[s.policyProvider, { color: colors.textMuted }]} numberOfLines={1}>{providerStr || '—'}</Text>
+                              <Text style={[s.policyProvider, { color: colors.text }]} numberOfLines={1}>{providerStr || 'Active Policy'}</Text>
+                              <Text style={[s.policyNum, { color: colors.textMuted }]} numberOfLines={1}>{p.policyNumber}</Text>
                             </View>
                             <View style={[s.policyStatusTag, { backgroundColor: st.bg, borderColor: st.color + '2A' }]}>
                               <Icon name={st.icon} size={12} color={st.color} />
@@ -506,7 +523,7 @@ export default function HomeTab() {
                               <Text style={[s.policyStatVal, { color: colors.text }]}>{formatCover(p.sumInsured)}</Text>
                             </View>
                             <View style={[s.policyStatSep, { backgroundColor: colors.border }]} />
-                            <View style={s.policyStatCell}>
+                            <View style={s.policyStatCellMid}>
                               <Text style={[s.policyStatLbl, { color: colors.textMuted }]}>Premium</Text>
                               <Text style={[s.policyStatVal, { color }]}>{formatPremium(p.premium)}</Text>
                             </View>
@@ -548,6 +565,9 @@ export default function HomeTab() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={s.recScroll}
+                snapToInterval={CARD_WIDTH + 14}
+                decelerationRate="fast"
+                snapToAlignment="start"
               >
                 {featured.map(plan => {
                   const color   = plan.insurer?.brandColor ?? '#1580FF';
@@ -784,9 +804,11 @@ const s = StyleSheet.create({
   actionLabel: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center', lineHeight: 16 },
 
   hScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
+  hScroll: { gap: 14, paddingRight: 20, paddingBottom: 4, paddingLeft: 0 },
 
   policyCard: {
     width: W * 0.78,
+    width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
@@ -799,10 +821,13 @@ const s = StyleSheet.create({
   },
   policyInner:  { padding: 18 },
   policyTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  policyTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   policyIconRing: { borderWidth: 1, borderRadius: 12, padding: 1 },
   policyIconInner: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   policyNum:    { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
   policyProvider:{ fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  policyProvider:{ fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
+  policyNum:    { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   policyStatusTag: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, borderWidth: 1, flexShrink: 0, maxWidth: 108,
@@ -811,22 +836,42 @@ const s = StyleSheet.create({
 
   policyStatGrid: {
     flexDirection: 'row', paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#FAFBFD',
+    marginTop: 4,
+    marginBottom: 8,
   },
   policyStatCell: { flex: 1, alignItems: 'flex-start', gap: 4 },
   policyStatCellLast: { alignItems: 'flex-end' },
   policyStatSep: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 6, alignSelf: 'stretch' },
   policyStatLbl: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
   policyStatVal: { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
+  policyStatCell: { flex: 1, alignItems: 'flex-start', gap: 2 },
+  policyStatCellMid: { flex: 1, alignItems: 'center', gap: 2 },
+  policyStatCellLast: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  policyStatSep: { width: 1, backgroundColor: Colors.border, height: 24, marginHorizontal: 6 },
+  policyStatLbl: { fontSize: 9, color: Colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  policyStatVal: { fontSize: 13, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
 
   policyFooter: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginTop: 4, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
+    paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
   policyDue: { fontSize: 12, color: Colors.textLight, fontWeight: '500' },
+  policyDue: { fontSize: 11, color: Colors.textLight, fontWeight: '500' },
 
   recScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
+  recScroll: { gap: 14, paddingRight: 20, paddingBottom: 4, paddingLeft: 0 },
   recCard: {
     width: W * 0.78,
+    width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
@@ -993,6 +1038,8 @@ const sk = StyleSheet.create({
   card: {
     width: W * 0.78, backgroundColor: Colors.white,
     borderRadius: 14, marginRight: 16, padding: 16, gap: 12,
+    width: CARD_WIDTH, backgroundColor: Colors.white,
+    borderRadius: 14, marginRight: 14, padding: 16, gap: 12,
     borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
   top:    { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },

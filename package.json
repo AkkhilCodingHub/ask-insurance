@@ -22,6 +22,8 @@
     "build:all": "npm run build --workspace=web && npm run build --workspace=admin",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
+    "test": "npm run test:cases --workspace=api",
+    "test:cases": "npm run test:cases --workspace=api",
     "clean": "rm -rf node_modules mobile/node_modules admin/.next web/.next mobile/.expo mobile/android/.gradle mobile/android/build mobile/android/app/build mobile/ios/build mobile/ios/Pods dist api/dist"
   },
   "devDependencies": {

@@ -52,6 +52,24 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /api/plans/categories — list distinct plan types that currently have active plans
+router.get('/categories', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const raw = await prisma.plan.findMany({
+      where: { isActive: true },
+      select: { type: true },
+      distinct: ['type']
+    });
+    const categories = raw.map(r => r.type.toLowerCase()).filter(Boolean);
+    res.json({ categories });
+    return;
+  } catch (error) {
+    console.error('[Plans] Error fetching active categories:', error);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+});
+
 // GET /api/plans/:id — single plan details
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {

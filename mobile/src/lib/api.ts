@@ -503,7 +503,9 @@ export const plansApi = {
     );
   },
   get: (id: string) =>
-    request<{ plan: ApiPlan }>(`/api/plans/${id}`)
+    request<{ plan: ApiPlan }>(`/api/plans/${id}`),
+  categories: () =>
+    request<{ categories: string[] }>('/api/plans/categories'),
 };
 
 // ── Policies ──────────────────────────────────────────────────────────────────

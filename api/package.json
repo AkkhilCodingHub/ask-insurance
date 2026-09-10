@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "build": "tsc",
+    "test:cases": "tsx --test tests/cases/**/*.test.ts",
+    "test": "npm run test:cases",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

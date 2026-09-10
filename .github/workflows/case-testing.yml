@@ -1,0 +1,45 @@
+name: Automated Case Testing
+
+on:
+  push:
+    branches: [ main, develop, "fix/*", "feat/*" ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-case-tests:
+    name: Run Business Logic & API Case Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Workspace Dependencies
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Build Shared Package
+        run: npm run build --workspace=shared
+
+      - name: Generate Prisma Client
+        working-directory: api
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mysql://root:rootpassword@127.0.0.1:3306/ask_insurance' }}
+        run: npx prisma generate
+
+      - name: Run Test Cases
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci_environment_jwt_secret_must_be_long_enough_for_sha256' }}
+          NODE_ENV: test
+        run: npm run test:cases --workspace=api
+

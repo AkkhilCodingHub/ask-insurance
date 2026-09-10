@@ -166,6 +166,7 @@ function PlanCard({ plan }: { plan: ApiPlan }) {
 export default function PlansTab() {
   const colors = useThemeColors();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [search, setSearch]   = useState('');
   const [plans, setPlans]     = useState<ApiPlan[]>([]);
   const [page, setPage]       = useState(1);
@@ -178,6 +179,21 @@ export default function PlansTab() {
 
   // Debounce timer ref for search
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const res = await plansApi.categories();
+      if (res?.categories && Array.isArray(res.categories)) {
+        setAvailableCategories(res.categories.map(c => c.toLowerCase()));
+      }
+    } catch {
+      // Fallback silently if network offline
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   // Fetch a specific page; if page === 1 replace list, else append
   const fetchPage = useCallback(async (
@@ -220,6 +236,25 @@ export default function PlansTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory]);
 
+  // Only display categories that currently have active plans in the database
+  const displayedCategories = CATEGORIES.filter(cat => {
+    if (cat.key === 'All') return true;
+    if (availableCategories.length > 0) {
+      return availableCategories.includes(cat.key.toLowerCase());
+    }
+    if (plans.length > 0) {
+      return plans.some(p => p.type?.toLowerCase() === cat.key.toLowerCase());
+    }
+    return ['life', 'health', 'motor'].includes(cat.key.toLowerCase());
+  });
+
+  // If the active filter is no longer available in the database, revert to 'All'
+  useEffect(() => {
+    if (activeCategory !== 'All' && !displayedCategories.some(c => c.key === activeCategory)) {
+      setActiveCategory('All');
+    }
+  }, [displayedCategories, activeCategory]);
+
   // Debounce search
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -237,6 +272,7 @@ export default function PlansTab() {
   };
 
   const handleRefresh = () => {
+    loadCategories();
     fetchPage(1, activeCategory, search, true);
   };
 
@@ -306,7 +342,7 @@ export default function PlansTab() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.filterList}
         >
-          {CATEGORIES.map(cat => {
+          {displayedCategories.map(cat => {
             const active = activeCategory === cat.key;
             return (
               <TouchableOpacity
