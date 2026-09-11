@@ -146,17 +146,16 @@ function BuyPolicyContent() {
       const cleanPan = panNumber.trim().toUpperCase();
       const cleanAadhaar = aadhaarNumber.replace(/\D/g, "");
 
-      if (cleanPan && cleanAadhaar) {
-        await api.kyc.verifyInstant({
-          name: fullName.trim() || user?.name || "Valued Customer",
-          panNumber: cleanPan,
-          aadhaarNumber: cleanAadhaar,
-          dob: dob.trim(),
-          gender,
-          address: address.trim(),
-          pincode: pincode.trim(),
-        }).catch(() => {});
-      }
+
+      await api.kyc.verifyInstant({
+        name: fullName.trim() || user?.name || "Valued Customer",
+        panNumber: cleanPan,
+        aadhaarNumber: cleanAadhaar,
+        dob: dob.trim(),
+        gender,
+        address: address.trim(),
+        pincode: pincode.trim(),
+      }).catch(() => {});
 
       // 2. Buy policy in backend database    
       // 1. Buy policy in backend database (attaching KYC documents server-side)

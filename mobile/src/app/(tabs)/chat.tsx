@@ -13,7 +13,7 @@ import { Icon } from '@/components/Icon';
 import { Colors, BottomTabInset } from '@/constants/theme';
 import { useThemeColors } from '@/context/agent';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { supportChatFocusedRef } from '@/lib/supportChatFocused';
 import { useDialog } from '@/components/Dialog';
 
@@ -133,7 +133,6 @@ function EmptyChat({ onStart, loading }: { onStart: () => void; loading: boolean
 export default function ChatTab() {
   const colors    = useThemeColors();
   const { user }  = useAuth();
-  const router    = useRouter();
   const { alert } = useDialog();
 
   const [conversation, setConversation]   = useState<Conversation | null>(null);
