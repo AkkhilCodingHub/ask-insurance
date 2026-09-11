@@ -50,16 +50,19 @@ function delay(ms: number) {
 const getApiBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:4000";
 
-function serializeSession(u: Partial<AuthUser>, token?: string): string {
-  return JSON.stringify({
+function serializeSession(u: { id?: string; name?: string; phone?: string; email?: string; customerCode?: string; kycStatus?: string }, token?: string): string {
+  const session: Record<string, string | undefined> = {
     id: u.id,
     name: u.name,
     phone: u.phone,
     email: u.email,
     customerCode: u.customerCode,
     kycStatus: u.kycStatus,
-    ...(token ? { token } : {}),
-  });
+  };
+  if (token) {
+    session.token = token;
+  }
+  return JSON.stringify(session);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -112,8 +115,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       pincode: data.user.pincode,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
-    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
+    localStorage.setItem(STORAGE_KEY, serializeSession({
+      id: data.user.id,
+      name: data.user.name || "Customer",
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+    }, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     return authUser;
@@ -157,8 +166,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       gender: data.user.gender,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
-    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
+    localStorage.setItem(STORAGE_KEY, serializeSession({
+      id: data.user.id,
+      name: data.user.name || payload.name,
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+    }, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     setPendingPhone(null);
@@ -192,8 +207,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         dob: existing?.dob || "",
       };
       setUser(restoredUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(restoredUser));
-      localStorage.setItem(STORAGE_KEY, serializeSession(restoredUser));
+      localStorage.setItem(STORAGE_KEY, serializeSession({
+        id: restoredUser.id,
+        name: restoredUser.name,
+        phone: restoredUser.phone,
+      }));
     }
     return { isNewUser };
   }
@@ -209,8 +227,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     registeredPhones.add(phone);
     setUser(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-    localStorage.setItem(STORAGE_KEY, serializeSession(newUser));
+    localStorage.setItem(STORAGE_KEY, serializeSession({
+      id: newUser.id,
+      name: newUser.name,
+      phone: newUser.phone,
+    }));
   }
 
   async function loginWithEmailAndPhone(payload: { email: string; phone: string; name?: string }): Promise<AuthUser> {
@@ -237,8 +258,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Store token and user
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
-    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
+    localStorage.setItem(STORAGE_KEY, serializeSession({
+      id: data.user.id,
+      name: data.user.name || payload.name || "Customer",
+      phone: data.user.phone,
+      email: data.user.email,
+      customerCode: data.user.customerCode,
+      kycStatus: data.user.kycStatus,
+    }, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     return authUser;

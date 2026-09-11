@@ -803,11 +803,9 @@ const s = StyleSheet.create({
   actionIconPrimary: { backgroundColor: Colors.primary },
   actionLabel: { fontSize: 11, fontWeight: '700', color: Colors.text, textAlign: 'center', lineHeight: 16 },
 
-  hScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
   hScroll: { gap: 14, paddingRight: 20, paddingBottom: 4, paddingLeft: 0 },
 
   policyCard: {
-    width: W * 0.78,
     width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 14,
@@ -820,12 +818,9 @@ const s = StyleSheet.create({
     }),
   },
   policyInner:  { padding: 18 },
-  policyTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   policyTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   policyIconRing: { borderWidth: 1, borderRadius: 12, padding: 1 },
   policyIconInner: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  policyNum:    { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
-  policyProvider:{ fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   policyProvider:{ fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.2 },
   policyNum:    { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   policyStatusTag: {
@@ -835,7 +830,6 @@ const s = StyleSheet.create({
   policyStatusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.15 },
 
   policyStatGrid: {
-    flexDirection: 'row', paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
@@ -847,11 +841,6 @@ const s = StyleSheet.create({
     marginTop: 4,
     marginBottom: 8,
   },
-  policyStatCell: { flex: 1, alignItems: 'flex-start', gap: 4 },
-  policyStatCellLast: { alignItems: 'flex-end' },
-  policyStatSep: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginHorizontal: 6, alignSelf: 'stretch' },
-  policyStatLbl: { fontSize: 10, color: Colors.textMuted, fontWeight: '600' },
-  policyStatVal: { fontSize: 14, fontWeight: '800', color: Colors.text, letterSpacing: -0.3 },
   policyStatCell: { flex: 1, alignItems: 'flex-start', gap: 2 },
   policyStatCellMid: { flex: 1, alignItems: 'center', gap: 2 },
   policyStatCellLast: { flex: 1, alignItems: 'flex-end', gap: 2 },
@@ -861,17 +850,12 @@ const s = StyleSheet.create({
 
   policyFooter: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: 4, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
-    paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
     marginTop: 4, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
   },
-  policyDue: { fontSize: 12, color: Colors.textLight, fontWeight: '500' },
   policyDue: { fontSize: 11, color: Colors.textLight, fontWeight: '500' },
 
-  recScroll: { gap: 16, paddingRight: 8, paddingBottom: 4, paddingLeft: 2 },
   recScroll: { gap: 14, paddingRight: 20, paddingBottom: 4, paddingLeft: 0 },
   recCard: {
-    width: W * 0.78,
     width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 14,
@@ -1037,11 +1021,6 @@ const s = StyleSheet.create({
 
 const sk = StyleSheet.create({
   card: {
-    width: W * 0.78, backgroundColor: Colors.white,
-    borderRadius: 14, marginRight: 16, padding: 16, gap: 12,
-    width: CARD_WIDTH, backgroundColor: Colors.white,
-    borderRadius: 14, marginRight: 14, padding: 16, gap: 12,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.border,
     width: CARD_WIDTH,
     backgroundColor: Colors.white,
     borderRadius: 14,
