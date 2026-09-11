@@ -214,8 +214,6 @@ export const api = {
     },
     async getHistory() {
       return request("/payments/history");
-      const res = await request<{ payments: any[] }>("/payments");
-      return res?.payments || [];
     },
     async createRazorpayLink(policyId?: string, quoteId?: string) {
       return request<{ paymentUrl: string; paymentLinkId: string; amount: number }>("/payments/razorpay/create-link", {

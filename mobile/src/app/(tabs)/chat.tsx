@@ -14,6 +14,7 @@ import { Colors, BottomTabInset } from '@/constants/theme';
 import { useThemeColors } from '@/context/agent';
 import { authFieldStyles as af } from '@/constants/authFieldStyles';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { supportChatFocusedRef } from '@/lib/supportChatFocused';
 import { useDialog } from '@/components/Dialog';
 

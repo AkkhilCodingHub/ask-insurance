@@ -50,6 +50,18 @@ function delay(ms: number) {
 const getApiBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:4000";
 
+function serializeSession(u: Partial<AuthUser>, token?: string): string {
+  return JSON.stringify({
+    id: u.id,
+    name: u.name,
+    phone: u.phone,
+    email: u.email,
+    customerCode: u.customerCode,
+    kycStatus: u.kycStatus,
+    ...(token ? { token } : {}),
+  });
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     return authUser;
@@ -145,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     setPendingPhone(null);
@@ -179,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setUser(restoredUser);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(restoredUser));
+      localStorage.setItem(STORAGE_KEY, serializeSession(restoredUser));
     }
     return { isNewUser };
   }
@@ -195,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     registeredPhones.add(phone);
     setUser(newUser);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    localStorage.setItem(STORAGE_KEY, serializeSession(newUser));
   }
 
   async function loginWithEmailAndPhone(payload: { email: string; phone: string; name?: string }): Promise<AuthUser> {
@@ -222,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Store token and user
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...authUser, token: data.token }));
+    localStorage.setItem(STORAGE_KEY, serializeSession(authUser, data.token));
     registeredPhones.add(data.user.phone);
     setUser(authUser);
     return authUser;

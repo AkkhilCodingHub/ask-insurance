@@ -66,9 +66,15 @@ export const requireKyc = async (req: Request, res: Response, next: NextFunction
 
     if (!user) { res.status(401).json({ error: 'User not found' }); return; }
 
-    // If user has verified KYC or has both PAN and Aadhaar verified, allow through
-    if (user.kycStatus === 'verified' || (user.panNumber && user.aadhaarVerified)) {
-      if (user.kycStatus !== 'verified') {
+    // If user has verified KYC or has both PAN and Aadhaar verified (or supplied in request body), allow through
+    const hasKycInBody =
+      typeof req.body?.panNumber === 'string' &&
+      req.body.panNumber.trim().length === 10 &&
+      typeof req.body?.aadhaarNumber === 'string' &&
+      req.body.aadhaarNumber.replace(/\D/g, '').length >= 12;
+
+    if (user.kycStatus === 'verified' || (user.panNumber && user.aadhaarVerified) || hasKycInBody) {
+      if (user.kycStatus !== 'verified' && (user.panNumber && user.aadhaarVerified)) {
         await prisma.user.update({
           where: { id: userId },
           data: { kycStatus: 'verified', kycVerifiedAt: new Date() }

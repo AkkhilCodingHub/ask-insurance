@@ -159,6 +159,7 @@ function BuyPolicyContent() {
       }
 
       // 2. Buy policy in backend database    
+      // 1. Buy policy in backend database (attaching KYC documents server-side)
       const buyRes = await api.policies.buy({
         provider: insurer,
         type: isMotor ? "motor" : typeParam,

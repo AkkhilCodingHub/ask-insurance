@@ -163,7 +163,7 @@ const registerSendOtpSchema = z.object({
 
 router.post('/register-send-otp', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone: rawPhone, name, email } = registerSendOtpSchema.parse(req.body);
+    const { phone: rawPhone, email } = registerSendOtpSchema.parse(req.body);
     const phone = cleanPhone(rawPhone);
 
     if (!phone || !/^[6-9]\d{9}$/.test(phone)) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Shield, CheckCircle, AlertCircle, ArrowRight, User, Phone, Mail, Calendar } from "lucide-react";
+import { Shield, CheckCircle, AlertCircle, ArrowRight, User, Mail, Calendar } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { startOtpCooldown } from "@/lib/otpCooldown";
 
