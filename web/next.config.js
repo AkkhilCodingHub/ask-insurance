@@ -2,8 +2,8 @@
 const nextConfig = {
   transpilePackages: ['@ask/shared'],
   async rewrites() {
-    if (!process.env.ADMIN_URL) return [];
-    const url = process.env.ADMIN_URL.trim();
+    const defaultAdminUrl = 'http://admin.askinsurancebrokers.in';
+    const url = (process.env.ADMIN_URL || defaultAdminUrl).trim();
     const adminUrl = url.endsWith('/') ? url.slice(0, -1) : url;
     return [
       {

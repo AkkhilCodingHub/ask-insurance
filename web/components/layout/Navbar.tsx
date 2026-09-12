@@ -95,7 +95,7 @@ export function Navbar() {
         {/* Auth & Portal buttons */}
         <div className="nav-desktop-auth">
           <a
-            href="https://ask-insurance-admin-blue.vercel.app/"
+            href="http://admin.askinsurancebrokers.in"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -227,6 +227,27 @@ export function Navbar() {
             >
               Get Started
             </Link>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <a
+              href="http://admin.askinsurancebrokers.in"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "block",
+                padding: "10px 0",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                color: "var(--text-muted)",
+                fontSize: 13,
+                fontWeight: 700,
+                textAlign: "center",
+                textDecoration: "none",
+              }}
+              onClick={() => setMobileOpen(false)}
+            >
+              Admin Portal ↗
+            </a>
           </div>
         </div>
       )}
