@@ -93,7 +93,11 @@ export function generateRazorpayCheckoutHtml(opts: {
           color: "#0F52BA"
         },
         handler: function (response) {
-          window.location.href = 'askinsurance://payment-success?policyId=${opts.policyId}&paymentId=' + (response.razorpay_payment_id || 'pay_demo');
+          if (response && response.razorpay_payment_id) {
+            window.location.href = 'askinsurance://payment-success?policyId=${opts.policyId}&paymentId=' + encodeURIComponent(response.razorpay_payment_id) + '&orderId=' + encodeURIComponent(response.razorpay_order_id || '') + '&signature=' + encodeURIComponent(response.razorpay_signature || '');
+          } else {
+            window.location.href = 'askinsurance://payment-failed?policyId=${opts.policyId}';
+          }
         },
         modal: {
           ondismiss: function() {

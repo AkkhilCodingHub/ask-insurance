@@ -118,35 +118,36 @@ function BuyPolicyContent() {
     setErrorMessage("");
     try {
       const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-      await api.auth.sendOtp(cleanPhone).catch(() => {});
+      await api.auth.sendOtp(cleanPhone);
       startOtpCooldown(cleanPhone, 300);
       setConsentTimeLeft(300);
       setShowOtpModal(true);
     } catch (e: any) {
-      setErrorMessage(e?.message || "Failed to send OTP.");
+      setErrorMessage(e?.message || "Failed to send OTP. Please check phone number.");
     } finally {
       setOtpSending(false);
     }
   };
 
   const handleVerifyAndPay = async () => {
-    if (otpCode.trim().length !== 6) {
+    const cleanOtp = otpCode.trim();
+    if (cleanOtp.length !== 6) {
       setErrorMessage("Please enter the 6-digit consent OTP.");
       return;
     }
 
     setVerifying(true);
     setErrorMessage("");
-    const randomDigits = typeof window !== "undefined" && window.crypto?.randomUUID
-      ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
-      : String(Date.now()).slice(-6);
 
     try {
-      // 1. Sync instant KYC to backend DB
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
       const cleanPan = panNumber.trim().toUpperCase();
       const cleanAadhaar = aadhaarNumber.replace(/\D/g, "");
 
+      // 1. Verify consent OTP with real backend API
+      await api.auth.verifyOtp(cleanPhone, cleanOtp);
 
+      // 2. Sync instant KYC to backend DB
       await api.kyc.verifyInstant({
         name: fullName.trim() || user?.name || "Valued Customer",
         panNumber: cleanPan,
@@ -157,8 +158,7 @@ function BuyPolicyContent() {
         pincode: pincode.trim(),
       }).catch(() => {});
 
-      // 2. Buy policy in backend database    
-      // 1. Buy policy in backend database (attaching KYC documents server-side)
+      // 3. Buy policy in backend database
       const buyRes = await api.policies.buy({
         provider: insurer,
         type: isMotor ? "motor" : typeParam,
@@ -173,39 +173,18 @@ function BuyPolicyContent() {
       });
 
       const policyObj = buyRes?.policy || buyRes?.data;
-      if (policyObj && policyObj.id) {
-        // 3. Create Razorpay Payment Link
-        try {
-          const rzpRes = await api.payments.createRazorpayLink(policyObj.id);
-          if (rzpRes?.paymentUrl) {
-            window.open(rzpRes.paymentUrl, "_blank");
-          }
-        } catch (rzpErr) {
-          console.warn("[BuyPolicy] Razorpay link dispatch notice:", rzpErr);
-        }
-        setCreatedPolicy(policyObj);
-        setShowOtpModal(false);
-        setCheckoutStep(4);
-        if (refreshUser) refreshUser();
-      } else {
+      if (!policyObj || !policyObj.id) {
         throw new Error(buyRes?.error || "Failed to create policy schedule. Please check details.");
       }
+
+      // 4. Create and launch live Razorpay Payment Link
+      const rzpRes = await api.payments.createRazorpayLink(policyObj.id);
+      if (rzpRes?.paymentUrl) {
+        window.location.href = rzpRes.paymentUrl;
+      } else {
+        throw new Error("Unable to initialize Razorpay checkout gateway.");
+      }
     } catch (err: any) {
-      console.warn("[BuyPolicy] API payment fallback:", err);
-      // Fallback
-      const polObj = {
-        id: `pol_${Date.now()}`,
-        policyNumber: `ASK-${isMotor ? "MOT" : "HLT"}-2026-${randomDigits}`,
-        provider: insurer,
-        type: isMotor ? "motor" : typeParam,
-        sumInsured: idvParam || 500000,
-        premium: priceParam,
-        registrationNumber: isMotor ? vehicleRcNumber.trim().toUpperCase() : undefined,
-        status: "active",
-      };
-      setCreatedPolicy(polObj);
-      setShowOtpModal(false);
-      setCheckoutStep(4);
       console.error("[BuyPolicy] Purchase error:", err);
       setErrorMessage(err?.message || "Could not complete verification or payment. Please try again.");
     } finally {

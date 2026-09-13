@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, ActivityIndicator, Modal,
@@ -51,12 +51,17 @@ export default function BuyPolicyScreen() {
   const [nomineeRelation, setNomineeRelation] = useState('Spouse');
   const [nomineeAge, setNomineeAge] = useState('');
 
+  const initializedRef = useRef(false);
+
   useEffect(() => {
+    if (initializedRef.current) return;
     if (params.clientId) {
+      initializedRef.current = true;
       if (params.clientName) setFullName(params.clientName);
       if (params.clientPhone) setPhone(params.clientPhone);
       if (params.clientEmail) setEmail(params.clientEmail);
     } else if (user) {
+      initializedRef.current = true;
       if (user.name) setFullName(user.name);
       if (user.phone) setPhone(user.phone);
       if (user.email) setEmail(user.email);
@@ -80,7 +85,7 @@ export default function BuyPolicyScreen() {
         }
       }).catch(() => {});
     }
-  }, [user]);
+  }, [user, params.clientId]);
 
   // Flow State
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Proposer, 2: Nominee, 3: Review & OTP
@@ -217,16 +222,51 @@ export default function BuyPolicyScreen() {
       setShowOtpModal(false);
 
       if (linkRes?.paymentUrl) {
+        let authRes: any;
         try {
-          await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
-          const authRes = await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
-          if (authRes.type === 'success' && authRes.url) {
-            router.replace(authRes.url as any);
-            return;
-          }
+          authRes = await WebBrowser.openAuthSessionAsync(linkRes.paymentUrl, 'askinsurance://');
         } catch {
+          authRes = { type: 'cancel' };
           await WebBrowser.openBrowserAsync(linkRes.paymentUrl);
         }
+
+        if (authRes?.type === 'success' && authRes.url) {
+          const url: string = authRes.url;
+          if (url.includes('payment-success')) {
+            setCreatedPolicy(newPolicy);
+            await refreshUser();
+            router.replace(url as any);
+            return;
+          } else if (url.includes('payment-cancelled')) {
+            alert({
+              type: 'warning',
+              title: 'Payment Incomplete',
+              message: 'Payment was cancelled. Your policy has been saved in Pending status and can be paid anytime from My Policies.',
+            });
+            await refreshUser();
+            router.replace('/(tabs)/policies');
+            return;
+          } else if (url.includes('payment-failed')) {
+            alert({
+              type: 'error',
+              title: 'Payment Failed',
+              message: 'Razorpay payment could not be verified or processed. Please try again or use another payment method.',
+            });
+            await refreshUser();
+            router.replace('/(tabs)/policies');
+            return;
+          }
+        }
+
+        // Dismissed or cancelled browser window without payment completion
+        alert({
+          type: 'info',
+          title: 'Payment Pending',
+          message: 'Payment was not finished. Your policy proposal is safely saved under Pending in My Policies.',
+        });
+        await refreshUser();
+        router.replace('/(tabs)/policies');
+        return;
       }
 
       setCreatedPolicy(newPolicy);
@@ -490,33 +530,54 @@ export default function BuyPolicyScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={s.fieldLabel}>MOBILE NUMBER</Text>
                 <View style={af.inputRow}>
-                  <TextInput style={af.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+                  <TextInput
+                    style={af.input}
+                    value={phone}
+                    onChangeText={(t) => setPhone(t.replace(/\D/g, '').slice(0, 10))}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    placeholder="10-digit mobile"
+                  />
                 </View>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.fieldLabel}>DATE OF BIRTH</Text>
                 <View style={af.inputRow}>
-                  <TextInput style={af.input} value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" />
+                  <TextInput style={af.input} value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" maxLength={10} />
                 </View>
               </View>
             </View>
 
             <Text style={s.fieldLabel}>EMAIL ADDRESS</Text>
             <View style={af.inputRow}>
-              <TextInput style={af.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+              <TextInput style={af.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="name@example.com" />
             </View>
 
             <View style={s.twoCol}>
               <View style={{ flex: 1 }}>
                 <Text style={s.fieldLabel}>PAN NUMBER</Text>
                 <View style={af.inputRow}>
-                  <TextInput style={af.input} value={panNumber} onChangeText={setPanNumber} autoCapitalize="characters" />
+                  <TextInput
+                    style={af.input}
+                    value={panNumber}
+                    onChangeText={(t) => setPanNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))}
+                    autoCapitalize="characters"
+                    maxLength={10}
+                    placeholder="10-digit PAN"
+                  />
                 </View>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.fieldLabel}>AADHAAR NUMBER</Text>
                 <View style={af.inputRow}>
-                  <TextInput style={af.input} value={aadhaarNumber} onChangeText={setAadhaarNumber} keyboardType="numeric" />
+                  <TextInput
+                    style={af.input}
+                    value={aadhaarNumber}
+                    onChangeText={(t) => setAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
+                    keyboardType="numeric"
+                    maxLength={12}
+                    placeholder="12-digit Aadhaar"
+                  />
                 </View>
               </View>
             </View>
@@ -528,7 +589,14 @@ export default function BuyPolicyScreen() {
 
             <Text style={s.fieldLabel}>PINCODE</Text>
             <View style={af.inputRow}>
-              <TextInput style={af.input} value={pincode} onChangeText={setPincode} keyboardType="numeric" />
+              <TextInput
+                style={af.input}
+                value={pincode}
+                onChangeText={(t) => setPincode(t.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="numeric"
+                maxLength={6}
+                placeholder="6-digit pincode"
+              />
             </View>
 
             {isMotor && (
@@ -542,6 +610,7 @@ export default function BuyPolicyScreen() {
                       onChangeText={(t) => setDrivingLicenseNumber(t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16))}
                       placeholder="e.g. DL-0420110012345"
                       autoCapitalize="characters"
+                      maxLength={16}
                     />
                   </View>
                 </View>
@@ -551,9 +620,10 @@ export default function BuyPolicyScreen() {
                     <TextInput
                       style={af.input}
                       value={vehicleRcNumber}
-                      onChangeText={(t) => setVehicleRcNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      onChangeText={(t) => setVehicleRcNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
                       placeholder="e.g. DL01AB1234"
                       autoCapitalize="characters"
+                      maxLength={12}
                     />
                   </View>
                 </View>
@@ -593,7 +663,14 @@ export default function BuyPolicyScreen() {
 
             <Text style={s.fieldLabel}>NOMINEE AGE (YEARS)</Text>
             <View style={af.inputRow}>
-              <TextInput style={af.input} value={nomineeAge} onChangeText={setNomineeAge} keyboardType="numeric" placeholder="e.g. 28" />
+              <TextInput
+                style={af.input}
+                value={nomineeAge}
+                onChangeText={(t) => setNomineeAge(t.replace(/\D/g, '').slice(0, 3))}
+                keyboardType="numeric"
+                maxLength={3}
+                placeholder="e.g. 28"
+              />
             </View>
           </View>
         )}
@@ -705,17 +782,7 @@ export default function BuyPolicyScreen() {
                 return;
               }
 
-              // Auto-sync KYC to database & Admin Panel
-              kycApi.verifyInstant({
-                name: cleanName,
-                panNumber: cleanPan,
-                aadhaarNumber: cleanAadhaar,
-                dob: cleanDob,
-                gender,
-                address: cleanAddress,
-                pincode: cleanPincode,
-              }).then(() => refreshUser()).catch(() => {});
-
+              // Advance to Step 2 smoothly
               setStep(2);
             }}
             activeOpacity={0.85}

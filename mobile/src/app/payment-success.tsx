@@ -104,8 +104,10 @@ export default function PaymentSuccessScreen() {
                 <Text style={styles.scheduleHeaderLabel}>POLICY SCHEDULE NUMBER</Text>
                 <Text style={styles.scheduleNumber}>{policy.policyNumber}</Text>
               </View>
-              <View style={styles.statusChip}>
-                <Text style={styles.statusChipText}>ACTIVE</Text>
+              <View style={[styles.statusChip, (policy.paymentStatus !== 'paid' && policy.status !== 'active') && { backgroundColor: '#FEF3C7' }]}>
+                <Text style={[styles.statusChipText, (policy.paymentStatus !== 'paid' && policy.status !== 'active') && { color: '#D97706' }]}>
+                  {policy.paymentStatus === 'paid' || policy.status === 'active' ? 'ACTIVE' : 'PAYMENT PENDING'}
+                </Text>
               </View>
             </View>
 

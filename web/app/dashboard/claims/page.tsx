@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   X,
@@ -11,6 +11,7 @@ import {
   AlertCircle,
   XCircle,
 } from "lucide-react";
+import { api } from "@/lib/api";
 import { MY_CLAIMS } from "@/lib/mock";
 import type { Claim } from "@/lib/mock";
 
@@ -276,7 +277,20 @@ function FileClaimModal({ onClose }: { onClose: () => void }) {
     Travel: "#D97706",
   };
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (type && amount && description) {
+      try {
+        await api.claims.create({
+          policyNumber: 'ASK-CLAIM-REF',
+          type: type.toLowerCase(),
+          amount: Number(amount),
+          description,
+          incidentDate: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('API claim submit notice:', e);
+      }
+    }
     setSubmitted(true);
   }
 
@@ -633,6 +647,26 @@ function FileClaimModal({ onClose }: { onClose: () => void }) {
 
 export default function ClaimsPage() {
   const [showModal, setShowModal] = useState(false);
+  const [claimsList, setClaimsList] = useState<any[]>(MY_CLAIMS);
+
+  useEffect(() => {
+    api.claims.getMyClaims()
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped = res.map((c: any) => ({
+            id: c.id,
+            policyNumber: c.policy?.policyNumber || c.policyNumber || 'POL-REF',
+            type: (c.type || 'Health').charAt(0).toUpperCase() + (c.type || 'Health').slice(1),
+            amount: c.amount ? `₹${c.amount.toLocaleString('en-IN')}` : '₹0',
+            date: c.submittedDate ? new Date(c.submittedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+            status: c.status === 'approved' ? 'Approved' : c.status === 'settled' ? 'Settled' : c.status === 'rejected' ? 'Rejected' : 'Processing',
+            hospital: c.hospitalOrGarage || c.description || 'General Claim',
+          }));
+          setClaimsList(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div style={{ width: "100%" }}>
@@ -660,7 +694,7 @@ export default function ClaimsPage() {
             My Claims
           </h1>
           <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
-            {MY_CLAIMS.length} total claims
+            {claimsList.length} total claims
           </p>
         </div>
         <button
@@ -702,16 +736,16 @@ export default function ClaimsPage() {
         }}
       >
         {[
-          { label: "Total Claims", value: MY_CLAIMS.length, color: "var(--primary)", bg: "var(--primary-light)" },
+          { label: "Total Claims", value: claimsList.length, color: "var(--primary)", bg: "var(--primary-light)" },
           {
             label: "Approved",
-            value: MY_CLAIMS.filter((c) => c.status === "Approved").length,
+            value: claimsList.filter((c) => c.status === "Approved").length,
             color: "#059669",
             bg: "#ECFDF5",
           },
           {
             label: "Processing",
-            value: MY_CLAIMS.filter((c) => c.status === "Processing").length,
+            value: claimsList.filter((c) => c.status === "Processing").length,
             color: "#D97706",
             bg: "#FFFBEB",
           },
@@ -748,11 +782,11 @@ export default function ClaimsPage() {
       </div>
 
       {/* Claims list */}
-      {MY_CLAIMS.map((claim) => (
+      {claimsList.map((claim) => (
         <ClaimCard key={claim.id} claim={claim} />
       ))}
 
-      {MY_CLAIMS.length === 0 && (
+      {claimsList.length === 0 && (
         <div
           style={{
             textAlign: "center",

@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Keyboard, Image, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '@/context/auth';
 import { useAgent } from '@/context/agent';
 import { Icon } from '@/components/Icon';
@@ -16,18 +16,20 @@ import { useDialog } from '@/components/Dialog';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, directLogin } = useAuth();
   const { agent, login: agentLogin } = useAgent();
   const { alert, confirm } = useDialog();
 
-  // If already authenticated (or restored after force-close), route into app
+  // If already authenticated (or restored after force-close), route into app only when focused on /login
   useEffect(() => {
+    if (pathname !== '/login') return;
     if (user) {
       router.replace('/(tabs)');
     } else if (agent) {
       router.replace('/(agent)/quotes' as any);
     }
-  }, [user, agent, router]);
+  }, [user, agent, router, pathname]);
 
   const [mode, setMode] = useState<'customer' | 'agent'>('customer');
   const [customerInputType, setCustomerInputType] = useState<'phone' | 'customerId'>('phone');

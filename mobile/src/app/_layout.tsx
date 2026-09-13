@@ -69,6 +69,7 @@ function RootContent() {
         <Stack.Screen name="payments"     options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="payment-success" options={{ animation: 'fade' }} />
         <Stack.Screen name="buy-policy"   options={{ animation: 'slide_from_bottom', gestureEnabled: true, gestureDirection: 'vertical' }} />
+        <Stack.Screen name="buy-policy"   options={{ animation: 'slide_from_right', gestureEnabled: false }} />
         <Stack.Screen name="kyc"          options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="kyc-callback" options={{ animation: 'none' }} />
 

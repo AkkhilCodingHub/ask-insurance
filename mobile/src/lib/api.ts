@@ -627,8 +627,6 @@ export const paymentsApi = {
     post<{ paymentUrl: string; paymentLinkId: string; amount: number }>(
       '/api/payments/razorpay/create-link', { policyId, quoteId }, true
     ),
-  verifyTestPayment: (quoteId?: string, policyId?: string) =>
-    post<{ success: boolean; message: string }>('/api/payments/verify-test-payment', { quoteId, policyId }, true),
   savePushToken: (token: string) => put<void>('/api/users/push-token', { token }, true),
   linkAgent: (agentCode: string) =>
     post<{ success: boolean; agent: { id: string; name: string; agentCode: string }; message: string }>(

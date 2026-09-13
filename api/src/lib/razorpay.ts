@@ -5,7 +5,7 @@ dotenv.config();
 
 let razorpayClient: Razorpay | null = null;
 
-function getRazorpay(): Razorpay | null {
+export function getRazorpay(): Razorpay | null {
   if (!razorpayClient) {
     const key_id = process.env.RAZORPAY_KEY_ID ?? '';
     const key_secret = process.env.RAZORPAY_KEY_SECRET ?? '';
@@ -42,14 +42,10 @@ export async function createRazorpayOrder(opts: {
       return order;
     } catch (err: any) {
       console.error('[razorpay] order.create error:', err);
+      throw err;
     }
   }
-  return {
-    id: `order_sim_${Date.now()}`,
-    amount: amountPaise,
-    currency: 'INR',
-    status: 'created',
-  };
+  throw new Error('Razorpay is not configured on server (missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET)');
 }
 
 export async function createPaymentLink(opts: {
@@ -67,7 +63,7 @@ export async function createPaymentLink(opts: {
   
   // Return the first-party branded ASK Insurance Brokers checkout interface
   return {
-    id: `plink_ask_${Date.now()}`,
+    id: `plink_${opts.policyId}`,
     short_url: `${apiUrl}/api/payments/checkout/${opts.policyId}`,
     amount: opts.amount,
     status: 'created',

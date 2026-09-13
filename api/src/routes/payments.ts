@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireKyc } from '../middleware/auth';
-import { createPaymentLink } from '../lib/razorpay';
+import { createPaymentLink, createRazorpayOrder, getRazorpay } from '../lib/razorpay';
 import { sendPush } from '../lib/push';
 import { calculateAndApplyBrokerage } from '../lib/brokerage';
 
@@ -273,6 +273,24 @@ router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: 
     const insurer = policy.provider || 'Insurance Provider';
     const policyType = (policy.type || 'Insurance').toUpperCase();
 
+    // Create real Razorpay order
+    let rzpOrderId = '';
+    try {
+      const order = await createRazorpayOrder({
+        amount: amountInRupees,
+        policyId: policy.id,
+        policyNumber: policy.policyNumber,
+        customerName: proposerName,
+        customerPhone: phone,
+        description: `${policyType} Insurance — ${insurer}`,
+      });
+      if (order && order.id) {
+        rzpOrderId = order.id;
+      }
+    } catch (orderErr) {
+      console.warn('[checkout] real order creation notice:', orderErr);
+    }
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -348,6 +366,7 @@ router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: 
         currency: "INR",
         name: "ASK Insurance Brokers",
         description: "${policyType} Insurance — ${insurer}",
+        ${rzpOrderId ? `order_id: "${rzpOrderId}",` : ''}
         image: "https://ask-api.bitopayments.com/logo.png",
         prefill: {
           name: "${proposerName}",
@@ -359,10 +378,16 @@ router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: 
         },
         handler: function (response) {
           window.location.href = '/api/payments/razorpay/callback?policyId=${policy.id}&paymentId=' + (response.razorpay_payment_id || 'test');
+          var redirectUrl = '/api/payments/razorpay/callback?policyId=' + encodeURIComponent('${policy.id}') +
+            '&paymentId=' + encodeURIComponent(response.razorpay_payment_id || '') +
+            '&orderId=' + encodeURIComponent(response.razorpay_order_id || '') +
+            '&signature=' + encodeURIComponent(response.razorpay_signature || '');
+          window.location.href = redirectUrl;
         },
         modal: {
           ondismiss: function() {
             console.log('Payment modal dismissed');
+            window.location.href = 'askinsurance://payment-cancelled?policyId=' + encodeURIComponent('${policy.id}');
           }
         }
       };
@@ -386,142 +411,89 @@ router.get(['/checkout/:policyId', '/payments/checkout/:policyId'], async (req: 
   }
 });
 
-// GET Razorpay callback route
+// GET Razorpay callback route (Verifies real payment & activates policy)
 router.get('/razorpay/callback', async (req: Request, res: Response): Promise<void> => {
-  const { policyId, paymentId } = req.query;
-  if (policyId) {
-    try {
-      const pid = String(policyId);
-      const policy = await prisma.policy.findUnique({ where: { id: pid } });
-      if (policy && policy.paymentStatus !== 'paid') {
-        await prisma.$transaction(async (tx) => {
-          await tx.policy.update({
-            where: { id: pid },
-            data: { status: 'active', paymentStatus: 'paid' },
-          });
-          await tx.payment.create({
-            data: {
-              amount: policy.premium,
-              currency: 'INR',
-              status: 'success',
-              provider: 'razorpay',
-              providerRef: String(paymentId || `pay_${Date.now()}`),
-              policyId: pid,
-              userId: policy.userId,
-            },
-          });
-          await tx.notification.create({
-            data: {
-              userId: policy.userId,
-              type: 'general',
-              title: 'Policy Activated! 🎉',
-              body: `Your ${policy.type} policy (${policy.policyNumber}) from ASK Insurance Brokers is now active.`,
-            },
-          }).catch(() => {});
-          await calculateAndApplyBrokerage(tx, pid).catch(() => {});
-        });
-      }
-    } catch (e) {
-      console.error('[razorpay callback activation error]:', e);
+  const { policyId, paymentId, orderId, signature } = req.query;
+  const pid = policyId ? String(policyId) : '';
+  const pId = paymentId ? String(paymentId) : '';
+  const oId = orderId ? String(orderId) : '';
+  const sig = signature ? String(signature) : '';
+
+  if (!pid || !pId) {
+    res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=missing_payment_id`);
+    return;
+  }
+
+  // 1. Verify HMAC signature if orderId & signature were provided
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (keySecret && oId && sig) {
+    const expected = crypto.createHmac('sha256', keySecret).update(`${oId}|${pId}`).digest('hex');
+    if (expected !== sig) {
+      console.error('[Razorpay verify] Signature mismatch');
+      res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=invalid_signature`);
+      return;
     }
   }
-  const redirectUrl = policyId
-    ? `askinsurance://payment-success?policyId=${encodeURIComponent(String(policyId))}&paymentId=${encodeURIComponent(String(paymentId || 'pay_live'))}&status=success`
-    : 'askinsurance://payment-success';
-  res.redirect(redirectUrl);
-});
-// ── Test Mode Verification Endpoint (Instant Activation) ─────────────────────
-router.post('/verify-test-payment', authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = req.userId!;
-    const { quoteId, policyId } = z.object({
-      quoteId:  z.string().optional(),
-      policyId: z.string().optional(),
-    }).parse(req.body);
 
-    let policy = await prisma.policy.findFirst({
-      where: {
-        userId,
-        OR: [
-          ...(policyId ? [{ id: policyId }] : []),
-          ...(quoteId ? [{ quoteId }] : []),
-        ]
+  // 2. Direct Razorpay payment status check
+  const client = getRazorpay();
+  if (client && pId.startsWith('pay_')) {
+    try {
+      const rzpPayment = await (client.payments as any).fetch(pId);
+      if (rzpPayment.status !== 'captured' && rzpPayment.status !== 'authorized') {
+        console.warn('[Razorpay verify] Payment status not captured/authorized:', rzpPayment.status);
+        res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=payment_not_captured`);
+        return;
       }
-    });
-
-    if (!policy && quoteId) {
-      const quote = await prisma.quote.findFirst({ where: { id: quoteId, userId } });
-      if (quote && quote.adminResponse) {
-        let ar: { insurer: string; totalPremium: number; notes?: string } = { insurer: 'ASK Insurance', totalPremium: 0 };
-        try { ar = JSON.parse(quote.adminResponse as string); } catch {}
-        let details: Record<string, unknown> = {};
-        try { details = JSON.parse(quote.details as string); } catch {}
-        const now = new Date();
-        policy = await prisma.policy.create({
-          data: {
-            policyNumber: `APP${Date.now()}`,
-            type: quote.type,
-            provider: ar.insurer,
-            sumInsured: (details.sumInsured as number) ?? 0,
-            premium: ar.totalPremium,
-            startDate: now,
-            endDate: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
-            status: 'pending',
-            paymentStatus: 'pending',
-            notes: ar.notes ?? null,
-            userId,
-            quoteId: quote.id,
-          }
-        });
-      }
+    } catch (fetchErr) {
+      console.error('[Razorpay verify] Payment fetch error:', fetchErr);
+      res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=fetch_failed`);
+      return;
     }
+  }
 
+  try {
+    const policy = await prisma.policy.findUnique({ where: { id: pid } });
     if (!policy) {
-      res.status(404).json({ error: 'Policy not found' });
+      res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=policy_not_found`);
       return;
     }
 
     if (policy.paymentStatus !== 'paid') {
-      const targetPolicyId = policy.id;
       await prisma.$transaction(async (tx) => {
         await tx.policy.update({
-          where: { id: targetPolicyId },
-          data:  { status: 'active', paymentStatus: 'paid' }
+          where: { id: pid },
+          data: { status: 'active', paymentStatus: 'paid' },
         });
         await tx.payment.create({
           data: {
-            amount:      policy!.premium,
-            currency:    'INR',
-            status:      'success',
-            provider:    'razorpay_test',
-            providerRef: `test_${Date.now()}`,
-            policyId:    targetPolicyId,
-            userId,
-          }
+            amount: policy.premium,
+            currency: 'INR',
+            status: 'success',
+            provider: 'razorpay',
+            providerRef: pId,
+            policyId: pid,
+            userId: policy.userId,
+          },
         });
-        if (policy!.quoteId) {
-          await tx.quote.update({
-            where: { id: policy!.quoteId },
-            data:  { status: 'converted' }
-          }).catch(() => {});
-        }
         await tx.notification.create({
           data: {
-            userId,
-            type:   'general',
-            title:  'Payment Successful! 🎉',
-            body:   `Your ${policy!.type} insurance policy is now active.`,
-          }
+            userId: policy.userId,
+            type: 'general',
+            title: 'Policy Activated! 🎉',
+            body: `Your ${policy.type} policy (${policy.policyNumber}) from ASK Insurance Brokers is now active.`,
+          },
         }).catch(() => {});
-        await calculateAndApplyBrokerage(tx, targetPolicyId).catch(() => {});
+        await calculateAndApplyBrokerage(tx, pid).catch(() => {});
       });
     }
-
-    res.json({ success: true, message: 'Policy activated successfully' });
   } catch (e) {
-    console.error('[payments/verify-test-payment] error:', e);
-    res.status(500).json({ error: 'Failed to verify payment' });
+    console.error('[razorpay callback activation error]:', e);
+    res.redirect(`askinsurance://payment-failed?policyId=${encodeURIComponent(pid)}&error=db_error`);
+    return;
   }
+
+  res.redirect(`askinsurance://payment-success?policyId=${encodeURIComponent(pid)}&paymentId=${encodeURIComponent(pId)}&status=success`);
 });
 
 export { router as paymentsRouter };

@@ -146,27 +146,13 @@ function PaymentSheet({
     }
   };
 
-  const handleTestPaymentConfirm = async () => {
-    if (!quote) return;
-    setLoading(true);
-    try {
-      await paymentsApi.verifyTestPayment(quote.id);
-      onDone();
-    } catch {
-      onDone();
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const openInAppPayment = async () => {
     if (!payUrl) return;
     setLoading(true);
     try {
       const res = await WebBrowser.openAuthSessionAsync(payUrl, 'askinsurance://');
       try { await WebBrowser.dismissBrowser(); } catch {}
-      if (res.type === 'success' && quote) {
-        await paymentsApi.verifyTestPayment(quote.id).catch(() => {});
+      if (res.type === 'success' && res.url?.includes('payment-success')) {
         onDone();
       }
     } catch {
@@ -387,15 +373,6 @@ function PaymentSheet({
                   <Text style={ps.ctaBtnText}>Pay via In-App Checkout</Text>
                 </TouchableOpacity>
 
-                {/* 1-Tap Test Mode Payment Confirmation */}
-                <TouchableOpacity
-                  style={[ps.ctaBtn, { backgroundColor: '#8B5CF6', marginTop: 4 }]}
-                  onPress={handleTestPaymentConfirm}
-                  activeOpacity={0.85}
-                >
-                  <Icon name="checkmark-circle-outline" size={20} color={Colors.white} />
-                  <Text style={ps.ctaBtnText}>⚡ Confirm Test Mode Payment (Instant)</Text>
-                </TouchableOpacity>
               </View>
 
               <Text style={ps.footnote}>

@@ -208,6 +208,8 @@ router.post('/', authenticate, requireKyc, async (req: Request, res: Response): 
         startDate: now,
         endDate: new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
         userId: policyUserId,
+        status: 'pending',
+        paymentStatus: 'pending',
       }
     });
 
