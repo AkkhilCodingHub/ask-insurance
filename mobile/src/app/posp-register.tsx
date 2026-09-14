@@ -215,13 +215,8 @@ export default function PospRegisterScreen() {
     }
   };
 
-  const handleDownloadSyllabus = async () => {
-    const pdfUrl = 'https://raw.githubusercontent.com/AkkhilCodingHub/ask-insurance/main/docs/IC-38-General-Syllabus.pdf';
-    try {
-      await Linking.openURL(pdfUrl);
-    } catch {
-      setShowSyllabusModal(true);
-    }
+  const handleDownloadSyllabus = () => {
+    setShowSyllabusModal(true);
   };
 
   return (

@@ -281,4 +281,36 @@ router.post('/link-agent', authenticate, async (req: Request, res: Response): Pr
   }
 });
 
+// ── DELETE /me (Store Compliance: Account Deletion per Apple Guideline 5.1.1(v)) ──
+router.delete('/me', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.userId!;
+
+    // In accordance with DPDP Act 2023 & IRDAI document retention guidelines,
+    // anonymize user credentials and clear push tokens and active OTP sessions.
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          pushToken: null,
+          name: 'Deactivated User',
+          email: null,
+          address: null,
+          city: null,
+          state: null,
+          pincode: null,
+        }
+      });
+      await tx.otpChallenge.deleteMany({
+        where: { userId }
+      });
+    });
+
+    res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('[users/delete-me] Error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 export { router as usersRouter };

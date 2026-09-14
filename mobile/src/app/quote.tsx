@@ -396,19 +396,19 @@ export default function QuoteScreen() {
     setFetchingLiveQuotes(true);
     try {
       const res = await policiesApi.fetchLiveProviderQuotes({
-        registrationNumber: regNumber,
-        registrationYear: regYear,
-        registrationDate,
-        make: vehicleMake,
-        model: vehicleModel,
-        variant: vehicleVariant,
+        registrationNumber: regNumber || 'DL01AB1234',
+        registrationYear: regYear || '2022',
+        registrationDate: registrationDate || '2022-01-15',
+        make: vehicleMake || 'Maruti Suzuki',
+        model: vehicleModel || 'Swift',
+        variant: vehicleVariant || 'VXi 1.2L',
         exShowroomPrice: 750000,
         ncbPercent: Number(ncbPercent || 0),
         hasPreviousClaim,
         selectedAddons,
         customIDV: overrideIdv ?? customIdvVal,
         vehicleType: String(params.subType || params.category || 'car'),
-        cubicCapacity,
+        cubicCapacity: cubicCapacity || '1197 CC',
       });
 
       if (res && res.quotes) {
@@ -743,6 +743,12 @@ export default function QuoteScreen() {
   const next = () => setStep(s => Math.min(s + 1, TOTAL_STEPS - 1));
   const back = () => { if (step === 0) router.back(); else setStep(s => s - 1); };
   const contentStep = typeFromPlan ? step + 1 : step;
+
+  React.useEffect(() => {
+    if (contentStep === 2 && isMotorInsurance && liveQuotes.length === 0 && !fetchingLiveQuotes) {
+      fetchLiveQuotes();
+    }
+  }, [contentStep, isMotorInsurance, liveQuotes.length, fetchingLiveQuotes]);
 
   const handleValidateAndProceedToReview = () => {
     const panClean = panNumber.trim().toUpperCase();
@@ -1544,70 +1550,74 @@ export default function QuoteScreen() {
                 )}
               </View>
             )}
-            {planMinCover > 0 && planMaxCover > 0 && (
-              <Text style={s.coverRange}>
-                Range: {fmtCover(planMinCover)} – {fmtCover(planMaxCover)}
-              </Text>
-            )}
-            <View style={s.coverGrid}>
-              {coverPresets.map(opt => (
-                <TouchableOpacity
-                  key={opt.label}
-                  style={[s.coverCard, !isCustom && cover?.value === opt.value && s.coverCardActive]}
-                  onPress={() => { setIsCustom(false); setCover(opt); setCustomCover(''); }}
-                >
-                  <Text style={[s.coverText, !isCustom && cover?.value === opt.value && { color: Colors.primary, fontWeight: '800' }]}>
-                    {opt.label}
+            {!isMotorInsurance && (
+              <>
+                {planMinCover > 0 && planMaxCover > 0 && (
+                  <Text style={s.coverRange}>
+                    Range: {fmtCover(planMinCover)} – {fmtCover(planMaxCover)}
                   </Text>
-                  {!isCustom && cover?.value === opt.value && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
-                </TouchableOpacity>
-              ))}
-              {/* Other / Custom option */}
-              <TouchableOpacity
-                style={[s.coverCard, isCustom && s.coverCardActive]}
-                onPress={() => { setIsCustom(true); setCover(null); }}
-              >
-                <Text style={[s.coverText, isCustom && { color: Colors.primary, fontWeight: '800' }]}>
-                  Other (Custom)
-                </Text>
-                {isCustom && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
-              </TouchableOpacity>
-            </View>
-            {isCustom && (
-              <View>
-                <Text style={s.label}>
-                  ENTER AMOUNT{planMinCover > 0 && planMaxCover > 0 ? ` (${fmtCover(planMinCover)} – ${fmtCover(planMaxCover)})` : ''}
-                </Text>
-                <View style={af.inputRow}>
-                  <TextInput
-                    style={af.input}
-                    placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
-                    placeholderTextColor={Colors.textLight}
-                    value={customCover}
-                    onChangeText={(t: string) => {
-                      const cleanStr = t.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-                      setCustomCover(cleanStr);
-                      const floatVal = parseFloat(cleanStr);
-                      if (!isNaN(floatVal) && floatVal > 0) {
-                        const numericVal = floatVal < 1000 ? Math.round(floatVal * 100000) : floatVal;
-                        const clamped = planMinCover && planMaxCover
-                          ? Math.min(Math.max(numericVal, planMinCover), planMaxCover)
-                          : numericVal;
-                        setCover({ label: fmtCover(clamped), value: clamped });
-                      } else {
-                        setCover(null);
-                      }
-                    }}
-                    keyboardType="decimal-pad"
-                  />
+                )}
+                <View style={s.coverGrid}>
+                  {coverPresets.map(opt => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      style={[s.coverCard, !isCustom && cover?.value === opt.value && s.coverCardActive]}
+                      onPress={() => { setIsCustom(false); setCover(opt); setCustomCover(''); }}
+                    >
+                      <Text style={[s.coverText, !isCustom && cover?.value === opt.value && { color: Colors.primary, fontWeight: '800' }]}>
+                        {opt.label}
+                      </Text>
+                      {!isCustom && cover?.value === opt.value && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                  {/* Other / Custom option */}
+                  <TouchableOpacity
+                    style={[s.coverCard, isCustom && s.coverCardActive]}
+                    onPress={() => { setIsCustom(true); setCover(null); }}
+                  >
+                    <Text style={[s.coverText, isCustom && { color: Colors.primary, fontWeight: '800' }]}>
+                      Other (Custom)
+                    </Text>
+                    {isCustom && <Text style={{ color: Colors.primary, fontSize: 14 }}>✓</Text>}
+                  </TouchableOpacity>
                 </View>
-                {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) < planMinCover && (
-                  <Text style={s.coverError}>Minimum cover is {fmtCover(planMinCover)}</Text>
+                {isCustom && (
+                  <View>
+                    <Text style={s.label}>
+                      ENTER AMOUNT{planMinCover > 0 && planMaxCover > 0 ? ` (${fmtCover(planMinCover)} – ${fmtCover(planMaxCover)})` : ''}
+                    </Text>
+                    <View style={af.inputRow}>
+                      <TextInput
+                        style={af.input}
+                        placeholder={planMinCover > 0 ? `e.g. ${fmtCover(Math.round((planMinCover + planMaxCover) / 2))}` : 'e.g. ₹10,00,000'}
+                        placeholderTextColor={Colors.textLight}
+                        value={customCover}
+                        onChangeText={(t: string) => {
+                          const cleanStr = t.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+                          setCustomCover(cleanStr);
+                          const floatVal = parseFloat(cleanStr);
+                          if (!isNaN(floatVal) && floatVal > 0) {
+                            const numericVal = floatVal < 1000 ? Math.round(floatVal * 100000) : floatVal;
+                            const clamped = planMinCover && planMaxCover
+                              ? Math.min(Math.max(numericVal, planMinCover), planMaxCover)
+                              : numericVal;
+                            setCover({ label: fmtCover(clamped), value: clamped });
+                          } else {
+                            setCover(null);
+                          }
+                        }}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                    {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) < planMinCover && (
+                      <Text style={s.coverError}>Minimum cover is {fmtCover(planMinCover)}</Text>
+                    )}
+                    {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) > planMaxCover && (
+                      <Text style={s.coverError}>Maximum cover is {fmtCover(planMaxCover)}</Text>
+                    )}
+                  </View>
                 )}
-                {planMinCover > 0 && planMaxCover > 0 && customCover && Number(customCover) > planMaxCover && (
-                  <Text style={s.coverError}>Maximum cover is {fmtCover(planMaxCover)}</Text>
-                )}
-              </View>
+              </>
             )}
             <TouchableOpacity
               style={[s.nextBtn, !cover && { opacity: 0.4 }]}

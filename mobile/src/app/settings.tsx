@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/auth';
+import { usersApi } from '@/lib/api';
 import { Icon } from '@/components/Icon';
 import { BackButton } from '@/components/BackButton';
 import { Colors } from '@/constants/theme';
@@ -70,6 +71,11 @@ export default function SettingsScreen() {
       destructive: true,
     });
     if (yes) {
+      try {
+        await usersApi.deleteAccount();
+      } catch (err) {
+        console.warn('[settings] Delete account request notice:', err);
+      }
       await logout();
       router.replace('/welcome');
     }

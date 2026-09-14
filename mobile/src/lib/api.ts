@@ -484,7 +484,10 @@ export const usersApi = {
   }) => put<{ user: ApiUser }>('/api/users/profile', data, true),
 
   dashboard: () =>
-    request<DashboardData>('/api/users/dashboard', {}, true)
+    request<DashboardData>('/api/users/dashboard', {}, true),
+
+  deleteAccount: () =>
+    request<{ success: boolean; message: string }>('/api/users/me', { method: 'DELETE' }, true),
 };
 
 // ── Plans ─────────────────────────────────────────────────────────────────────
