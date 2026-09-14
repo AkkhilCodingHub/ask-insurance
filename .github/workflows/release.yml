@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.3.1)'
+        description: 'Release Tag (e.g. v1.3.5)'
         required: true
-        default: 'v1.3.1'
+        default: 'v1.3.5'
       is_prerelease:
         description: 'Mark as Pre-release'
         type: boolean
         required: true
-        default: true
+        default: false
       release_notes_summary:
         description: 'Optional custom release highlights (markdown)'
         required: false
@@ -195,13 +195,16 @@ jobs:
         working-directory: mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew bundleRelease assembleRelease --no-daemon
+          ./gradlew bundleRelease assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: Prepare Artifacts for Release
         run: |
           mkdir -p artifacts
           cp mobile/android/app/build/outputs/bundle/release/app-release.aab artifacts/ask-insurance-release.aab || cp mobile/android/app/build/outputs/bundle/release/*.aab artifacts/ask-insurance-release.aab || true
           cp mobile/android/app/build/outputs/apk/release/app-release.apk artifacts/ask-insurance-release.apk || cp mobile/android/app/build/outputs/apk/release/*.apk artifacts/ask-insurance-release.apk || true
+          if [ -f mobile/android/app/build/outputs/mapping/release/mapping.txt ]; then
+            zip -j artifacts/ask-insurance-mapping.zip mobile/android/app/build/outputs/mapping/release/mapping.txt || cp mobile/android/app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt || true
+          fi
           ls -lh artifacts/
 
       - name: Upload Android Build Artifacts
@@ -314,10 +317,10 @@ jobs:
             CUSTOM_SUMMARY="${{ github.event.inputs.release_notes_summary }}"
           else
             TAG="${GITHUB_REF#refs/tags/}"
-            PRERELEASE="true"
+            PRERELEASE="false"
             CUSTOM_SUMMARY=""
           fi
-          TAG="${TAG:-v1.3.1}"
+          TAG="${TAG:-v1.3.5}"
           echo "tag_name=$TAG" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
@@ -357,8 +360,9 @@ jobs:
           ### 📦 Downloadable Assets
           | File | Target Platform | Description |
           | :--- | :--- | :--- |
-          | **`ask-insurance-release.aab`** | **Google Play Console** | Production App Bundle with Android 15 & 16 compatibility |
+          | **`ask-insurance-release.aab`** | **Google Play Console** | Production App Bundle (R8 Code & Resource Shrunk, 64-bit arm64-v8a/x86_64, Android 15 & 16 ready) |
           | **`ask-insurance-release.apk`** | **Android Devices** | Standalone installable APK for direct installation & QA |
+          | **`ask-insurance-mapping.zip`** | **Google Play Console** | ProGuard / R8 De-obfuscation mapping file for crash symbolication & ANRs |
           | **`ask-insurance-release.ipa`** | **iOS / App Store Connect** | Production signed iOS package (when iOS build is enabled) |
 
           ---
