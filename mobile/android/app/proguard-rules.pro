@@ -32,6 +32,16 @@
 -keep class com.google.firebase.** { *; }
 -keep class io.invertase.firebase.** { *; }
 -dontwarn com.google.firebase.**
-# Keep annotations / generic signatures used by JSON/reflection
--keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+# react-native-screens & gesture-handler
+-keep class com.swmansion.rnscreens.** { *; }
+-keep class com.swmansion.gesturehandler.** { *; }
+
+# Security & Crypto
+-keep class androidx.security.crypto.** { *; }
+
+# OkHttp & Okio
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn javax.annotation.**
+-dontwarn org.checkerframework.**
 # @generated end expo-build-properties
