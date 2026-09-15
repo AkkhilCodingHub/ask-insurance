@@ -41,3 +41,4 @@ yarn-error.log*
 # Preview APK duplicates (tracked release is in release-bundle/app-release.apk)
 ASK-Insurance-*-Preview.apk
 release-bundle/*Preview*.apk
+artifacts/
